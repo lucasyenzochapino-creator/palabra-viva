@@ -20,9 +20,16 @@ function cleanText(raw) {
   return raw
     .replace(/\\f[\s\S]*?\\f\*/g, ' ')
     .replace(/\\x[\s\S]*?\\x\*/g, ' ')
-    .replace(/\\[a-zA-Z0-9]+\*?/g, ' ')
-    .replace(/[ \t]+/g, ' ')
+    .replace(/\\w\s+([^|\\]+)\|[^\\]*?\\w\*/g, '$1')
+    .replace(/\\\+?w\s+([^|\\]+)\|[^\\]*?\\\+?w\*/g, '$1')
+    .replace(/\|strong="[^"]*"/g, '')
+    .replace(/\|lemma="[^"]*"/g, '')
+    .replace(/\|morph="[^"]*"/g, '')
+    .replace(/\|x-[^=]+="[^"]*"/g, '')
+    .replace(/\\[a-zA-Z0-9+]+\*?/g, ' ')
+    .replace(/\s*\|\s*/g, ' ')
     .replace(/\s+([,.;:?!])/g, '$1')
+    .replace(/[ \t]+/g, ' ')
     .trim();
 }
 
@@ -40,7 +47,11 @@ function parseUSFM(code, text) {
   function finishVerse() {
     if (!chapter || !currentVerse) return;
     const cleaned = cleanText(currentVerse.text);
-    if (cleaned) chapter.verses.push({ verse: currentVerse.verse, text: cleaned });
+    if (cleaned && !/strong="|lemma="|morph="/.test(cleaned)) {
+      chapter.verses.push({ verse: currentVerse.verse, text: cleaned });
+    } else if (cleaned) {
+      chapter.verses.push({ verse: currentVerse.verse, text: cleanText(cleaned) });
+    }
     currentVerse = null;
   }
 
@@ -89,15 +100,13 @@ async function main() {
     }
 
     books.sort((a, b) => BOOK_ORDER.indexOf(a.code) - BOOK_ORDER.indexOf(b.code));
-    if (books.length < 66) {
-      console.warn(`Advertencia: se generaron ${books.length} libros. La app igualmente compilará.`);
-    }
+    if (books.length < 66) console.warn(`Advertencia: se generaron ${books.length} libros.`);
 
     await fs.mkdir(OUT_DIR, { recursive: true });
     await fs.writeFile(OUT_FILE, JSON.stringify({ source: SOURCE_URL, license: 'Public Domain', generatedAt: new Date().toISOString(), books }, null, 0));
     console.log(`Biblia RV1909 generada: ${books.length} libros en ${OUT_FILE}`);
   } catch (error) {
-    console.warn('No se pudo generar bible.rv1909.json. Se usará la base curada de emergencia.', error.message);
+    console.warn('No se pudo generar bible.rv1909.json. Se usará base curada.', error.message);
     await fs.mkdir(OUT_DIR, { recursive: true });
     await fs.writeFile(OUT_FILE, JSON.stringify({ source: SOURCE_URL, license: 'Public Domain', generatedAt: new Date().toISOString(), books: [] }));
   }
