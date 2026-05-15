@@ -1,15 +1,17 @@
 {
   "name": "palabra-viva",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "prebuild": "node scripts/build-bible.mjs",
     "build": "vite build",
     "preview": "vite preview"
   },
   "dependencies": {
     "@vitejs/plugin-react": "latest",
+    "adm-zip": "latest",
     "vite": "latest",
     "typescript": "latest",
     "react": "latest",
