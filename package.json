@@ -1,7 +1,11 @@
 {
+  "name": "palabra-viva",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "vite build",
     "preview": "vite preview"
   },
   "dependencies": {
