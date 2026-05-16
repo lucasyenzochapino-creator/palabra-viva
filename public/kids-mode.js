@@ -1,3 +1,33 @@
 (() => {
-  console.log('Palabra Viva kids mode loading');
+  const stories = [
+    ['🌍','Dios crea el mundo','Génesis 1:1','En el principio creó Dios los cielos y la tierra.','Antes que existiera todo, ya estaba Dios. Dios habló y nació la luz. Hizo el cielo, el mar, los árboles, los animales y las estrellas.','Gracias Dios por hacer un mundo tan lindo.'],
+    ['🚢','Noé y el arca','Génesis 9:13','Mi arco he puesto en las nubes.','Noé escuchaba a Dios. Dios le pidió construir un arca grande para cuidar a su familia y a los animales.','Dios, ayudame a escucharte y obedecerte.'],
+    ['⚔️','David y Goliat','1 Samuel 17:47','No con espada y lanza salva Jehová.','Goliat daba miedo. David era joven, pero confiaba en Dios. Dios ayudó a David a vencer.','Jesús, cuando tengo miedo recordame que vos sos más grande.'],
+    ['🦁','Daniel y los leones','Daniel 6:22','Mi Dios envió su ángel, el cual cerró la boca de los leones.','Daniel oraba todos los días. Aunque otros no querían que orara, Daniel siguió confiando. Dios lo cuidó.','Dios, dame valor para orar y confiar.'],
+    ['🐳','Jonás y el pez grande','Jonás 2:2','Clamé de mi tribulación a Jehová, y él me oyó.','Dios le pidió a Jonás ir a Nínive. Jonás primero no quiso, pero después oró. Dios lo escuchó.','Dios, ayudame a decir que sí.'],
+    ['⭐','Jesús nace en Belén','Lucas 2:11','Os ha nacido hoy un Salvador.','Jesús nació en un lugar humilde. Los pastores escucharon la buena noticia: había nacido el Salvador.','Jesús, gracias por venir al mundo.'],
+    ['🌊','Jesús calma la tormenta','Marcos 4:39','Calla, enmudece. Y cesó el viento.','Jesús y sus amigos estaban en una barca. Vino una tormenta y tuvieron miedo. Jesús habló y todo quedó tranquilo.','Jesús, calmá mi corazón.'],
+    ['🍞','Cinco panes y dos peces','Juan 6:11','Y tomó Jesús aquellos panes, y habiendo dado gracias, repartió.','Muchas personas tenían hambre. Un niño ofreció cinco panes y dos peces. Jesús dio gracias y hubo comida para todos.','Jesús, usá lo poco que tengo.'],
+    ['❤️','El buen samaritano','Lucas 10:33','Fue movido a misericordia.','Un hombre necesitaba ayuda. Algunos pasaron de largo, pero un samaritano se detuvo y lo cuidó.','Jesús, enseñame a ayudar.'],
+    ['🏠','El hijo que volvió','Lucas 15:20','Su padre fue movido a misericordia.','Un hijo se fue lejos. Después volvió arrepentido y su padre lo recibió con amor. Así nos espera Dios.','Dios, gracias porque puedo volver a vos.'],
+    ['👣','Jesús camina sobre el agua','Mateo 14:27','Confiad, yo soy; no tengáis miedo.','Los discípulos estaban en la barca de noche. Vieron a Jesús caminando sobre el agua. Jesús les dijo que no tuvieran miedo.','Jesús, agarrame la mano.'],
+    ['🌅','Jesús vive','Mateo 28:6','No está aquí, pues ha resucitado.','Después de la cruz, los amigos de Jesús estaban tristes. El sepulcro estaba vacío. Jesús vive para siempre.','Jesús, gracias porque estás vivo.']
+  ];
+  const $ = (s,r=document)=>r.querySelector(s);
+  function css(){
+    if($('#pv-kids-style')) return;
+    const st=document.createElement('style'); st.id='pv-kids-style';
+    st.textContent = `.pv-kids-fab{position:fixed!important;right:12px!important;bottom:calc(220px + env(safe-area-inset-bottom))!important;z-index:99999!important;border:0!important;background:linear-gradient(135deg,#22c55e,#3b82f6)!important;color:#fff!important;border-radius:999px!important;padding:12px 15px!important;font-weight:900!important;box-shadow:0 18px 45px rgba(0,0,0,.32)!important;min-height:46px!important}.pv-kids-panel{position:fixed;inset:0;z-index:1000001;background:linear-gradient(180deg,#fff8ef,#ffe9c7);color:#20140b;overflow:auto;padding:14px 12px calc(140px + env(safe-area-inset-bottom))}.pv-kids-inner{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:14px}.pv-kids-head{display:grid;grid-template-columns:1fr auto;gap:10px;position:sticky;top:0;background:linear-gradient(to bottom,#fff8ef 80%,transparent);padding:8px 0 14px;backdrop-filter:blur(12px)}.pv-kids-head h1{font-size:clamp(26px,7vw,34px);margin:4px 0}.pv-kids-close{border:2px solid currentColor;background:transparent;color:inherit;border-radius:999px;padding:9px 14px;font-weight:900}.pv-kids-grid{display:grid;grid-template-columns:1fr;gap:12px}.pv-kids-card{background:#fff;color:#20140b;border-radius:24px;padding:18px;box-shadow:0 8px 24px rgba(0,0,0,.08);border-top:5px solid #22c55e}.pv-kids-card .emoji{font-size:42px}.pv-kids-card h3{margin:8px 0 4px;font-size:19px}.pv-kids-card .ref{font-size:12px;font-weight:900;color:#9a5a16;text-transform:uppercase}.pv-kids-card p{font-size:16px;line-height:1.45}.pv-kids-home{border-color:rgba(34,197,94,.45)!important;background:linear-gradient(135deg,rgba(34,197,94,.12),var(--card))!important}@media(min-width:600px){.pv-kids-grid{grid-template-columns:1fr 1fr}}`;
+    document.head.appendChild(st);
+  }
+  function open(){
+    css(); $('.pv-kids-panel')?.remove();
+    const panel=document.createElement('section'); panel.className='pv-kids-panel';
+    panel.innerHTML = `<div class="pv-kids-inner"><div class="pv-kids-head"><div><h1>👶 Biblia para chicos</h1><p>Historias bíblicas explicadas con palabras simples.</p></div><button class="pv-kids-close">Cerrar</button></div><div class="pv-kids-grid">${stories.map(s=>`<article class="pv-kids-card"><div class="emoji">${s[0]}</div><h3>${s[1]}</h3><div class="ref">${s[2]}</div><p><em>“${s[3]}”</em></p><p>${s[4]}</p><p><strong>Oración:</strong> ${s[5]}</p></article>`).join('')}</div></div>`;
+    document.body.appendChild(panel); $('.pv-kids-close',panel).onclick=()=>panel.remove();
+  }
+  function addFab(){ css(); if($('.pv-kids-fab')) return; const b=document.createElement('button'); b.className='pv-kids-fab'; b.textContent='👶 Niños'; b.onclick=open; document.body.appendChild(b); }
+  function addHome(){ const title=$('h1')?.textContent||''; if(!title.includes('Una palabra para hoy')||$('.pv-kids-home')) return; const anchor=$('.pv-bap-home')||$('.pv-path-card')||$('.hero'); if(!anchor) return; const card=document.createElement('section'); card.className='card pv-kids-home'; card.innerHTML='<p class="ref">Para los más chicos</p><h3>👶 Biblia para chicos</h3><p class="soft">12 historias bíblicas simples para leer en familia.</p><div class="row wrap"><button class="btn">Abrir historias</button></div>'; card.querySelector('button').onclick=open; anchor.insertAdjacentElement('afterend',card); }
+  function addQuick(){ const q=$('.quick'); if(!q||$('.pv-kids-quick')) return; const b=document.createElement('button'); b.className='pv-kids-quick'; b.textContent='👶 Niños'; b.onclick=open; q.insertBefore(b,q.firstChild); }
+  window.PalabraVivaNinos={open}; setInterval(()=>{addFab();addHome();addQuick();},900); addFab();
 })();
