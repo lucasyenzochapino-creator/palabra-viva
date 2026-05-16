@@ -1,4 +1,6 @@
 (() => {
+  try { if ('speechSynthesis' in window) speechSynthesis.cancel(); } catch {}
+
   const CHANNELS = [
     { name:'BibleProject Español', type:'Biblia explicada', note:'Videos animados para entender libros y temas bíblicos.', embed:'https://www.youtube-nocookie.com/embed/videoseries?list=PLH0Szn1yYNedn4FbBMMtOlGN-BPLQ54IH', fallback:'https://www.youtube.com/@BibleProjectEspanol' },
     { name:'Enlace TV', type:'TV cristiana latina', note:'Señal y predicaciones cristianas en español. Usar con discernimiento bíblico.', embed:'https://www.youtube-nocookie.com/embed?listType=search&list=Enlace%20TV%20en%20vivo%20oficial', fallback:'https://www.enlace.org/' },
@@ -32,8 +34,8 @@
     style.id = 'canales-radios-style';
     style.textContent = `
       .cr-panel{position:fixed;inset:0;z-index:55;background:var(--bg);color:var(--text);overflow:auto;padding:16px 14px calc(230px + env(safe-area-inset-bottom))}
-      .cr-inner{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:14px}.cr-head{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:start;position:sticky;top:0;background:linear-gradient(to bottom,var(--bg),rgba(0,0,0,0));padding:8px 0 14px;z-index:2;backdrop-filter:blur(12px)}.cr-head h1{font-size:clamp(24px,7vw,32px);line-height:1.05;margin:4px 0 6px;letter-spacing:-.04em}.cr-close{border:1px solid var(--line);background:var(--card2);color:var(--text);border-radius:999px;padding:9px 12px;font-weight:900;min-width:66px}.cr-tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.cr-tab{border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:18px;padding:12px 8px;font-weight:900;text-align:center}.cr-tab.active{background:linear-gradient(135deg,var(--brand),var(--brand2));color:white;border-color:transparent}.cr-search{width:100%;border:1px solid var(--line);background:var(--card2);color:var(--text);border-radius:18px;padding:14px;font:inherit;outline:none}.cr-list{display:grid;grid-template-columns:1fr;gap:12px}.cr-card{border:1px solid var(--line);background:var(--card);border-radius:24px;padding:16px;box-shadow:0 16px 38px rgba(0,0,0,.12)}.cr-card h3{margin:0 0 6px;font-size:20px;line-height:1.12}.cr-type{font-size:13px;color:var(--brand);font-weight:900;text-transform:uppercase;letter-spacing:.06em}.cr-note{color:var(--muted)}.cr-open{width:100%;border:0;background:linear-gradient(135deg,var(--brand),var(--brand2));color:white;border-radius:999px;padding:12px 14px;font-weight:900;margin-top:10px;min-height:46px}.cr-warning{border:1px solid rgba(245,158,11,.45);background:linear-gradient(135deg,rgba(245,158,11,.12),var(--card));border-radius:22px;padding:14px}.cr-warning p{font-size:15px;color:var(--muted)}.cr-home-card{border-color:rgba(236,72,153,.42);background:linear-gradient(135deg,rgba(236,72,153,.12),var(--card))}.cr-viewer{position:fixed;inset:0;z-index:70;background:var(--bg);color:var(--text);padding:14px;display:flex;flex-direction:column;gap:10px}.cr-viewer-head{display:flex;justify-content:space-between;align-items:center;gap:10px}.cr-viewer-frame{width:100%;height:72vh;border:1px solid var(--line);border-radius:22px;background:#000}.cr-mini{font-size:13px;color:var(--muted)}.cr-moment-visual{height:170px;border-radius:22px;background:radial-gradient(circle at 30% 20%,rgba(245,158,11,.36),transparent 28%),linear-gradient(135deg,#1f1307,#7c4a1e,#be185d);display:grid;place-items:center;font-size:64px;margin-bottom:12px}.cr-audio{width:100%;margin-top:10px}.cr-moment-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}.cr-moment-actions button{border:1px solid var(--line);background:var(--card2);color:var(--text);border-radius:999px;padding:10px;font-weight:900}.cr-moment-actions .primary{background:linear-gradient(135deg,var(--brand),var(--brand2));color:white;border:0}
-      @media(min-width:620px){.cr-list{grid-template-columns:1fr 1fr}.cr-viewer-frame{height:78vh}}@media(max-width:420px){.cr-tabs{grid-template-columns:1fr}.cr-moment-actions{grid-template-columns:1fr}.cr-viewer-frame{height:64vh}}
+      .cr-inner{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:14px}.cr-head{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:start;position:sticky;top:0;background:linear-gradient(to bottom,var(--bg),rgba(0,0,0,0));padding:8px 0 14px;z-index:2;backdrop-filter:blur(12px)}.cr-head h1{font-size:clamp(24px,7vw,32px);line-height:1.05;margin:4px 0 6px;letter-spacing:-.04em}.cr-close{border:1px solid var(--line);background:var(--card2);color:var(--text);border-radius:999px;padding:9px 12px;font-weight:900;min-width:66px}.cr-tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.cr-tab{border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:18px;padding:12px 8px;font-weight:900;text-align:center}.cr-tab.active{background:linear-gradient(135deg,var(--brand),var(--brand2));color:white;border-color:transparent}.cr-search{width:100%;border:1px solid var(--line);background:var(--card2);color:var(--text);border-radius:18px;padding:14px;font:inherit;outline:none}.cr-list{display:grid;grid-template-columns:1fr;gap:12px}.cr-card{border:1px solid var(--line);background:var(--card);border-radius:24px;padding:16px;box-shadow:0 16px 38px rgba(0,0,0,.12)}.cr-card h3{margin:0 0 6px;font-size:20px;line-height:1.12}.cr-type{font-size:13px;color:var(--brand);font-weight:900;text-transform:uppercase;letter-spacing:.06em}.cr-note{color:var(--muted)}.cr-open{width:100%;border:0;background:linear-gradient(135deg,var(--brand),var(--brand2));color:white;border-radius:999px;padding:12px 14px;font-weight:900;margin-top:10px;min-height:46px}.cr-warning{border:1px solid rgba(245,158,11,.45);background:linear-gradient(135deg,rgba(245,158,11,.12),var(--card));border-radius:22px;padding:14px}.cr-warning p{font-size:15px;color:var(--muted)}.cr-home-card{border-color:rgba(236,72,153,.42);background:linear-gradient(135deg,rgba(236,72,153,.12),var(--card))}.cr-viewer{position:fixed;inset:0;z-index:70;background:var(--bg);color:var(--text);padding:14px;display:flex;flex-direction:column;gap:10px}.cr-viewer-head{display:flex;justify-content:space-between;align-items:center;gap:10px}.cr-viewer-frame{width:100%;height:72vh;border:1px solid var(--line);border-radius:22px;background:#000}.cr-mini{font-size:13px;color:var(--muted)}.cr-moment-visual{height:170px;border-radius:22px;background:radial-gradient(circle at 30% 20%,rgba(245,158,11,.36),transparent 28%),linear-gradient(135deg,#1f1307,#7c4a1e,#be185d);display:grid;place-items:center;font-size:64px;margin-bottom:12px}.cr-moment-actions{display:grid;grid-template-columns:1fr;gap:8px}.cr-moment-actions button{border:1px solid var(--line);background:linear-gradient(135deg,var(--brand),var(--brand2));color:white;border-radius:999px;padding:11px;font-weight:900}
+      @media(min-width:620px){.cr-list{grid-template-columns:1fr 1fr}.cr-viewer-frame{height:78vh}}@media(max-width:420px){.cr-tabs{grid-template-columns:1fr}.cr-viewer-frame{height:64vh}}
     `;
     document.head.appendChild(style);
   }
@@ -42,6 +44,7 @@
 
   function openViewer(title, src, fallback) {
     injectStyles();
+    try { if ('speechSynthesis' in window) speechSynthesis.cancel(); } catch {}
     document.querySelector('.cr-viewer')?.remove();
     const v = document.createElement('section');
     v.className = 'cr-viewer';
@@ -51,16 +54,9 @@
     v.querySelector('[data-fallback]').onclick = () => location.href = v.querySelector('[data-fallback]').dataset.fallback;
   }
 
-  function speakMoment(m) {
-    if (!('speechSynthesis' in window)) return alert('Este dispositivo no permite narración por voz.');
-    speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(`${m.title}. ${m.ref}. ${m.verse}. Reflexión: ${m.mood}. Oración: ${m.prayer}. Acción: ${m.action}`);
-    u.lang = 'es-419'; u.rate = .82; u.pitch = .92;
-    speechSynthesis.speak(u);
-  }
-
   function openPanel() {
     injectStyles();
+    try { if ('speechSynthesis' in window) speechSynthesis.cancel(); } catch {}
     document.querySelector('.cr-panel')?.remove();
     let mode = 'momentos'; let q = '';
     const panel = document.createElement('section');
@@ -72,8 +68,7 @@
       panel.querySelectorAll('.cr-tab').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
       if (mode === 'momentos') {
         const items = MOMENTS.filter(m => !q || clean(m.title+' '+m.ref+' '+m.mood).includes(clean(q)));
-        list.innerHTML = items.map((m,i)=>`<article class="cr-card"><div class="cr-moment-visual">${m.image}</div><p class="cr-type">${m.mood}</p><h3>${m.title}</h3><p class="cr-type">${m.ref}</p><p class="cr-note">“${m.verse}”</p><p><strong>Oración:</strong> ${m.prayer}</p><p><strong>Acción:</strong> ${m.action}</p><div class="cr-moment-actions"><button class="primary" data-speak="${i}">Escuchar reflexión</button><button data-search="${encodeURIComponent('The Chosen Español '+m.title+' clip oficial')}">Buscar clip oficial</button></div></article>`).join('') || '<article class="cr-card"><p>No encontré momentos con esa búsqueda.</p></article>';
-        list.querySelectorAll('[data-speak]').forEach(b => b.onclick = () => speakMoment(items[Number(b.dataset.speak)]));
+        list.innerHTML = items.map(m=>`<article class="cr-card"><div class="cr-moment-visual">${m.image}</div><p class="cr-type">${m.mood}</p><h3>${m.title}</h3><p class="cr-type">${m.ref}</p><p class="cr-note">“${m.verse}”</p><p><strong>Oración:</strong> ${m.prayer}</p><p><strong>Acción:</strong> ${m.action}</p><div class="cr-moment-actions"><button data-search="${encodeURIComponent('The Chosen Español '+m.title+' clip oficial')}">Buscar clip oficial</button></div></article>`).join('') || '<article class="cr-card"><p>No encontré momentos con esa búsqueda.</p></article>';
         list.querySelectorAll('[data-search]').forEach(b => b.onclick = () => openViewer('Clip oficial relacionado', `https://www.youtube-nocookie.com/embed?listType=search&list=${b.dataset.search}`, `https://www.youtube.com/results?search_query=${b.dataset.search}`));
         return;
       }
@@ -82,7 +77,7 @@
       list.innerHTML = items.map((item,i)=>`<article class="cr-card"><p class="cr-type">${item.type}</p><h3>${item.name}</h3><p class="cr-note">${item.note}</p><button class="cr-open" data-i="${i}">${mode==='youtube'?'Ver dentro de la app':'Abrir visor interno'}</button></article>`).join('') || '<article class="cr-card"><p>No encontré resultados.</p></article>';
       list.querySelectorAll('[data-i]').forEach(b => b.onclick = () => { const item = items[Number(b.dataset.i)]; const src = item.embed || item.page; openViewer(item.name, src, item.fallback || item.page); });
     };
-    panel.querySelector('.cr-close').onclick = () => panel.remove();
+    panel.querySelector('.cr-close').onclick = () => { try { if ('speechSynthesis' in window) speechSynthesis.cancel(); } catch {}; panel.remove(); };
     panel.querySelector('.cr-search').oninput = e => { q = e.target.value; render(); };
     panel.querySelectorAll('.cr-tab').forEach(b => b.onclick = () => { mode = b.dataset.mode; render(); });
     render();
