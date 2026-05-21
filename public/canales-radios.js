@@ -10,25 +10,25 @@
     { name:'Hillsong en Español', type:'Adoración', note:'Canciones de adoración en español.', embed:null, channel:'https://www.youtube.com/@hillsongenespanol' }
   ];
 
-  // ── Radios hardcoded — solo HTTPS para evitar bloqueo del navegador ────────
+  // ── Radios hardcoded — URLs verificadas en Radio Browser API (lastcheckok=1) ──
   const HARD_RADIOS = [
-    // Argentina
-    { id:'bbn-es',        name:'BBN Radio Español',          type:'Internacional · Bíblica 24/7',   note:'Música cristiana, Biblia y enseñanza 24/7.',     stream:'https://streams.radiomast.io/475ebed1-595e-4717-b888-64fe8fc6b09f' },
-    { id:'cadena-crist',  name:'Cadena Cristiana Evangélica',type:'Argentina · Evangélica',         note:'Radio cristiana evangélica de Argentina.',       stream:'https://server.laradio.online/proxy/cadenacristiana?mp=/stream' },
-    { id:'777-crist',     name:'777 Radio Cristiana',        type:'Argentina · Cristiana',          note:'Música y mensajes del evangelio.',                stream:'https://stream.zeno.fm/3t3s0u7k8yzuv' },
-    // Latinoamérica
-    { id:'cvclavoz',      name:'CVC La Voz',                 type:'Hispanoamérica · Cristiana',     note:'Música, devocionales y mensajes 24/7.',          stream:'https://23583.live.streamtheworld.com/CVC_LA_VOZ_SC' },
-    { id:'hcjb',          name:'HCJB Voces Andinas',         type:'Ecuador · Evangélica',           note:'Radio evangélica internacional desde Ecuador.',  stream:'https://hcjb.streamguys1.com/HCJB-Music-AAC' },
-    { id:'faro-caribe',   name:'Faro del Caribe',            type:'Costa Rica · Evangélica',        note:'Primera radio evangélica de Costa Rica.',        stream:'https://ice2.farodelcaribe.org/faro128' },
-    { id:'nuevo-tiempo',  name:'Radio Nuevo Tiempo',         type:'Latinoamérica · Cristiana',      note:'Música y esperanza para la familia.',            stream:'https://stream.nuevotiempo.org/nuevotiempo' },
-    { id:'ondas-luz',     name:'Ondas de Luz',               type:'Ecuador · Evangélica',           note:'La primera radio evangélica de Ecuador.',        stream:'https://stream.zeno.fm/5x9zsmne9g0uv' },
-    { id:'twr-es',        name:'TWR Español',                type:'Internacional · Evangélica',     note:'Trans World Radio — mensajes bíblicos.',         stream:'https://stream.twr360.org/twr360-radio-es' },
-    // USA en Español
-    { id:'moody-es',      name:'Moody Radio Español',        type:'USA · Chicago · Evangélica',     note:'Enseñanza bíblica desde Chicago, Illinois.',    stream:'https://playerservices.streamtheworld.com/api/livestream-redirect/WMBI_ESP_SC' },
-    { id:'radio-vida-us', name:'Radio Vida Nueva (USA)',     type:'USA · Hispana · Cristiana',      note:'Red cristiana hispana evangélica de EE.UU.',    stream:'https://playerservices.streamtheworld.com/api/livestream-redirect/KVNV_FM_SC' },
-    { id:'kklv',          name:'KKLV Amor 107.9 (Kansas)',   type:'USA · Kansas · Cristiana',       note:'Radio cristiana en español desde Kansas.',       stream:'https://playerservices.streamtheworld.com/api/livestream-redirect/KKLV_FM_SC' },
-    { id:'khcc-es',       name:'KHCC Radio (Kansas)',        type:'USA · Kansas · Cristiana',       note:'Radio cristiana en español — Kansas.',           stream:'https://playerservices.streamtheworld.com/api/livestream-redirect/KHCC_FM_SC' },
-    { id:'klove-es',      name:'K-LOVE en Español',          type:'USA · Nacional · Cristiana',     note:'Música cristiana contemporánea en español.',    stream:'https://playerservices.streamtheworld.com/api/livestream-redirect/KLVG_FM_SC' },
+    // USA en Español — verificadas
+    { id:'aliento-ks',    name:'Radio Aliento 100.5 FM',     type:'USA · Kansas · Cristiana',       note:'Radio cristiana evangélica en español de Kansas.', stream:'https://streams.radio.co:80/s22a35bf51/listen' },
+    { id:'bbn-es',        name:'BBN Radio Español',          type:'USA · Internacional · Bíblica',  note:'Música cristiana, Biblia y enseñanza 24/7.',       stream:'https://streams.radiomast.io/475ebed1-595e-4717-b888-64fe8fc6b09f' },
+    { id:'buen-sam',      name:'El Buen Samaritano 102.3 FM',type:'USA · Florida · Cristiana',      note:'Radio cristiana en español desde Florida.',        stream:'https://stream1.305stream.com/proxy/buensamaritano?mp=/stream' },
+    { id:'vision-crist',  name:'Radio Visión Cristiana',     type:'USA · Internacional · Cristiana',note:'Alabanza, predicaciones y familia cristiana.',     stream:'https://livestreamcdn.net:2000/stream/RadioVisionCristianaRadio/' },
+    // Argentina — verificadas
+    { id:'hacedor',       name:'El Hacedor Radio',           type:'Argentina · Evangélica',         note:'Música y mensajes del evangelio.',                 stream:'https://stream.zeno.fm/f7vpqramxrhvv' },
+    { id:'cristo-rey',    name:'FM Cristo Rey 105.1',        type:'Argentina · Cristiana',          note:'Radio cristiana evangélica de Argentina.',         stream:'https://stream.zeno.fm/ujs4w68jh93uv' },
+    // Ecuador — verificada
+    { id:'hcjb',          name:'HCJB La Voz de los Andes',  type:'Ecuador · Evangélica',           note:'Radio evangélica histórica de Ecuador.',           stream:'https://streamingecuador.net:8287/hcjb' },
+    // Costa Rica — verificada
+    { id:'faro-caribe',   name:'Faro del Caribe',            type:'Costa Rica · Evangélica',        note:'Primera radio evangélica de Costa Rica.',          stream:'https://sp.unoredcdn.net/8032/stream' },
+    // México — verificadas
+    { id:'radio-familia-mx', name:'Radio Familia Parral',    type:'México · Cristiana',             note:'Radio familiar cristiana desde Chihuahua.',        stream:'https://radiofamilia1.radioca.st/stream' },
+    { id:'estereo-vida',  name:'Estéreo Vida 93.1 FM',       type:'México · Cristiana',             note:'Radio cristiana desde Ciudad del Carmen.',         stream:'https://stream.zeno.fm/5y45gqtbcchvv' },
+    // Latinoamérica — verificada
+    { id:'nuevo-tiempo',  name:'Radio Nuevo Tiempo',         type:'Latinoamérica · Cristiana',      note:'Música y esperanza para la familia.',              stream:'https://stream.live.novotempo.com/radio/smil:radionuevotiempo.smil/playlist.m3u8' },
   ];
 
   const BLOCKED = ['catolic','católic','catholic','radio maria','radio maría','vatican','vaticano','guadalupe','fatima','fátima','virgen','santuario','cope ','mariana','arquidiocesis','diocesis','parroquia','sagrado corazon','inmaculada','pontificia','eucaristia'];
@@ -125,8 +125,8 @@
 
   function playRadio(r){
     if(!r?.stream)return Promise.resolve();
-    // Detener audio anterior SIN llamar load() — load() mata el play() siguiente con AbortError
-    try{AUD.pause();AUD.src=''}catch{}
+    // Solo pausar — src='' dispara onerror asíncrono que cortocircuita el stream nuevo
+    try{AUD.pause()}catch{}
     current?.el?.remove();current=null;
 
     // Construir/reusar el player fijo
@@ -341,16 +341,14 @@
     const pb=panel?.querySelector('[data-play]');if(pb){const pl=current&&rid(current.station)===rid(items[dialIdx])&&!AUD.paused;pb.textContent=pl?'⏸ DETENER':'▶ ESCUCHAR';}
   }
 
-  let dialDebounce=null;
   function bindDial(listEl,items){
     listEl.querySelectorAll('[data-prev],[data-next]').forEach(btn=>{
       btn.addEventListener('click',e=>{
         e.stopPropagation();
         dialIdx=btn.dataset.prev!=null?(dialIdx-1+items.length)%items.length:(dialIdx+1)%items.length;
         updateDialDisplay(items);
-        clearTimeout(dialDebounce);
-        // Auto-reproducir siempre al cambiar de estación (como un dial real)
-        dialDebounce=setTimeout(()=>playRadio(items[dialIdx]).then(()=>updateDialDisplay(items)),200);
+        // Reproducir directamente — setTimeout rompe el contexto de gesto en móvil
+        playRadio(items[dialIdx]).then(()=>updateDialDisplay(items));
       });
     });
     listEl.querySelector('[data-play]')?.addEventListener('click',e=>{
