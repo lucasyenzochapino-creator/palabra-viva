@@ -1,184 +1,493 @@
 (() => {
   try { if ('speechSynthesis' in window) speechSynthesis.cancel(); } catch {}
 
+  // ── Canales YouTube ────────────────────────────────────────────────────────
   const CHANNELS = [
-    { name:'Proyecto Biblia (BibleProject Español)', type:'Biblia animada · Español latino', note:'Videos oficiales sobre libros y temas bíblicos, doblados al español.', embed:'https://www.youtube-nocookie.com/embed/videoseries?list=PLlD1Kzc7omJmXnWoWlFVJ5AFOTPuYyGPg', channel:'https://www.youtube.com/c/bibleprojectespanol' },
-    { name:'Nuevo Tiempo', type:'TV cristiana · Español', note:'Contenido cristiano en español latino: familia, Biblia y esperanza.', embed:null, channel:'https://www.youtube.com/@NuevoTiempoTV' },
-    { name:'Enlace TV', type:'TV cristiana evangélica · Español', note:'Predicaciones y contenido cristiano evangélico en español.', embed:null, channel:'https://www.youtube.com/@enlacetv' },
-    { name:'Coalición por el Evangelio', type:'Enseñanza evangélica · Español', note:'Recursos teológicos reformados y bíblicos en español latino.', embed:null, channel:'https://www.youtube.com/@coalicionporelevangelio' },
-    { name:'Hillsong en Español', type:'Música de adoración · Español', note:'Canciones de adoración cristianas en español.', embed:null, channel:'https://www.youtube.com/@hillsongenespanol' }
+    { name:'BibleProject Español', type:'Biblia animada', note:'Videos sobre libros y temas bíblicos en español latino.', embed:'https://www.youtube-nocookie.com/embed/videoseries?list=PLlD1Kzc7omJmXnWoWlFVJ5AFOTPuYyGPg', channel:'https://www.youtube.com/c/bibleprojectespanol' },
+    { name:'Nuevo Tiempo', type:'TV cristiana', note:'Contenido cristiano: familia, Biblia y esperanza.', embed:null, channel:'https://www.youtube.com/@NuevoTiempoTV' },
+    { name:'Enlace TV', type:'TV evangélica', note:'Predicaciones y contenido cristiano evangélico.', embed:null, channel:'https://www.youtube.com/@enlacetv' },
+    { name:'Coalición por el Evangelio', type:'Enseñanza bíblica', note:'Recursos teológicos reformados en español.', embed:null, channel:'https://www.youtube.com/@coalicionporelevangelio' },
+    { name:'Hillsong en Español', type:'Adoración', note:'Canciones de adoración en español.', embed:null, channel:'https://www.youtube.com/@hillsongenespanol' }
   ];
 
+  // ── Radios hardcoded — solo HTTPS para evitar bloqueo del navegador ────────
   const HARD_RADIOS = [
-    // ── Argentina ──────────────────────────────────────────────────────────
-    { id:'bbn-es',       name:'BBN Radio Español',          type:'Internacional · Bíblica 24/7',  note:'Música cristiana, Biblia y enseñanza 24/7 en español.',  stream:'https://streams.radiomast.io/475ebed1-595e-4717-b888-64fe8fc6b09f', page:'https://bbn1.bbnradio.org/spanish/' },
-    { id:'cadena-crist', name:'Cadena Cristiana Evangélica', type:'Argentina · Evangélica',        note:'Radio cristiana evangélica de Argentina.',                stream:'https://server.laradio.online/proxy/cadenacristiana?mp=/stream',         page:'https://cadenacristiana.com.ar/' },
-    { id:'radio-vida-m', name:'Radio Vida 105.1 Mendoza',   type:'Argentina · Evangélica',        note:'Radio cristiana desde Mendoza.',                         stream:'https://streaming01.shockmedia.com.ar:10777/stream',                      page:'https://radiovida1051.com/' },
-    { id:'777-cristiana',name:'777 Radio Cristiana',        type:'Argentina · Cristiana',         note:'Música y mensajes del evangelio.',                        stream:'https://stream.zeno.fm/3t3s0u7k8yzuv',                                   page:'' },
-    // ── Latinoamérica / Internacional ──────────────────────────────────────
-    { id:'cvclavoz',     name:'CVC La Voz',                 type:'Hispanoamérica · Cristiana',    note:'Música, devocionales y mensajes 24/7.',                  stream:'https://23583.live.streamtheworld.com/CVC_LA_VOZ_SC',                     page:'https://cvclavoz.com/' },
-    { id:'hcjb',         name:'HCJB Voces Andinas',         type:'Ecuador · Evangélica',          note:'Radio evangélica internacional desde Ecuador.',           stream:'https://hcjb.streamguys1.com/HCJB-Music-AAC',                            page:'https://hcjb.org/' },
-    { id:'faro-caribe',  name:'Faro del Caribe',            type:'Costa Rica · Evangélica',       note:'Primera radio evangélica de Costa Rica.',                stream:'https://s1.farodelcaribe.org:8443/faro',                                  page:'https://farodelcaribe.org/' },
-    { id:'nuevo-tiempo', name:'Radio Nuevo Tiempo',         type:'Latinoamérica · Cristiana',     note:'Música y esperanza para toda la familia.',                stream:'https://stream.nuevotiempo.org/nuevotiempo',                              page:'https://nuevotiempo.org/' },
-    { id:'twr-es',       name:'TWR Español',                type:'Internacional · Evangélica',    note:'Trans World Radio — mensajes bíblicos en español.',      stream:'https://stream.twr360.org/twr360-radio-es',                              page:'https://www.twr.org/' },
-    // ── USA en Español ──────────────────────────────────────────────────────
-    { id:'moody-es',     name:'Moody Radio en Español',     type:'USA · Chicago · Evangélica',    note:'Enseñanza bíblica evangélica desde Chicago, Illinois.',  stream:'https://playerservices.streamtheworld.com/api/livestream-redirect/WMBI_ESP_SC', page:'https://www.moodyradio.org/' },
-    { id:'klfe-es',      name:'KLFE Life Radio 1590',       type:'USA · Seattle · Evangélica',    note:'Radio cristiana evangélica en español — Seattle.',       stream:'https://playerservices.streamtheworld.com/api/livestream-redirect/KLFE_SC', page:'' },
-    { id:'radio-vida-us',name:'Radio Vida (USA)',           type:'USA · Hispana · Cristiana',     note:'Red cristiana hispana evangelica de EE.UU.',             stream:'https://playerservices.streamtheworld.com/api/livestream-redirect/KVNV_FM_SC', page:'https://radiovida.net/' },
-    { id:'esperanza',    name:'Radio Esperanza',            type:'USA · Hispana · Evangélica',    note:'Fe y esperanza en español para la comunidad hispana.',   stream:'https://stream.zeno.fm/esperanza-es',                                     page:'' },
+    // Argentina
+    { id:'bbn-es',        name:'BBN Radio Español',          type:'Internacional · Bíblica 24/7',   note:'Música cristiana, Biblia y enseñanza 24/7.',     stream:'https://streams.radiomast.io/475ebed1-595e-4717-b888-64fe8fc6b09f' },
+    { id:'cadena-crist',  name:'Cadena Cristiana Evangélica',type:'Argentina · Evangélica',         note:'Radio cristiana evangélica de Argentina.',       stream:'https://server.laradio.online/proxy/cadenacristiana?mp=/stream' },
+    { id:'777-crist',     name:'777 Radio Cristiana',        type:'Argentina · Cristiana',          note:'Música y mensajes del evangelio.',                stream:'https://stream.zeno.fm/3t3s0u7k8yzuv' },
+    // Latinoamérica
+    { id:'cvclavoz',      name:'CVC La Voz',                 type:'Hispanoamérica · Cristiana',     note:'Música, devocionales y mensajes 24/7.',          stream:'https://23583.live.streamtheworld.com/CVC_LA_VOZ_SC' },
+    { id:'hcjb',          name:'HCJB Voces Andinas',         type:'Ecuador · Evangélica',           note:'Radio evangélica internacional desde Ecuador.',  stream:'https://hcjb.streamguys1.com/HCJB-Music-AAC' },
+    { id:'faro-caribe',   name:'Faro del Caribe',            type:'Costa Rica · Evangélica',        note:'Primera radio evangélica de Costa Rica.',        stream:'https://ice2.farodelcaribe.org/faro128' },
+    { id:'nuevo-tiempo',  name:'Radio Nuevo Tiempo',         type:'Latinoamérica · Cristiana',      note:'Música y esperanza para la familia.',            stream:'https://stream.nuevotiempo.org/nuevotiempo' },
+    { id:'ondas-luz',     name:'Ondas de Luz',               type:'Ecuador · Evangélica',           note:'La primera radio evangélica de Ecuador.',        stream:'https://stream.zeno.fm/5x9zsmne9g0uv' },
+    { id:'twr-es',        name:'TWR Español',                type:'Internacional · Evangélica',     note:'Trans World Radio — mensajes bíblicos.',         stream:'https://stream.twr360.org/twr360-radio-es' },
+    // USA en Español
+    { id:'moody-es',      name:'Moody Radio Español',        type:'USA · Chicago · Evangélica',     note:'Enseñanza bíblica desde Chicago, Illinois.',    stream:'https://playerservices.streamtheworld.com/api/livestream-redirect/WMBI_ESP_SC' },
+    { id:'radio-vida-us', name:'Radio Vida Nueva (USA)',     type:'USA · Hispana · Cristiana',      note:'Red cristiana hispana evangélica de EE.UU.',    stream:'https://playerservices.streamtheworld.com/api/livestream-redirect/KVNV_FM_SC' },
+    { id:'kklv',          name:'KKLV Amor 107.9 (Kansas)',   type:'USA · Kansas · Cristiana',       note:'Radio cristiana en español desde Kansas.',       stream:'https://playerservices.streamtheworld.com/api/livestream-redirect/KKLV_FM_SC' },
+    { id:'khcc-es',       name:'KHCC Radio (Kansas)',        type:'USA · Kansas · Cristiana',       note:'Radio cristiana en español — Kansas.',           stream:'https://playerservices.streamtheworld.com/api/livestream-redirect/KHCC_FM_SC' },
+    { id:'klove-es',      name:'K-LOVE en Español',          type:'USA · Nacional · Cristiana',     note:'Música cristiana contemporánea en español.',    stream:'https://playerservices.streamtheworld.com/api/livestream-redirect/KLVG_FM_SC' },
   ];
 
-  const SPANISH_COUNTRIES = ['AR','MX','ES','CO','PE','CL','VE','UY','PY','BO','EC','CU','DO','GT','HN','NI','CR','PA','SV','PR','US'];
-  const BLOCKED_WORDS = ['catolic','católic','catholic','catolico','católico','catolica','católica','radio maria','radio maría','maria radio','maría radio','vatican','vaticano','guadalupe','guadalupana','fatima','fátima','rosario','virgen','santuario','cadena cope','cope ','mariana','mariano','arquidiocesis','arquidiócesis','diocesis','diócesis','parroquia','sagrado corazon','sagrado corazón','inmaculada','concepcion','concepción','papa francisco','pontificia','eucaristia','eucaristía'];
+  const BLOCKED = ['catolic','católic','catholic','radio maria','radio maría','vatican','vaticano','guadalupe','fatima','fátima','virgen','santuario','cope ','mariana','arquidiocesis','diocesis','parroquia','sagrado corazon','inmaculada','pontificia','eucaristia'];
+  const SPANISH_CC = ['AR','MX','ES','CO','PE','CL','VE','UY','PY','BO','EC','CU','DO','GT','HN','NI','CR','PA','SV','PR','US'];
   const FAVS_KEY='pv-radio-favs', CUSTOM_KEY='pv-radio-custom', HIDDEN_KEY='pv-radio-hidden';
 
-  const $=(s,r=document)=>r.querySelector(s);
-  const clean=t=>(t||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
-  const load=(k,fb)=>{try{return JSON.parse(localStorage.getItem(k)||JSON.stringify(fb))}catch{return fb}};
-  const save=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch{}};
-  const radioId=r=>r.id||`${clean(r.name)}|${(r.stream||'').trim()}`;
-  const isFav=(r,f=load(FAVS_KEY,[]))=>f.some(x=>radioId(x)===radioId(r));
-  const toggleFav=r=>{const f=load(FAVS_KEY,[]),id=radioId(r),i=f.findIndex(x=>radioId(x)===id);if(i>=0)f.splice(i,1);else f.push({...r,id});save(FAVS_KEY,f)};
-  const custom=()=>load(CUSTOM_KEY,[]);
-  const hidden=()=>load(HIDDEN_KEY,[]);
-  const hideRadio=r=>{const h=hidden();if(!h.includes(radioId(r)))h.push(radioId(r));save(HIDDEN_KEY,h)};
-  const isBlocked=s=>BLOCKED_WORDS.some(w=>clean(`${s.name||''} ${s.tags||''} ${s.homepage||''} ${s.url||''}`).includes(clean(w)));
-  const isSpanishCountry=s=>!s.countrycode || SPANISH_COUNTRIES.includes(String(s.countrycode).toUpperCase());
+  const $ = (s,r=document)=>r.querySelector(s);
+  const norm = t=>(t||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').trim();
+  const lsGet = (k,fb)=>{try{return JSON.parse(localStorage.getItem(k)||JSON.stringify(fb))}catch{return fb}};
+  const lsSet = (k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch{}};
+  const rid = r=>r.id||`${norm(r.name)}|${(r.stream||'').trim()}`;
+  const isFav = r=>lsGet(FAVS_KEY,[]).some(x=>rid(x)===rid(r));
+  const toggleFav = r=>{const f=lsGet(FAVS_KEY,[]),id=rid(r),i=f.findIndex(x=>rid(x)===id);if(i>=0)f.splice(i,1);else f.push({...r,id});lsSet(FAVS_KEY,f)};
+  const isBlocked = s=>BLOCKED.some(w=>norm(`${s.name||''} ${s.tags||''} ${s.homepage||''}  ${s.url||''}`).includes(norm(w)));
+  const isSpanish = s=>!s.countrycode||SPANISH_CC.includes(String(s.countrycode).toUpperCase());
 
-  const SHARED_AUDIO = new Audio();
-  SHARED_AUDIO.preload = 'none';
-  SHARED_AUDIO.crossOrigin = 'anonymous';
+  // ── Audio único compartido ─────────────────────────────────────────────────
+  const AUD = new Audio();
+  AUD.preload = 'none';
+  // No forzamos crossOrigin para evitar errores CORS en streams que no lo soportan
 
-  let currentRadio=null, radiosCache=null, loading=false, panel=null, mode='dial', q='', dialIndex=0;
+  let current=null, cache=null, cacheLoading=false, panel=null, mode='dial', q='', dialIdx=0;
 
-  function css(){
-    if($('#canales-radios-style-v7'))return;$('#canales-radios-style')?.remove();$('#canales-radios-style-v4')?.remove();
-    const st=document.createElement('style');st.id='canales-radios-style-v7';st.textContent=`
-      .cr-panel{position:fixed;inset:0;z-index:55;background:var(--bg);color:var(--text);overflow:auto;padding:16px 14px calc(230px + env(safe-area-inset-bottom))}.cr-inner{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:14px}.cr-head{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:start;position:sticky;top:0;background:linear-gradient(to bottom,var(--bg),rgba(0,0,0,0));padding:8px 0 14px;z-index:2;backdrop-filter:blur(12px)}.cr-head h1{font-size:clamp(24px,7vw,32px);line-height:1.05;margin:4px 0 6px}.cr-close{border:1px solid var(--line);background:var(--card2);color:var(--text);border-radius:999px;padding:9px 12px;font-weight:900;min-width:66px}.cr-tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}.cr-tab{border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:14px;padding:10px 6px;font-weight:900;text-align:center;font-size:12px}.cr-tab.active{background:linear-gradient(135deg,var(--brand),var(--brand2));color:#fff;border-color:transparent}.cr-search{width:100%;border:1px solid var(--line);background:var(--card2);color:var(--text);border-radius:18px;padding:14px;font:inherit}.cr-list{display:grid;grid-template-columns:1fr;gap:12px}.cr-card{position:relative;border:1px solid var(--line);background:var(--card);border-radius:24px;padding:16px;box-shadow:0 16px 38px rgba(0,0,0,.12)}.cr-card h3{margin:0 0 6px;font-size:20px;line-height:1.12;padding-right:48px}.cr-type{font-size:13px;color:var(--brand);font-weight:900;text-transform:uppercase;letter-spacing:.06em}.cr-note{color:var(--muted);word-break:break-word}.cr-fav-btn{position:absolute;top:14px;right:14px;width:38px;height:38px;border-radius:999px;border:1px solid var(--line);background:var(--card2);color:var(--text);font-size:18px}.cr-fav-btn.on{background:linear-gradient(135deg,#ef4444,#ec4899);border-color:transparent;color:#fff}.cr-btn-primary{width:100%;border:0;background:linear-gradient(135deg,var(--brand),var(--brand2));color:#fff;border-radius:999px;padding:12px 14px;font-weight:900;margin-top:10px;min-height:46px}.cr-btn-ghost{width:100%;border:1px solid var(--line);background:transparent;color:var(--text);border-radius:999px;padding:11px 14px;font-weight:900;margin-top:8px;min-height:44px}.cr-btn-danger{width:100%;border:1px solid rgba(239,68,68,.4);background:rgba(239,68,68,.08);color:#ef4444;border-radius:999px;padding:11px 14px;font-weight:900;margin-top:8px;min-height:44px}.cr-empty{padding:24px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:22px}.cr-loading{padding:24px;text-align:center;color:var(--muted)}.cr-form{border:1px solid var(--line);background:var(--card);border-radius:24px;padding:16px;display:flex;flex-direction:column;gap:10px}.cr-form input{width:100%;border:1px solid var(--line);background:var(--card2);color:var(--text);border-radius:14px;padding:12px;font:inherit;box-sizing:border-box}.cr-player{position:fixed;left:12px;right:12px;bottom:calc(80px + env(safe-area-inset-bottom));z-index:80;background:linear-gradient(135deg,var(--card),var(--card2));border:1px solid var(--line);border-radius:22px;padding:12px 14px;display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;box-shadow:0 18px 48px rgba(0,0,0,.35);max-width:760px;margin:0 auto}.cr-player-name{font-weight:900;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.cr-player-state{font-size:12px;color:var(--muted);margin-top:2px}.cr-player-btn{border:0;background:linear-gradient(135deg,var(--brand),var(--brand2));color:#fff;border-radius:999px;width:42px;height:42px;font-weight:900;font-size:18px}.cr-player-close{border:1px solid var(--line);background:transparent;color:var(--text);border-radius:999px;width:34px;height:34px}.cr-home-card{border-color:rgba(236,72,153,.42);background:linear-gradient(135deg,rgba(236,72,153,.12),var(--card))}
-      .cr-dial{background:linear-gradient(180deg,#3b2817 0%,#201309 100%);border-radius:24px;padding:18px;color:#f5deb3;box-shadow:0 16px 38px rgba(0,0,0,.4),inset 0 2px 0 rgba(255,220,150,.15)}.cr-dial-brand{font-family:Georgia,serif;text-align:center;font-size:14px;letter-spacing:.25em;color:#d4a574;font-weight:700;margin-bottom:10px;border-bottom:1px solid rgba(212,165,116,.25);padding-bottom:8px}.cr-dial-display{background:linear-gradient(180deg,#f4e4a1,#e8d27d);color:#3b2817;border-radius:8px;padding:14px 16px;margin:12px 0;font-family:'Courier New',monospace;text-align:center;box-shadow:inset 0 3px 8px rgba(59,40,23,.4);border:2px solid #2a1c10}.cr-dial-display .freq{font-size:14px;letter-spacing:.2em;opacity:.7}.cr-dial-display .station{font-size:22px;font-weight:900;margin:6px 0 2px;line-height:1.15}.cr-dial-display .status{font-size:12px;opacity:.7}.cr-dial-strip{position:relative;background:linear-gradient(180deg,#f4e4a1,#d4a574);border-radius:6px;padding:10px 8px 22px;margin:14px 0;border:2px solid #2a1c10}.cr-dial-marks{display:flex;justify-content:space-between;color:#3b2817;font-size:11px;font-weight:900;font-family:'Courier New',monospace}.cr-dial-needle{position:absolute;top:6px;bottom:6px;width:3px;background:#d62828;left:50%;transform:translateX(-50%);box-shadow:0 0 8px rgba(214,40,40,.6);border-radius:2px;transition:left .3s ease}.cr-dial-controls{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;margin-top:10px}.cr-dial-knob{width:54px;height:54px;border-radius:50%;border:2px solid #d4a574;background:radial-gradient(circle at 30% 30%,#8b6332,#3b2817);color:#f5deb3;font-weight:900;font-size:18px;box-shadow:0 4px 12px rgba(0,0,0,.4),inset 0 2px 4px rgba(255,220,150,.2)}.cr-dial-play{background:linear-gradient(135deg,#d62828,#9d0208);border:2px solid #f5deb3;color:#fff;border-radius:999px;padding:14px;font-weight:900;font-size:16px;min-height:52px}.cr-viewer{position:fixed;inset:0;z-index:70;background:var(--bg);color:var(--text);padding:14px;display:flex;flex-direction:column;gap:10px}.cr-viewer-frame{width:100%;height:72vh;border:1px solid var(--line);border-radius:22px;background:#000}@media(min-width:620px){.cr-list{grid-template-columns:1fr 1fr}.cr-viewer-frame{height:78vh}}@media(max-width:420px){.cr-tabs{grid-template-columns:repeat(2,1fr)}}`;
-    document.head.appendChild(st);
+  // ── Estilos ────────────────────────────────────────────────────────────────
+  function injectCSS(){
+    if($('#cr-style-v10'))return;
+    ['#cr-style-v7','#canales-radios-style-v7','#canales-radios-style-v4','#canales-radios-style'].forEach(id=>$(id)?.remove());
+    const st=document.createElement('style');st.id='cr-style-v10';st.textContent=`
+.cr-panel{position:fixed;inset:0;z-index:9000;background:var(--bg,#1a1007);color:var(--text,#f5deb3);overflow-y:auto;padding:14px 14px calc(200px + env(safe-area-inset-bottom))}
+.cr-inner{max-width:720px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+.cr-head{position:sticky;top:0;z-index:2;backdrop-filter:blur(14px);background:linear-gradient(to bottom,var(--bg,#1a1007) 70%,transparent);padding:10px 0 14px;display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.cr-head-left h1{font-size:clamp(22px,6vw,30px);margin:2px 0 4px;line-height:1.05}
+.cr-head-left p{font-size:13px;color:var(--muted,#a08060);margin:0}
+.cr-close{border:1px solid var(--line,rgba(200,150,80,.25));background:var(--card2,rgba(255,220,150,.08));color:var(--text,#f5deb3);border-radius:999px;padding:9px 14px;font-weight:900;white-space:nowrap;cursor:pointer}
+.cr-tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.cr-tab{border:1px solid var(--line,rgba(200,150,80,.25));background:var(--card,rgba(255,220,150,.05));color:var(--text,#f5deb3);border-radius:14px;padding:10px 4px;font-weight:900;font-size:11px;text-align:center;cursor:pointer}
+.cr-tab.on{background:linear-gradient(135deg,var(--brand,#9a3412),var(--brand2,#f97316));color:#fff;border-color:transparent}
+.cr-search{width:100%;border:1px solid var(--line,rgba(200,150,80,.25));background:var(--card2,rgba(255,220,150,.08));color:var(--text,#f5deb3);border-radius:18px;padding:13px 16px;font:inherit;box-sizing:border-box}
+.cr-list{display:grid;gap:12px}
+.cr-card{position:relative;border:1px solid var(--line,rgba(200,150,80,.2));background:var(--card,rgba(255,220,150,.05));border-radius:22px;padding:16px}
+.cr-card h3{margin:4px 0 6px;font-size:18px;padding-right:46px}
+.cr-label{font-size:12px;color:var(--brand,#f97316);font-weight:900;text-transform:uppercase;letter-spacing:.06em}
+.cr-note{font-size:13px;color:var(--muted,#a08060);margin:0}
+.cr-fav{position:absolute;top:14px;right:14px;width:38px;height:38px;border-radius:50%;border:1px solid var(--line,rgba(200,150,80,.25));background:var(--card2,rgba(255,220,150,.08));color:var(--text,#f5deb3);font-size:17px;cursor:pointer;display:grid;place-items:center}
+.cr-fav.on{background:linear-gradient(135deg,#ef4444,#ec4899);border-color:transparent;color:#fff}
+.cr-btn{width:100%;border:0;border-radius:999px;padding:11px 14px;font-weight:900;margin-top:9px;min-height:44px;cursor:pointer;font:inherit}
+.cr-btn.primary{background:linear-gradient(135deg,var(--brand,#9a3412),var(--brand2,#f97316));color:#fff}
+.cr-btn.ghost{background:transparent;border:1px solid var(--line,rgba(200,150,80,.3));color:var(--text,#f5deb3)}
+.cr-btn.danger{background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.4);color:#ef4444}
+.cr-btn.sm{padding:8px 12px;font-size:13px;min-height:36px;width:auto}
+.cr-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.cr-empty{padding:22px;text-align:center;color:var(--muted,#a08060);border:1px dashed var(--line,rgba(200,150,80,.2));border-radius:18px}
+.cr-spin{padding:28px;text-align:center;color:var(--muted,#a08060)}
+.cr-form{border:1px solid var(--line,rgba(200,150,80,.2));background:var(--card,rgba(255,220,150,.05));border-radius:20px;padding:16px;display:flex;flex-direction:column;gap:10px}
+.cr-form input{border:1px solid var(--line,rgba(200,150,80,.25));background:var(--card2,rgba(255,220,150,.08));color:var(--text,#f5deb3);border-radius:14px;padding:11px 14px;font:inherit;width:100%;box-sizing:border-box}
+.cr-player{position:fixed;left:10px;right:10px;bottom:calc(72px + env(safe-area-inset-bottom));z-index:9001;background:var(--card,rgba(30,15,5,.96));border:1px solid var(--line,rgba(200,150,80,.3));border-radius:20px;padding:11px 14px;display:grid;grid-template-columns:1fr auto auto auto;gap:8px;align-items:center;box-shadow:0 16px 48px rgba(0,0,0,.5);max-width:720px;margin:0 auto;backdrop-filter:blur(16px)}
+.cr-pname{font-weight:900;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cr-pstate{font-size:11px;color:var(--muted,#a08060)}
+.cr-pbtn{border:0;width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,var(--brand,#9a3412),var(--brand2,#f97316));color:#fff;font-weight:900;font-size:16px;cursor:pointer}
+.cr-pclose{border:1px solid var(--line,rgba(200,150,80,.25));background:transparent;color:var(--text,#f5deb3);border-radius:50%;width:32px;height:32px;cursor:pointer;font-size:14px}
+.cr-dial-box{background:linear-gradient(180deg,#2a1805,#150b02);border-radius:22px;padding:18px;color:#f5deb3;border:1px solid rgba(212,165,116,.2)}
+.cr-dial-brand{text-align:center;font-family:Georgia,serif;letter-spacing:.22em;font-size:13px;color:#d4a574;padding-bottom:10px;margin-bottom:10px;border-bottom:1px solid rgba(212,165,116,.2)}
+.cr-dial-screen{background:linear-gradient(180deg,#f4e4a1,#dfc96e);color:#2a1805;border-radius:10px;padding:14px;text-align:center;font-family:'Courier New',monospace;box-shadow:inset 0 3px 8px rgba(0,0,0,.35);margin-bottom:14px}
+.cr-dial-freq{font-size:13px;opacity:.65;letter-spacing:.15em}
+.cr-dial-name{font-size:20px;font-weight:900;margin:5px 0 3px;line-height:1.2}
+.cr-dial-status{font-size:11px;opacity:.6}
+.cr-dial-track{position:relative;background:linear-gradient(180deg,#e8d060,#c4a030);border-radius:6px;height:28px;margin-bottom:14px;border:2px solid #1a0e00;overflow:hidden}
+.cr-dial-needle{position:absolute;top:2px;bottom:2px;width:3px;background:#d62828;border-radius:2px;transform:translateX(-50%);box-shadow:0 0 8px rgba(214,40,40,.7);transition:left .25s ease}
+.cr-dial-marks{display:flex;justify-content:space-between;font-size:10px;color:#c4a030;font-family:'Courier New',monospace;font-weight:900;margin-top:2px;padding:0 4px}
+.cr-dial-ctrl{display:grid;grid-template-columns:52px 1fr 52px;gap:10px;align-items:center;margin-top:10px}
+.cr-dial-knob{width:52px;height:52px;border-radius:50%;border:2px solid #d4a574;background:radial-gradient(circle at 30% 30%,#7a5220,#2a1805);color:#f5deb3;font-weight:900;font-size:20px;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.5)}
+.cr-dial-play{background:linear-gradient(135deg,#c0392b,#8e1010);border:2px solid rgba(255,220,150,.4);color:#fff;border-radius:999px;padding:13px;font-weight:900;font-size:15px;cursor:pointer;min-height:50px}
+.cr-dial-count{text-align:center;font-size:11px;color:#c4a030;opacity:.65;margin:8px 0}
+.cr-home-card{border-color:rgba(236,72,153,.4)!important;background:linear-gradient(135deg,rgba(236,72,153,.1),var(--card))!important}
+@media(min-width:580px){.cr-list{grid-template-columns:1fr 1fr}}
+@media(max-width:400px){.cr-tabs{grid-template-columns:repeat(2,1fr)}}
+    `;document.head.appendChild(st);
   }
 
+  // ── Reproducción ───────────────────────────────────────────────────────────
   function stopRadio(){
-    try{SHARED_AUDIO.pause();SHARED_AUDIO.src='';SHARED_AUDIO.load()}catch{}
-    if(currentRadio){currentRadio.el.remove();currentRadio=null}
-    try{if('mediaSession'in navigator){navigator.mediaSession.metadata=null;navigator.mediaSession.playbackState='none'}}catch{}
+    try{AUD.pause();AUD.src='';AUD.load()}catch{}
+    current?.el?.remove();current=null;
+    try{navigator.mediaSession&&(navigator.mediaSession.metadata=null,navigator.mediaSession.playbackState='none')}catch{}
   }
 
   async function playRadio(r){
-    if(!r?.stream){if(r?.page)window.open(r.page,'_blank','noopener');return;}
-    // Detener stream anterior antes de cargar el nuevo
-    try{SHARED_AUDIO.pause();SHARED_AUDIO.src='';SHARED_AUDIO.load()}catch{}
-    if(currentRadio){currentRadio.el.remove();currentRadio=null}
+    if(!r?.stream)return;
+    // Detener lo anterior
+    try{AUD.pause();AUD.src='';AUD.load()}catch{}
+    current?.el?.remove();current=null;
 
-    // Reusar o crear el cartel del player
+    // Construir/reusar el player fijo
     let el=document.querySelector('.cr-player');
     if(!el){el=document.createElement('div');el.className='cr-player';document.body.appendChild(el);}
-    el.innerHTML=`<div><div class="cr-player-name">${r.name}</div><div class="cr-player-state">Conectando…</div></div><button class="cr-player-btn" data-t>⏸</button><button class="cr-player-close" data-x>✕</button>`;
+    el.innerHTML=`
+      <div><div class="cr-pname">${r.name}</div><div class="cr-pstate">Conectando…</div></div>
+      <button class="cr-pbtn" data-pp>⏸</button>
+      <button class="cr-pbtn" style="font-size:13px" data-skip>→</button>
+      <button class="cr-pclose" data-stop>✕</button>`;
 
-    const state=$('.cr-player-state',el),btn=$('[data-t]',el);
-    SHARED_AUDIO.onplaying=()=>{state.textContent='En vivo';btn.textContent='⏸';try{navigator.mediaSession.playbackState='playing'}catch{}};
-    SHARED_AUDIO.onpause=()=>{state.textContent='Pausado';btn.textContent='▶';try{navigator.mediaSession.playbackState='paused'}catch{}};
-    SHARED_AUDIO.onwaiting=()=>state.textContent='Conectando…';
-    SHARED_AUDIO.onerror=()=>{
-      state.textContent='Sin señal';btn.textContent='↻';
-      // Ofrecer saltar a la siguiente estación del dial
-      if(radiosCache&&radiosCache.length>1){
-        const nextIdx=(dialIndex+1)%radiosCache.length;
-        const skipBtn=document.createElement('button');
-        skipBtn.className='cr-player-btn';skipBtn.style.fontSize='12px';skipBtn.textContent='→ Sig';
-        skipBtn.onclick=()=>{dialIndex=nextIdx;playRadio(radiosCache[nextIdx]);};
-        el.querySelector('[data-x]')?.before(skipBtn);
-      }
+    const stEl=$('.cr-pstate',el), ppBtn=$('[data-pp]',el);
+
+    AUD.onplaying=()=>{stEl.textContent='🔴 En vivo';ppBtn.textContent='⏸';try{navigator.mediaSession.playbackState='playing'}catch{}};
+    AUD.onpause=()=>{stEl.textContent='Pausado';ppBtn.textContent='▶';try{navigator.mediaSession.playbackState='paused'}catch{}};
+    AUD.onwaiting=()=>{stEl.textContent='Cargando…'};
+    AUD.onerror=()=>{stEl.textContent='Sin señal — tocá → para saltar';ppBtn.textContent='↻'};
+    AUD.onstalled=()=>{stEl.textContent='Sin respuesta…'};
+
+    ppBtn.onclick=e=>{e.stopPropagation();AUD.paused?AUD.play().catch(()=>stEl.textContent='Tocá ▶'):AUD.pause()};
+    $('[data-stop]',el).onclick=e=>{e.stopPropagation();stopRadio()};
+    $('[data-skip]',el).onclick=e=>{
+      e.stopPropagation();
+      if(!cache||cache.length<2)return;
+      dialIdx=(dialIdx+1)%cache.length;
+      playRadio(cache[dialIdx]);
     };
-    btn.onclick=()=>SHARED_AUDIO.paused?SHARED_AUDIO.play().catch(()=>state.textContent='Tocá ▶ para iniciar'):SHARED_AUDIO.pause();
-    $('[data-x]',el).onclick=stopRadio;
 
-    try{if('mediaSession'in navigator){navigator.mediaSession.metadata=new MediaMetadata({title:r.name,artist:'Palabra Viva — Radio cristiana',album:r.type||''});navigator.mediaSession.setActionHandler('play',()=>SHARED_AUDIO.play().catch(()=>{}));navigator.mediaSession.setActionHandler('pause',()=>SHARED_AUDIO.pause());navigator.mediaSession.setActionHandler('stop',stopRadio)}}catch{}
+    try{
+      navigator.mediaSession.metadata=new MediaMetadata({title:r.name,artist:'Palabra Viva',album:r.type||''});
+      navigator.mediaSession.setActionHandler('play',()=>AUD.play().catch(()=>{}));
+      navigator.mediaSession.setActionHandler('pause',()=>AUD.pause());
+      navigator.mediaSession.setActionHandler('stop',stopRadio);
+      navigator.mediaSession.setActionHandler('nexttrack',()=>$('[data-skip]',el)?.click());
+    }catch{}
 
-    // Cargar y reproducir el nuevo stream
-    SHARED_AUDIO.src = r.stream;
-    SHARED_AUDIO.load();
-    try{await SHARED_AUDIO.play()}catch(e){if(e?.name!=='AbortError')state.textContent='Tocá ▶ para iniciar';btn.textContent='▶';}
-    currentRadio={audio:SHARED_AUDIO,el,station:r};
-    // Sincronizar dialIndex con la estación que está sonando
-    if(radiosCache){const idx=radiosCache.findIndex(x=>radioId(x)===radioId(r));if(idx>=0)dialIndex=idx;}
-    document.dispatchEvent(new CustomEvent('palabra-viva-radio',{detail:{name:r.name}}));
+    AUD.src=r.stream;
+    AUD.load();
+    try{await AUD.play()}catch(e){if(e?.name!=='AbortError'){stEl.textContent='Tocá ▶ para iniciar';ppBtn.textContent='▶';}}
+    current={audio:AUD,el,station:r};
+    // Sincronizar dial
+    if(cache){const i=cache.findIndex(x=>rid(x)===rid(r));if(i>=0)dialIdx=i;}
+    document.dispatchEvent(new CustomEvent('pv-radio',{detail:{name:r.name}}));
   }
 
-  async function apiRadios(){
-    const servers=['https://de1.api.radio-browser.info','https://de2.api.radio-browser.info','https://nl1.api.radio-browser.info','https://at1.api.radio-browser.info'];
-    // lastcheckok=1 → solo streams verificados como funcionando recientemente
-    const queries=[
-      '/json/stations/search?tag=christian&language=spanish&hidebroken=true&lastcheckok=1&order=clickcount&reverse=true&limit=60',
-      '/json/stations/search?tag=evangelica&hidebroken=true&lastcheckok=1&order=clickcount&reverse=true&limit=40',
-      '/json/stations/search?tag=cristiana&language=spanish&hidebroken=true&lastcheckok=1&order=clickcount&reverse=true&limit=40',
-      '/json/stations/search?countrycode=US&language=spanish&tag=christian&hidebroken=true&lastcheckok=1&order=clickcount&reverse=true&limit=40',
-      '/json/stations/search?countrycode=AR&tag=cristiana&hidebroken=true&lastcheckok=1&order=clickcount&reverse=true&limit=30',
-      '/json/stations/search?countrycode=MX&tag=cristiana&hidebroken=true&lastcheckok=1&order=clickcount&reverse=true&limit=30',
+  // ── Buscar radios en Radio Browser API ────────────────────────────────────
+  // IMPORTANTE: solo HTTPS — el navegador bloquea HTTP desde una app HTTPS
+  async function fetchAPI(){
+    const servers=['https://de1.api.radio-browser.info','https://de2.api.radio-browser.info','https://nl1.api.radio-browser.info'];
+    const qs=[
+      '/json/stations/search?tag=christian&language=spanish&hidebroken=true&lastcheckok=1&order=clickcount&reverse=true&limit=80',
+      '/json/stations/search?tag=evangelica&hidebroken=true&lastcheckok=1&order=clickcount&reverse=true&limit=60',
+      '/json/stations/search?tag=cristiana&language=spanish&hidebroken=true&lastcheckok=1&order=clickcount&reverse=true&limit=60',
+      '/json/stations/search?countrycode=US&language=spanish&tag=christian&hidebroken=true&lastcheckok=1&order=clickcount&reverse=true&limit=50',
+      '/json/stations/search?countrycode=AR&tag=cristiana&hidebroken=true&lastcheckok=1&order=clickcount&reverse=true&limit=40',
+      '/json/stations/search?countrycode=MX&tag=cristiana&hidebroken=true&lastcheckok=1&order=clickcount&reverse=true&limit=40',
     ];
-    for(const s of servers){
+    for(const sv of servers){
       try{
-        const results=await Promise.allSettled(queries.map(q=>fetch(s+q).then(r=>r.ok?r.json():[])));
-        const all=results.flatMap(r=>r.status==='fulfilled'&&Array.isArray(r.value)?r.value:[]);
+        const res=await Promise.allSettled(qs.map(q=>fetch(sv+q).then(r=>r.ok?r.json():[])));
+        const all=res.flatMap(r=>r.status==='fulfilled'&&Array.isArray(r.value)?r.value:[]);
         if(!all.length)continue;
         const seen=new Set();
-        const mapped=all
-          .filter(x=>x.url_resolved&&isSpanishCountry(x)&&!isBlocked(x)&&(/MP3|AAC|OGG/i.test(x.codec||'')))
-          .filter(x=>{const id=x.stationuuid;if(seen.has(id))return false;seen.add(id);return true})
-          .map(x=>({id:x.stationuuid,name:(x.name||'').trim()||'Sin nombre',type:`${x.country||'Internacional'} · ${x.codec||'Audio'}`,note:(x.tags||'').split(',').filter(Boolean).slice(0,3).join(', ')||'Radio cristiana',stream:x.url_resolved,page:x.homepage||'',favicon:x.favicon||''}));
-        if(mapped.length>0)return mapped.slice(0,100);
+        return all
+          // Solo HTTPS — crítico para que funcionen en app servida por HTTPS
+          .filter(x=>x.url_resolved?.startsWith('https://')&&isSpanish(x)&&!isBlocked(x))
+          .filter(x=>{if(seen.has(x.stationuuid))return false;seen.add(x.stationuuid);return true})
+          .map(x=>({
+            id:x.stationuuid,
+            name:(x.name||'').trim()||'Sin nombre',
+            type:`${x.country||'Internacional'} · ${x.codec||'Audio'}`,
+            note:(x.tags||'').split(',').filter(Boolean).slice(0,3).join(', ')||'Radio cristiana',
+            stream:x.url_resolved,
+            page:x.homepage||''
+          }))
+          .slice(0,100);
       }catch{}
     }
     return[];
   }
-  async function allRadios(){if(radiosCache)return radiosCache;if(loading)return null;loading=true;const a=await apiRadios().catch(()=>[]);const seen=new Set(),h=hidden();radiosCache=[...HARD_RADIOS,...a,...custom()].filter(r=>!h.includes(radioId(r))).filter(r=>{const id=radioId(r);if(seen.has(id))return false;seen.add(id);return true});loading=false;return radiosCache;}
-  function myRadios(){const seen=new Set();return[...load(FAVS_KEY,[]),...custom()].filter(r=>{const id=radioId(r);if(seen.has(id))return false;seen.add(id);return true})}
 
-  function card(r,i,kind){const fav=isFav(r);return `<article class="cr-card" data-i="${i}">${kind==='explore'?`<button class="cr-fav-btn ${fav?'on':''}" data-f>${fav?'♥':'♡'}</button>`:''}<p class="cr-type">${r.type||'Radio cristiana'}</p><h3>${r.name}</h3><p class="cr-note">${r.note||''}</p><button class="cr-btn-primary" data-p>▶ Escuchar dentro de la app</button>${r.page?`<button class="cr-btn-ghost" data-web>Sitio oficial</button>`:''}${kind==='my'?'<button class="cr-btn-danger" data-rm>🗑️ Quitar de mis radios</button>':''}${kind==='dial'?'<button class="cr-btn-danger" data-hide>🚫 Quitar del dial</button>':''}</article>`}
-  function bind(items,kind){panel.querySelectorAll('.cr-card').forEach(c=>{const r=items[Number(c.dataset.i)];if(!r)return;$('[data-p]',c)?.addEventListener('click',()=>playRadio(r));$('[data-web]',c)?.addEventListener('click',()=>window.open(r.page,'_blank','noopener'));$('[data-f]',c)?.addEventListener('click',()=>{toggleFav(r);render()});$('[data-rm]',c)?.addEventListener('click',()=>{save(FAVS_KEY,load(FAVS_KEY,[]).filter(x=>radioId(x)!==radioId(r)));save(CUSTOM_KEY,custom().filter(x=>radioId(x)!==radioId(r)));render()});$('[data-hide]',c)?.addEventListener('click',()=>{if(currentRadio&&radioId(currentRadio.station)===radioId(r))stopRadio();hideRadio(r);radiosCache=null;render()})})}
-  function addForm(){const d=document.createElement('div');d.className='cr-form';d.innerHTML=`<p class="cr-type">➕ Agregar una radio</p><input data-n placeholder="Nombre"><input data-s placeholder="URL del stream"><input data-w placeholder="Sitio web opcional"><button class="cr-btn-primary">Guardar radio</button>`;$('button',d).onclick=()=>{const name=$('[data-n]',d).value.trim(),stream=$('[data-s]',d).value.trim(),page=$('[data-w]',d).value.trim();if(!name||!/^https?:\/\//.test(stream)){alert('Falta nombre o URL válida.');return;}const r={id:`custom-${Date.now()}`,name,type:'Mi radio',note:'Agregada por vos',stream,page,favicon:''};const c=custom();c.push(r);save(CUSTOM_KEY,c);const f=load(FAVS_KEY,[]);f.push(r);save(FAVS_KEY,f);render()};return d;}
+  async function loadAll(){
+    if(cache)return cache;
+    if(cacheLoading)return null;
+    cacheLoading=true;
+    const api=await fetchAPI().catch(()=>[]);
+    const hidden=lsGet(HIDDEN_KEY,[]);
+    const seen=new Set();
+    cache=[...HARD_RADIOS,...api,...lsGet(CUSTOM_KEY,[])]
+      .filter(r=>!hidden.includes(rid(r)))
+      .filter(r=>{const id=rid(r);if(seen.has(id))return false;seen.add(id);return true});
+    cacheLoading=false;
+    return cache;
+  }
+  function myRadios(){
+    const seen=new Set();
+    return[...lsGet(FAVS_KEY,[]),...lsGet(CUSTOM_KEY,[])].filter(r=>{const id=rid(r);if(seen.has(id))return false;seen.add(id);return true});
+  }
 
-  function openYoutube(c){const v=document.createElement('section');v.className='cr-viewer';v.innerHTML=`<div style="display:flex;justify-content:space-between;gap:10px"><div><p class="ref">Dentro de Palabra Viva</p><h3>${c.name}</h3></div><button class="cr-close">Cerrar</button></div><iframe class="cr-viewer-frame" src="${c.embed}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe><button class="cr-btn-ghost">Abrir canal en YouTube</button>`;document.body.appendChild(v);history.pushState({crView:true},'',location.href.split('#')[0]+'#canal');$('.cr-close',v).onclick=()=>{v.remove();history.back()};$('.cr-btn-ghost',v).onclick=()=>window.open(c.channel,'_blank','noopener');window.addEventListener('popstate',()=>v.remove(),{once:true})}
-  function renderDial(items){if(!items.length){return `<div class="cr-dial"><div class="cr-dial-brand">━━ PALABRA VIVA RADIO ━━</div><div class="cr-empty">📻 No hay radios para el dial.</div><button class="cr-btn-ghost" data-restore>↺ Restaurar ocultas</button></div>`}dialIndex=Math.max(0,Math.min(dialIndex,items.length-1));const r=items[dialIndex],isPlaying=currentRadio&&radioId(currentRadio.station)===radioId(r)&&!SHARED_AUDIO.paused;const left=items.length===1?50:(dialIndex/(items.length-1))*100;return `<div class="cr-dial"><div class="cr-dial-brand">━━ PALABRA VIVA RADIO ━━</div><div class="cr-dial-display"><div class="freq">${(88+dialIndex*(20/Math.max(1,items.length-1))).toFixed(1)} MHz</div><div class="station" id="cr-dial-name">${r.name}</div><div class="status" id="cr-dial-status">${isPlaying?'🔴 EN VIVO':'SINTONIZADA'}</div></div><div class="cr-dial-strip"><div class="cr-dial-needle" id="cr-dial-needle" style="left:${left}%"></div><div class="cr-dial-marks"><span>88</span><span>92</span><span>96</span><span>100</span><span>104</span><span>108</span></div></div><div class="cr-dial-controls"><button class="cr-dial-knob" data-prev>◀</button><button class="cr-dial-play" data-play>${isPlaying?'⏸ DETENER':'▶ ESCUCHAR'}</button><button class="cr-dial-knob" data-next>▶</button></div><p style="text-align:center;font-size:11px;color:#d4a574;margin:6px 0 0;opacity:.7">${dialIndex+1} de ${items.length} estaciones</p><button class="cr-btn-danger" data-hide style="margin-top:12px">🚫 Quitar del dial</button><button class="cr-btn-ghost" data-restore>↺ Restaurar ocultas</button></div>`}
-  async function render(){if(!panel)return;panel.querySelectorAll('.cr-tab').forEach(b=>b.classList.toggle('active',b.dataset.mode===mode));const list=$('.cr-list',panel);if(mode==='misRadios'){const items=myRadios().filter(r=>!q||clean(r.name+' '+r.note).includes(clean(q)));list.innerHTML=items.length?items.map((r,i)=>card(r,i,'my')).join(''):'<div class="cr-empty">Todavía no tenés radios guardadas. Agregá una o marcá favoritas en Explorar.</div>';bind(items,'my');list.appendChild(addForm());return;}if(mode==='explorar'){const items=await allRadios();if(!items){list.innerHTML='<div class="cr-loading">Buscando radios cristianas en español…</div>';return;}const f=items.filter(r=>!q||clean(r.name+' '+r.note+' '+r.type).includes(clean(q)));list.innerHTML=f.map((r,i)=>card(r,i,'explore')).join('');bind(f,'explore');return;}if(mode==='dial'){const items=await allRadios();if(!items){list.innerHTML='<div class="cr-loading">Cargando dial…</div>';return;}
-    let dialDebounce=null;
-    function updateDialUI(){
-      // Actualiza solo el texto/aguja sin reconstruir todo el DOM
-      const r=items[dialIndex];
-      const nameEl=document.getElementById('cr-dial-name');if(nameEl)nameEl.textContent=r.name;
-      const needle=document.getElementById('cr-dial-needle');if(needle)needle.style.left=`${items.length===1?50:(dialIndex/(items.length-1))*100}%`;
-      const freq=list.querySelector('.cr-dial-display .freq');if(freq)freq.textContent=`${(88+dialIndex*(20/Math.max(1,items.length-1))).toFixed(1)} MHz`;
-      const counter=list.querySelector('.cr-dial p');if(counter)counter.textContent=`${dialIndex+1} de ${items.length} estaciones`;
-    }
-    function bindDial(){
-      list.innerHTML=renderDial(items);
-      // Agregar form de nueva radio al final del dial
-      list.appendChild(addForm());
-      $('[data-prev]',list)?.addEventListener('click',()=>{
-        dialIndex=(dialIndex-1+items.length)%items.length;
-        updateDialUI();
+  // ── Componentes de tarjeta ─────────────────────────────────────────────────
+  function cardHTML(r,i,kind){
+    const fav=isFav(r);
+    return `<article class="cr-card" data-i="${i}">
+      ${kind==='explore'?`<button class="cr-fav" ${fav?'style="background:linear-gradient(135deg,#ef4444,#ec4899);color:#fff;border-color:transparent"':''} data-f aria-label="${fav?'Quitar':'Guardar'} favorito">${fav?'♥':'♡'}</button>`:''}
+      <p class="cr-label">${r.type||'Radio cristiana'}</p>
+      <h3>${r.name}</h3>
+      <p class="cr-note">${r.note||''}</p>
+      <button class="cr-btn primary" data-p>▶ Escuchar</button>
+      <div class="cr-row">
+        ${r.page?`<a class="cr-btn ghost sm" href="${r.page}" target="_blank" rel="noopener noreferrer">Sitio oficial</a>`:''}
+        ${kind==='my'?`<button class="cr-btn danger sm" data-rm>🗑 Quitar</button>`:''}
+        ${kind==='explore'?`<button class="cr-btn ghost sm" data-fav>${fav?'♥ Guardada':'♡ Favorito'}</button>`:''}
+      </div>
+    </article>`;
+  }
+
+  function bindCards(items,kind){
+    panel?.querySelectorAll('.cr-card').forEach(c=>{
+      const r=items[+c.dataset.i];if(!r)return;
+      c.querySelector('[data-p]')?.addEventListener('click',e=>{e.stopPropagation();playRadio(r)});
+      // Botón favorito (corazón) — actualiza UI sin recargar lista
+      const favBtns=[c.querySelector('[data-f]'),c.querySelector('[data-fav]')].filter(Boolean);
+      favBtns.forEach(btn=>btn.addEventListener('click',e=>{
+        e.stopPropagation();
+        toggleFav(r);
+        const now=isFav(r);
+        const heart=c.querySelector('[data-f]');
+        if(heart){heart.textContent=now?'♥':'♡';if(now){heart.style.cssText='background:linear-gradient(135deg,#ef4444,#ec4899);color:#fff;border-color:transparent'}else{heart.style.cssText=''}}
+        const txt=c.querySelector('[data-fav]');if(txt)txt.textContent=now?'♥ Guardada':'♡ Favorito';
+      }));
+      c.querySelector('[data-rm]')?.addEventListener('click',e=>{
+        e.stopPropagation();
+        lsSet(FAVS_KEY,lsGet(FAVS_KEY,[]).filter(x=>rid(x)!==rid(r)));
+        lsSet(CUSTOM_KEY,lsGet(CUSTOM_KEY,[]).filter(x=>rid(x)!==rid(r)));
+        renderList();
+      });
+    });
+  }
+
+  function addForm(){
+    const d=document.createElement('div');
+    d.className='cr-form';
+    d.innerHTML=`<p class="cr-label">➕ Agregar emisora</p>
+      <input data-n placeholder="Nombre de la radio" autocomplete="off">
+      <input data-s placeholder="URL del stream (https://...)" autocomplete="off" type="url">
+      <input data-w placeholder="Sitio web (opcional)" autocomplete="off" type="url">
+      <button class="cr-btn primary">Guardar</button>`;
+    d.querySelector('button').onclick=e=>{
+      e.stopPropagation();
+      const name=d.querySelector('[data-n]').value.trim();
+      const stream=d.querySelector('[data-s]').value.trim();
+      const page=d.querySelector('[data-w]').value.trim();
+      if(!name||!stream.startsWith('https://')){alert('Necesitás nombre y URL que empiece con https://');return;}
+      const r={id:`custom-${Date.now()}`,name,type:'Mi radio',note:'Agregada por vos',stream,page};
+      const c=lsGet(CUSTOM_KEY,[]);c.push(r);lsSet(CUSTOM_KEY,c);
+      const f=lsGet(FAVS_KEY,[]);f.push(r);lsSet(FAVS_KEY,f);
+      cache=null; // forzar recarga
+      renderList();
+    };
+    return d;
+  }
+
+  // ── Dial ───────────────────────────────────────────────────────────────────
+  function dialHTML(items){
+    if(!items.length)return`<div class="cr-dial-box"><div class="cr-dial-brand">📻 PALABRA VIVA RADIO</div><div class="cr-empty">No hay estaciones. <button class="cr-btn ghost sm" data-restore>↺ Restaurar</button></div></div>`;
+    dialIdx=Math.max(0,Math.min(dialIdx,items.length-1));
+    const r=items[dialIdx];
+    const playing=current&&rid(current.station)===rid(r)&&!AUD.paused;
+    const pct=items.length===1?50:(dialIdx/(items.length-1))*100;
+    return`<div class="cr-dial-box">
+      <div class="cr-dial-brand">━━ PALABRA VIVA RADIO ━━</div>
+      <div class="cr-dial-screen">
+        <div class="cr-dial-freq">${(88+dialIdx*(20/Math.max(1,items.length-1))).toFixed(1)} MHz</div>
+        <div class="cr-dial-name" id="cr-dn">${r.name}</div>
+        <div class="cr-dial-status" id="cr-ds">${playing?'🔴 EN VIVO':'SINTONIZADA'}</div>
+      </div>
+      <div class="cr-dial-track"><div class="cr-dial-needle" id="cr-needle" style="left:${pct}%"></div></div>
+      <div class="cr-dial-marks"><span>88</span><span>92</span><span>96</span><span>100</span><span>104</span><span>108</span></div>
+      <div class="cr-dial-count" id="cr-dc">${dialIdx+1} de ${items.length} estaciones</div>
+      <div class="cr-dial-ctrl">
+        <button class="cr-dial-knob" data-prev>◀</button>
+        <button class="cr-dial-play" data-play>${playing?'⏸ DETENER':'▶ ESCUCHAR'}</button>
+        <button class="cr-dial-knob" data-next>▶</button>
+      </div>
+      <div class="cr-row" style="margin-top:14px;justify-content:center">
+        <button class="cr-btn danger sm" data-hide>🚫 Quitar del dial</button>
+        <button class="cr-btn ghost sm" data-restore>↺ Restaurar ocultas</button>
+      </div>
+    </div>`;
+  }
+
+  function updateDialDisplay(items){
+    const r=items[dialIdx];
+    const el=document.getElementById('cr-dn');if(el)el.textContent=r.name;
+    const st=document.getElementById('cr-ds');if(st){const pl=current&&rid(current.station)===rid(r)&&!AUD.paused;st.textContent=pl?'🔴 EN VIVO':'SINTONIZADA';}
+    const nd=document.getElementById('cr-needle');if(nd)nd.style.left=`${items.length===1?50:(dialIdx/(items.length-1))*100}%`;
+    const dc=document.getElementById('cr-dc');if(dc)dc.textContent=`${dialIdx+1} de ${items.length} estaciones`;
+    const pb=panel?.querySelector('[data-play]');if(pb){const pl=current&&rid(current.station)===rid(items[dialIdx])&&!AUD.paused;pb.textContent=pl?'⏸ DETENER':'▶ ESCUCHAR';}
+  }
+
+  let dialDebounce=null;
+  function bindDial(listEl,items){
+    listEl.querySelectorAll('[data-prev],[data-next]').forEach(btn=>{
+      btn.addEventListener('click',e=>{
+        e.stopPropagation();
+        dialIdx=btn.dataset.prev!=null?(dialIdx-1+items.length)%items.length:(dialIdx+1)%items.length;
+        updateDialDisplay(items);
         clearTimeout(dialDebounce);
-        dialDebounce=setTimeout(async()=>{await playRadio(items[dialIndex]);setTimeout(bindDial,250)},180);
+        // Auto-reproducir siempre al cambiar de estación (como un dial real)
+        dialDebounce=setTimeout(()=>playRadio(items[dialIdx]).then(()=>updateDialDisplay(items)),200);
       });
-      $('[data-next]',list)?.addEventListener('click',()=>{
-        dialIndex=(dialIndex+1)%items.length;
-        updateDialUI();
-        clearTimeout(dialDebounce);
-        dialDebounce=setTimeout(async()=>{await playRadio(items[dialIndex]);setTimeout(bindDial,250)},180);
-      });
-      $('[data-play]',list)?.addEventListener('click',()=>{
-        const r=items[dialIndex];
-        if(currentRadio&&radioId(currentRadio.station)===radioId(r)&&!SHARED_AUDIO.paused){stopRadio();setTimeout(bindDial,100);}
-        else{playRadio(r).then(()=>setTimeout(bindDial,250));}
-      });
-      $('[data-hide]',list)?.addEventListener('click',()=>{hideRadio(items[dialIndex]);if(currentRadio&&radioId(currentRadio.station)===radioId(items[dialIndex]))stopRadio();radiosCache=null;render()});
-      $('[data-restore]',list)?.addEventListener('click',()=>{save(HIDDEN_KEY,[]);radiosCache=null;render()});
+    });
+    listEl.querySelector('[data-play]')?.addEventListener('click',e=>{
+      e.stopPropagation();
+      const r=items[dialIdx];
+      if(current&&rid(current.station)===rid(r)&&!AUD.paused){stopRadio();updateDialDisplay(items);}
+      else playRadio(r).then(()=>updateDialDisplay(items));
+    });
+    listEl.querySelector('[data-hide]')?.addEventListener('click',e=>{
+      e.stopPropagation();
+      const h=lsGet(HIDDEN_KEY,[]);h.push(rid(items[dialIdx]));lsSet(HIDDEN_KEY,h);
+      if(current&&rid(current.station)===rid(items[dialIdx]))stopRadio();
+      cache=null;renderList();
+    });
+    listEl.querySelector('[data-restore]')?.addEventListener('click',e=>{
+      e.stopPropagation();
+      lsSet(HIDDEN_KEY,[]);cache=null;renderList();
+    });
+  }
+
+  // ── Render central ─────────────────────────────────────────────────────────
+  async function renderList(){
+    if(!panel)return;
+    panel.querySelectorAll('.cr-tab').forEach(b=>b.classList.toggle('on',b.dataset.m===mode));
+    const listEl=$('.cr-list',panel);
+
+    if(mode==='misRadios'){
+      const items=myRadios().filter(r=>!q||norm(r.name+' '+r.note).includes(norm(q)));
+      listEl.innerHTML=items.length?items.map((r,i)=>cardHTML(r,i,'my')).join(''):'<div class="cr-empty">No tenés radios guardadas. Usá ♡ en Explorar o agregá una abajo.</div>';
+      bindCards(items,'my');
+      listEl.appendChild(addForm());
+      return;
     }
-    bindDial();return;}const items=CHANNELS.filter(c=>!q||clean(c.name+' '+c.note+' '+c.type).includes(clean(q)));list.innerHTML=items.map((c,i)=>`<article class="cr-card"><p class="cr-type">${c.type}</p><h3>${c.name}</h3><p class="cr-note">${c.note}</p>${c.embed?`<button class="cr-btn-primary" data-e="${i}">Ver dentro de la app</button><button class="cr-btn-ghost" data-c="${i}">Abrir canal en YouTube</button>`:`<button class="cr-btn-primary" data-c="${i}">Abrir canal en YouTube</button>`}</article>`).join('');list.querySelectorAll('[data-e]').forEach(b=>b.onclick=()=>openYoutube(items[Number(b.dataset.e)]));list.querySelectorAll('[data-c]').forEach(b=>b.onclick=()=>window.open(items[Number(b.dataset.c)].channel,'_blank','noopener'));}
-  function openPanel(){css();document.querySelector('.cr-panel')?.remove();mode='dial';q='';panel=document.createElement('section');panel.className='cr-panel';panel.innerHTML=`<div class="cr-inner"><div class="cr-head"><div><p class="ref">Ver y escuchar</p><h1>Radios y canales</h1><p class="soft">Dial directo, radios evangélicas en español y canales cristianos.</p></div><button class="cr-close">Cerrar</button></div><div class="cr-tabs"><button class="cr-tab" data-mode="misRadios">Mis radios</button><button class="cr-tab" data-mode="explorar">Explorar</button><button class="cr-tab active" data-mode="dial">📻 Dial</button><button class="cr-tab" data-mode="canales">Canales</button></div><input class="cr-search" placeholder="Buscar por nombre…"><div class="cr-list"></div></div>`;document.body.appendChild(panel);history.pushState({crPanel:true},'',location.href.split('#')[0]+'#radios');$('.cr-close',panel).onclick=()=>{panel.remove();history.back()};$('.cr-search',panel).oninput=e=>{q=e.target.value;render()};panel.querySelectorAll('.cr-tab').forEach(b=>b.onclick=()=>{mode=b.dataset.mode;q='';$('.cr-search',panel).value='';render()});window.addEventListener('popstate',()=>panel?.remove(),{once:true});render()}
-  function addQuick(){const quick=document.querySelector('.quick');if(!quick||document.querySelector('.cr-quick'))return;const b=document.createElement('button');b.className='cr-quick';b.textContent='Ver';b.onclick=openPanel;quick.insertBefore(b,quick.firstChild)}
-  function addHome(){const title=document.querySelector('h1')?.textContent||'';if(!title.includes('Una palabra para hoy')||document.querySelector('.cr-home-card'))return;const anchor=document.querySelector('.respuestas-home-card')||document.querySelector('.pv-path-card')||document.querySelector('.moodBox')||document.querySelector('.hero');if(!anchor)return;const card=document.createElement('section');card.className='card cr-home-card';card.innerHTML='<p class="ref">Ver y escuchar</p><h3>📻 Radio cristiana y canales</h3><p class="soft">Dial directo dentro de la app, sin necesidad de favoritos.</p><button class="btn">Abrir dial</button>';card.querySelector('button').onclick=openPanel;anchor.insertAdjacentElement('afterend',card)}
-  window.PalabraVivaCanales={open:openPanel,openDial:()=>{openPanel();mode='dial';render()},getCurrentRadio:()=>currentRadio?.station?.name||''};
-  function boot(){css();addQuick();addHome()}if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();window.addEventListener('load',boot);setInterval(boot,900);
+
+    if(mode==='explorar'){
+      const items=await loadAll();
+      if(!items){listEl.innerHTML='<div class="cr-spin">🔍 Buscando radios… (puede tardar unos segundos)</div>';return;}
+      const f=items.filter(r=>!q||norm(r.name+' '+r.note+' '+r.type).includes(norm(q)));
+      if(!f.length){listEl.innerHTML='<div class="cr-empty">No encontramos radios con ese filtro.</div>';return;}
+      listEl.innerHTML=f.map((r,i)=>cardHTML(r,i,'explore')).join('');
+      bindCards(f,'explore');
+      return;
+    }
+
+    if(mode==='dial'){
+      const items=await loadAll();
+      if(!items){listEl.innerHTML='<div class="cr-spin">📻 Cargando dial…</div>';return;}
+      listEl.innerHTML=dialHTML(items);
+      bindDial(listEl,items);
+      listEl.appendChild(addForm());
+      return;
+    }
+
+    // Canales YouTube
+    const items=CHANNELS.filter(c=>!q||norm(c.name+' '+c.note).includes(norm(q)));
+    listEl.innerHTML=items.map((c,i)=>`<article class="cr-card">
+      <p class="cr-label">${c.type}</p><h3>${c.name}</h3><p class="cr-note">${c.note}</p>
+      ${c.embed?`<button class="cr-btn primary" data-e="${i}">Ver aquí</button>`:''}
+      <a class="cr-btn ghost" href="${c.channel}" target="_blank" rel="noopener" style="display:block;text-align:center;text-decoration:none;margin-top:8px">Abrir en YouTube</a>
+    </article>`).join('');
+    listEl.querySelectorAll('[data-e]').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();openYT(items[+b.dataset.e])}));
+  }
+
+  // ── Panel principal ────────────────────────────────────────────────────────
+  function openPanel(){
+    injectCSS();
+    document.querySelector('.cr-panel')?.remove();
+    mode='dial';q='';
+    panel=document.createElement('section');
+    panel.className='cr-panel';
+    panel.setAttribute('aria-label','Radios y canales');
+    panel.innerHTML=`
+      <div class="cr-inner">
+        <div class="cr-head">
+          <div class="cr-head-left"><h1>📻 Radios y canales</h1><p>Evangélicas · Hispanas · Sin publicidad religiosa católica</p></div>
+          <button class="cr-close" data-close>Cerrar ✕</button>
+        </div>
+        <div class="cr-tabs">
+          <button class="cr-tab" data-m="misRadios">Mis radios</button>
+          <button class="cr-tab on" data-m="dial">📻 Dial</button>
+          <button class="cr-tab" data-m="explorar">Explorar</button>
+          <button class="cr-tab" data-m="canales">Canales</button>
+        </div>
+        <input class="cr-search" placeholder="Buscar por nombre…" aria-label="Buscar radio">
+        <div class="cr-list"></div>
+      </div>`;
+    document.body.appendChild(panel);
+
+    // Historia: empujamos estado para que "atrás" cierre el panel
+    history.pushState({pvRadioPanel:true},'',location.href.split('#')[0]+'#radios');
+
+    function closePanel(withHistory=true){
+      panel?.remove();panel=null;
+      window.removeEventListener('popstate',onPop);
+      if(withHistory&&location.hash==='#radios')history.back();
+    }
+    function onPop(){
+      if(document.querySelector('.cr-panel'))closePanel(false);
+    }
+    window.addEventListener('popstate',onPop);
+
+    $('[data-close]',panel).addEventListener('click',e=>{e.stopPropagation();closePanel(true)});
+    $('.cr-search',panel).addEventListener('input',e=>{q=e.target.value;renderList()});
+    panel.querySelectorAll('.cr-tab').forEach(b=>b.addEventListener('click',e=>{
+      e.stopPropagation();mode=b.dataset.m;q='';$('.cr-search',panel).value='';renderList();
+    }));
+
+    renderList();
+  }
+
+  function openYT(c){
+    if(!c.embed){window.open(c.channel,'_blank','noopener');return;}
+    const v=document.createElement('section');
+    v.style.cssText='position:fixed;inset:0;z-index:9100;background:var(--bg,#1a1007);padding:14px;display:flex;flex-direction:column;gap:10px';
+    v.innerHTML=`<div style="display:flex;justify-content:space-between"><h3>${c.name}</h3><button class="cr-close">Cerrar</button></div><iframe style="flex:1;border:1px solid var(--line,rgba(200,150,80,.2));border-radius:18px;background:#000" src="${c.embed}" allow="accelerometer;autoplay;clipboard-write;encrypted-media;gyroscope;picture-in-picture" allowfullscreen></iframe>`;
+    document.body.appendChild(v);
+    history.pushState({pvYT:true},'',location.href.split('#')[0]+'#canal');
+    v.querySelector('.cr-close').onclick=()=>{v.remove();history.back()};
+    window.addEventListener('popstate',()=>v.remove(),{once:true});
+  }
+
+  // ── Tarjeta y botón en Home ────────────────────────────────────────────────
+  function addHomeCard(){
+    const h1=document.querySelector('h1');
+    if(!h1?.textContent?.includes('Una palabra para hoy'))return;
+    if(document.querySelector('.cr-home-card'))return;
+    const anchor=document.querySelector('.moodBox,.hero,.card.gradient');
+    if(!anchor)return;
+    const card=document.createElement('section');
+    card.className='card cr-home-card';
+    card.innerHTML='<p class="ref">📻 Radio cristiana</p><h3>Radios evangélicas y canales</h3><p class="soft">Dial directo. Solo evangélicas en español, sin radios católicas.</p><button class="btn">Abrir dial</button>';
+    card.querySelector('button').onclick=openPanel;
+    anchor.insertAdjacentElement('afterend',card);
+  }
+
+  function addQuickBtn(){
+    const quick=document.querySelector('.quick');
+    if(!quick||quick.querySelector('.cr-quick'))return;
+    const b=document.createElement('button');b.className='cr-quick';b.textContent='📻 Radio';b.onclick=openPanel;
+    quick.insertBefore(b,quick.firstChild);
+  }
+
+  // Escuchar evento de radio activa (para el botón "En vivo" del home-shortcuts)
+  document.addEventListener('pv-radio',()=>{});
+
+  window.PalabraVivaCanales={
+    open:openPanel,
+    openDial:()=>{openPanel()},
+    getCurrentRadio:()=>current?.station?.name||''
+  };
+
+  function boot(){
+    injectCSS();
+    addHomeCard();
+    addQuickBtn();
+    // Limpiar FABs viejos
+    document.querySelectorAll('.cr-fab-old,.pv-radio-fab').forEach(e=>e.remove());
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();
+  window.addEventListener('load',boot);
+  setInterval(boot,1200);
 })();
