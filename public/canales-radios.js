@@ -105,6 +105,9 @@
 .cr-home-card{border-color:rgba(236,72,153,.4)!important;background:linear-gradient(135deg,rgba(236,72,153,.1),var(--card))!important}
 .cr-dial-search-wrap{position:relative;margin-bottom:12px}
 #cr-dial-sug{position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:20;background:var(--bg,#1a1007);border:1px solid var(--line,rgba(200,150,80,.3));border-radius:16px;overflow:hidden;max-height:220px;overflow-y:auto;display:none;box-shadow:0 8px 24px rgba(0,0,0,.5)}
+.cr-dial-vol{display:flex;align-items:center;gap:10px;margin-top:12px;padding:0 2px}
+.cr-dial-vol span{font-size:16px;min-width:20px;text-align:center;color:#d4a574}
+.cr-dial-vol input[type=range]{flex:1;accent-color:#c0392b;height:6px;cursor:pointer;border-radius:4px}
 .cr-sug-item{display:block;width:100%;text-align:left;padding:11px 16px;border:0;border-bottom:1px solid var(--line,rgba(200,150,80,.1));background:transparent;color:var(--text,#f5deb3);cursor:pointer;font:inherit}
 .cr-sug-item:last-child{border-bottom:0}
 .cr-sug-item:hover,.cr-sug-item:focus{background:var(--card2,rgba(255,220,150,.1))}
@@ -325,6 +328,11 @@
         <button class="cr-dial-play" data-play>${playing?'⏸ DETENER':'▶ ESCUCHAR'}</button>
         <button class="cr-dial-knob" data-next>▶</button>
       </div>
+      <div class="cr-dial-vol">
+        <span>🔇</span>
+        <input type="range" id="cr-vol" min="0" max="1" step="0.05" value="1">
+        <span>🔊</span>
+      </div>
       <div class="cr-row" style="margin-top:14px;justify-content:center">
         <button class="cr-btn danger sm" data-hide>🚫 Quitar del dial</button>
         <button class="cr-btn ghost sm" data-restore>↺ Restaurar ocultas</button>
@@ -368,6 +376,13 @@
       lsSet(HIDDEN_KEY,[]);cache=null;cachePromise=null;renderList();
     });
 
+    // ── Control de volumen ───────────────────────────────────────────────────
+    const volEl=listEl.querySelector('#cr-vol');
+    if(volEl){
+      volEl.value=AUD.volume;
+      volEl.addEventListener('input',e=>{e.stopPropagation();AUD.volume=+e.target.value;});
+    }
+
     // ── Búsqueda con sugerencias en el dial ─────────────────────────────────
     const searchEl=listEl.querySelector('#cr-dial-q');
     const sugEl=listEl.querySelector('#cr-dial-sug');
@@ -387,7 +402,7 @@
           // mousedown antes de blur para que no se cierre antes de registrar el click
           e.preventDefault();e.stopPropagation();
           dialIdx=+btn.dataset.si;
-          searchEl.value=items[dialIdx].name;
+          searchEl.value='';
           sugEl.style.display='none';
           updateDialDisplay(items);
           playRadio(items[dialIdx]);
