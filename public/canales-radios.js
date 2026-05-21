@@ -10,21 +10,22 @@
   ];
 
   const HARD_RADIOS = [
-    // Argentina
-    { id:'bbn-es', name:'BBN Radio Español', type:'Argentina · Evangélica 24/7', note:'Música cristiana, Biblia y enseñanza 24/7 en español.', stream:'https://streams.radiomast.io/475ebed1-595e-4717-b888-64fe8fc6b09f', page:'https://bbn1.bbnradio.org/spanish/', favicon:'' },
-    { id:'cadena-cristiana-evangelica', name:'Cadena Cristiana Evangélica', type:'Argentina · Evangélica', note:'Radio cristiana evangélica argentina.', stream:'https://server.laradio.online/proxy/cadenacristiana?mp=/stream', page:'https://cadenacristiana.com.ar/', favicon:'' },
-    { id:'radio-vida-mendoza', name:'Radio Vida 105.1 Mendoza', type:'Argentina · Evangélica', note:'Radio cristiana desde Mendoza, Argentina.', stream:'https://streaming01.shockmedia.com.ar:10777/stream', page:'https://radiovida1051.com/', favicon:'' },
-    { id:'radio-cristiana-883', name:'Radio Cristiana 88.3 Munro', type:'Argentina · Cristiana', note:'Radio cristiana de Buenos Aires.', stream:'https://server.laradio.online/proxy/radiocristiana883?mp=/stream', page:'', favicon:'' },
-    { id:'777-radio-cristiana', name:'777 Radio Cristiana', type:'Argentina · Cristiana', note:'Música y mensajes cristianos.', stream:'https://stream.zeno.fm/3t3s0u7k8yzuv', page:'', favicon:'' },
-    { id:'radio-imagen', name:'Radio Imagen 107.3', type:'Argentina · Cristiana evangélica', note:'Radio cristiana evangélica de Buenos Aires.', stream:'https://stream.zeno.fm/vkq0gqvd128uv', page:'', favicon:'' },
-    { id:'radio-gracia', name:'Radio Gracia 100.9', type:'Argentina · Evangélica', note:'Evangelio y música cristiana desde Argentina.', stream:'https://stream.zeno.fm/r5d79e3p128uv', page:'', favicon:'' },
-    // Internacional hispana
-    { id:'cvclavoz', name:'CVC La Voz', type:'Hispanoamérica · Cristiana', note:'Música, devocionales y mensajes cristianos.', stream:'https://23583.live.streamtheworld.com/CVC_LA_VOZ_SC', page:'https://cvclavoz.com/escuchar-en-vivo/', favicon:'' },
-    { id:'faro-caribe', name:'Faro del Caribe', type:'Costa Rica · Evangélica', note:'Radio cristiana evangélica desde Costa Rica.', stream:'https://s1.farodelcaribe.org:8443/faro', page:'https://farodelcaribe.org/', favicon:'' },
-    { id:'radio-nuevo-tiempo', name:'Radio Nuevo Tiempo', type:'Latinoamérica · Cristiana', note:'Música y mensajes de esperanza para toda la familia.', stream:'https://stream.nuevotiempo.org/nuevotiempo', page:'https://nuevotiempo.org/', favicon:'' },
-    { id:'ondas-de-luz', name:'Ondas de Luz', type:'Ecuador · Evangélica', note:'La primera radio evangélica de Ecuador.', stream:'https://stream.ondasdeluz.org:8000/live', page:'https://ondasdeluz.org/', favicon:'' },
-    { id:'radio-luz-mx', name:'Radio Luz México', type:'México · Cristiana evangélica', note:'Música cristiana y mensajes bíblicos desde México.', stream:'https://stream.zeno.fm/gx5x8e3p128uv', page:'', favicon:'' },
-    { id:'hcjb', name:'HCJB Voces Andinas', type:'Ecuador · Evangélica internacional', note:'Radio evangélica internacional desde Ecuador.', stream:'https://hcjb.streamguys1.com/HCJB-Music-AAC', page:'https://hcjb.org/', favicon:'' },
+    // ── Argentina ──────────────────────────────────────────────────────────
+    { id:'bbn-es',       name:'BBN Radio Español',          type:'Internacional · Bíblica 24/7',  note:'Música cristiana, Biblia y enseñanza 24/7 en español.',  stream:'https://streams.radiomast.io/475ebed1-595e-4717-b888-64fe8fc6b09f', page:'https://bbn1.bbnradio.org/spanish/' },
+    { id:'cadena-crist', name:'Cadena Cristiana Evangélica', type:'Argentina · Evangélica',        note:'Radio cristiana evangélica de Argentina.',                stream:'https://server.laradio.online/proxy/cadenacristiana?mp=/stream',         page:'https://cadenacristiana.com.ar/' },
+    { id:'radio-vida-m', name:'Radio Vida 105.1 Mendoza',   type:'Argentina · Evangélica',        note:'Radio cristiana desde Mendoza.',                         stream:'https://streaming01.shockmedia.com.ar:10777/stream',                      page:'https://radiovida1051.com/' },
+    { id:'777-cristiana',name:'777 Radio Cristiana',        type:'Argentina · Cristiana',         note:'Música y mensajes del evangelio.',                        stream:'https://stream.zeno.fm/3t3s0u7k8yzuv',                                   page:'' },
+    // ── Latinoamérica / Internacional ──────────────────────────────────────
+    { id:'cvclavoz',     name:'CVC La Voz',                 type:'Hispanoamérica · Cristiana',    note:'Música, devocionales y mensajes 24/7.',                  stream:'https://23583.live.streamtheworld.com/CVC_LA_VOZ_SC',                     page:'https://cvclavoz.com/' },
+    { id:'hcjb',         name:'HCJB Voces Andinas',         type:'Ecuador · Evangélica',          note:'Radio evangélica internacional desde Ecuador.',           stream:'https://hcjb.streamguys1.com/HCJB-Music-AAC',                            page:'https://hcjb.org/' },
+    { id:'faro-caribe',  name:'Faro del Caribe',            type:'Costa Rica · Evangélica',       note:'Primera radio evangélica de Costa Rica.',                stream:'https://s1.farodelcaribe.org:8443/faro',                                  page:'https://farodelcaribe.org/' },
+    { id:'nuevo-tiempo', name:'Radio Nuevo Tiempo',         type:'Latinoamérica · Cristiana',     note:'Música y esperanza para toda la familia.',                stream:'https://stream.nuevotiempo.org/nuevotiempo',                              page:'https://nuevotiempo.org/' },
+    { id:'twr-es',       name:'TWR Español',                type:'Internacional · Evangélica',    note:'Trans World Radio — mensajes bíblicos en español.',      stream:'https://stream.twr360.org/twr360-radio-es',                              page:'https://www.twr.org/' },
+    // ── USA en Español ──────────────────────────────────────────────────────
+    { id:'moody-es',     name:'Moody Radio en Español',     type:'USA · Chicago · Evangélica',    note:'Enseñanza bíblica evangélica desde Chicago, Illinois.',  stream:'https://playerservices.streamtheworld.com/api/livestream-redirect/WMBI_ESP_SC', page:'https://www.moodyradio.org/' },
+    { id:'klfe-es',      name:'KLFE Life Radio 1590',       type:'USA · Seattle · Evangélica',    note:'Radio cristiana evangélica en español — Seattle.',       stream:'https://playerservices.streamtheworld.com/api/livestream-redirect/KLFE_SC', page:'' },
+    { id:'radio-vida-us',name:'Radio Vida (USA)',           type:'USA · Hispana · Cristiana',     note:'Red cristiana hispana evangelica de EE.UU.',             stream:'https://playerservices.streamtheworld.com/api/livestream-redirect/KVNV_FM_SC', page:'https://radiovida.net/' },
+    { id:'esperanza',    name:'Radio Esperanza',            type:'USA · Hispana · Evangélica',    note:'Fe y esperanza en español para la comunidad hispana.',   stream:'https://stream.zeno.fm/esperanza-es',                                     page:'' },
   ];
 
   const SPANISH_COUNTRIES = ['AR','MX','ES','CO','PE','CL','VE','UY','PY','BO','EC','CU','DO','GT','HN','NI','CR','PA','SV','PR','US'];
@@ -78,8 +79,18 @@
     const state=$('.cr-player-state',el),btn=$('[data-t]',el);
     SHARED_AUDIO.onplaying=()=>{state.textContent='En vivo';btn.textContent='⏸';try{navigator.mediaSession.playbackState='playing'}catch{}};
     SHARED_AUDIO.onpause=()=>{state.textContent='Pausado';btn.textContent='▶';try{navigator.mediaSession.playbackState='paused'}catch{}};
-    SHARED_AUDIO.onwaiting=()=>state.textContent='Buffer…';
-    SHARED_AUDIO.onerror=()=>{state.textContent='Sin señal — probá otra radio';btn.textContent='↻'};
+    SHARED_AUDIO.onwaiting=()=>state.textContent='Conectando…';
+    SHARED_AUDIO.onerror=()=>{
+      state.textContent='Sin señal';btn.textContent='↻';
+      // Ofrecer saltar a la siguiente estación del dial
+      if(radiosCache&&radiosCache.length>1){
+        const nextIdx=(dialIndex+1)%radiosCache.length;
+        const skipBtn=document.createElement('button');
+        skipBtn.className='cr-player-btn';skipBtn.style.fontSize='12px';skipBtn.textContent='→ Sig';
+        skipBtn.onclick=()=>{dialIndex=nextIdx;playRadio(radiosCache[nextIdx]);};
+        el.querySelector('[data-x]')?.before(skipBtn);
+      }
+    };
     btn.onclick=()=>SHARED_AUDIO.paused?SHARED_AUDIO.play().catch(()=>state.textContent='Tocá ▶ para iniciar'):SHARED_AUDIO.pause();
     $('[data-x]',el).onclick=stopRadio;
 
@@ -90,10 +101,37 @@
     SHARED_AUDIO.load();
     try{await SHARED_AUDIO.play()}catch(e){if(e?.name!=='AbortError')state.textContent='Tocá ▶ para iniciar';btn.textContent='▶';}
     currentRadio={audio:SHARED_AUDIO,el,station:r};
+    // Sincronizar dialIndex con la estación que está sonando
+    if(radiosCache){const idx=radiosCache.findIndex(x=>radioId(x)===radioId(r));if(idx>=0)dialIndex=idx;}
     document.dispatchEvent(new CustomEvent('palabra-viva-radio',{detail:{name:r.name}}));
   }
 
-  async function apiRadios(){const servers=['https://de1.api.radio-browser.info','https://de2.api.radio-browser.info','https://nl1.api.radio-browser.info','https://at1.api.radio-browser.info'];const path='/json/stations/search?tag=christian&language=spanish&hidebroken=true&order=clickcount&reverse=true&limit=80';for(const s of servers){try{const res=await fetch(s+path);if(!res.ok)continue;const data=await res.json();if(!Array.isArray(data))continue;return data.filter(x=>x.url_resolved&&isSpanishCountry(x)&&!isBlocked(x)&&(/MP3|AAC/i.test(x.codec||''))).slice(0,40).map(x=>({id:x.stationuuid,name:x.name?.trim()||'Sin nombre',type:`${x.country||'Internacional'} · ${x.codec||'Audio'}`,note:(x.tags||'').split(',').slice(0,3).join(', ')||'Radio cristiana evangélica',stream:x.url_resolved,page:x.homepage||'',favicon:x.favicon||''}))}catch{}}return[];}
+  async function apiRadios(){
+    const servers=['https://de1.api.radio-browser.info','https://de2.api.radio-browser.info','https://nl1.api.radio-browser.info','https://at1.api.radio-browser.info'];
+    // lastcheckok=1 → solo streams verificados como funcionando recientemente
+    const queries=[
+      '/json/stations/search?tag=christian&language=spanish&hidebroken=true&lastcheckok=1&order=clickcount&reverse=true&limit=60',
+      '/json/stations/search?tag=evangelica&hidebroken=true&lastcheckok=1&order=clickcount&reverse=true&limit=40',
+      '/json/stations/search?tag=cristiana&language=spanish&hidebroken=true&lastcheckok=1&order=clickcount&reverse=true&limit=40',
+      '/json/stations/search?countrycode=US&language=spanish&tag=christian&hidebroken=true&lastcheckok=1&order=clickcount&reverse=true&limit=40',
+      '/json/stations/search?countrycode=AR&tag=cristiana&hidebroken=true&lastcheckok=1&order=clickcount&reverse=true&limit=30',
+      '/json/stations/search?countrycode=MX&tag=cristiana&hidebroken=true&lastcheckok=1&order=clickcount&reverse=true&limit=30',
+    ];
+    for(const s of servers){
+      try{
+        const results=await Promise.allSettled(queries.map(q=>fetch(s+q).then(r=>r.ok?r.json():[])));
+        const all=results.flatMap(r=>r.status==='fulfilled'&&Array.isArray(r.value)?r.value:[]);
+        if(!all.length)continue;
+        const seen=new Set();
+        const mapped=all
+          .filter(x=>x.url_resolved&&isSpanishCountry(x)&&!isBlocked(x)&&(/MP3|AAC|OGG/i.test(x.codec||'')))
+          .filter(x=>{const id=x.stationuuid;if(seen.has(id))return false;seen.add(id);return true})
+          .map(x=>({id:x.stationuuid,name:(x.name||'').trim()||'Sin nombre',type:`${x.country||'Internacional'} · ${x.codec||'Audio'}`,note:(x.tags||'').split(',').filter(Boolean).slice(0,3).join(', ')||'Radio cristiana',stream:x.url_resolved,page:x.homepage||'',favicon:x.favicon||''}));
+        if(mapped.length>0)return mapped.slice(0,100);
+      }catch{}
+    }
+    return[];
+  }
   async function allRadios(){if(radiosCache)return radiosCache;if(loading)return null;loading=true;const a=await apiRadios().catch(()=>[]);const seen=new Set(),h=hidden();radiosCache=[...HARD_RADIOS,...a,...custom()].filter(r=>!h.includes(radioId(r))).filter(r=>{const id=radioId(r);if(seen.has(id))return false;seen.add(id);return true});loading=false;return radiosCache;}
   function myRadios(){const seen=new Set();return[...load(FAVS_KEY,[]),...custom()].filter(r=>{const id=radioId(r);if(seen.has(id))return false;seen.add(id);return true})}
 
