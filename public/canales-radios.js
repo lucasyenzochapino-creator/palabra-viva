@@ -15,7 +15,7 @@
     { id:'radio-vida-mendoza', name:'Radio Vida 105.1 Mendoza', type:'Argentina · Evangélica', note:'Radio cristiana desde Mendoza.', stream:'https://streaming01.shockmedia.com.ar:10777/stream', page:'https://radiovida1051.com/', favicon:'' },
     { id:'radio-cristiana-883', name:'Radio Cristiana 88.3 Munro', type:'Argentina · Cristiana', note:'Radio cristiana de Buenos Aires.', stream:'https://server.laradio.online/proxy/radiocristiana883?mp=/stream', page:'', favicon:'' },
     { id:'777-radio-cristiana', name:'777 Radio Cristiana', type:'Argentina · Cristiana', note:'Música y mensajes cristianos.', stream:'https://stream.zeno.fm/3t3s0u7k8yzuv', page:'', favicon:'' },
-    { id:'cvclavoz', name:'CVCLAVOZ', type:'Hispanoamérica · Cristiana', note:'Música, devocionales y mensajes cristianos.', stream:'', page:'https://cvclavoz.com/escuchar-en-vivo/', favicon:'' }
+    { id:'cvclavoz', name:'CVCLAVOZ', type:'Hispanoamérica · Cristiana', note:'Música, devocionales y mensajes cristianos.', stream:'https://23583.live.streamtheworld.com/CVC_LA_VOZ_SC', page:'https://cvclavoz.com/escuchar-en-vivo/', favicon:'' }
   ];
 
   const SPANISH_COUNTRIES = ['AR','MX','ES','CO','PE','CL','VE','UY','PY','BO','EC','CU','DO','GT','HN','NI','CR','PA','SV','PR','US'];
@@ -35,6 +35,11 @@
   const isBlocked=s=>BLOCKED_WORDS.some(w=>clean(`${s.name||''} ${s.tags||''} ${s.homepage||''} ${s.url||''}`).includes(clean(w)));
   const isSpanishCountry=s=>!s.countrycode || SPANISH_COUNTRIES.includes(String(s.countrycode).toUpperCase());
 
+  const SHARED_AUDIO = document.createElement('audio');
+  SHARED_AUDIO.preload = 'none';
+  SHARED_AUDIO.crossOrigin = 'anonymous';
+  document.body?.appendChild(SHARED_AUDIO) || document.addEventListener('DOMContentLoaded', () => document.body.appendChild(SHARED_AUDIO));
+
   let currentRadio=null, radiosCache=null, loading=false, panel=null, mode='dial', q='', dialIndex=0;
 
   function css(){
@@ -45,8 +50,40 @@
     document.head.appendChild(st);
   }
 
-  function stopRadio(){if(currentRadio){try{currentRadio.audio.pause();currentRadio.audio.src=''}catch{} currentRadio.el.remove();currentRadio=null}try{if('mediaSession'in navigator){navigator.mediaSession.metadata=null;navigator.mediaSession.playbackState='none'}}catch{}}
-  function playRadio(r){if(!r.stream){window.open(r.page||'#','_blank','noopener');return;}stopRadio();const audio=new Audio(r.stream);audio.preload='none';audio.crossOrigin='anonymous';const el=document.createElement('div');el.className='cr-player';el.innerHTML=`<div><div class="cr-player-name">${r.name}</div><div class="cr-player-state">Conectando…</div></div><button class="cr-player-btn" data-t>⏸</button><button class="cr-player-close" data-x>✕</button>`;document.body.appendChild(el);const state=$('.cr-player-state',el),btn=$('[data-t]',el);audio.onplaying=()=>{state.textContent='En vivo';btn.textContent='⏸';try{navigator.mediaSession.playbackState='playing'}catch{}};audio.onpause=()=>{state.textContent='Pausado';btn.textContent='▶';try{navigator.mediaSession.playbackState='paused'}catch{}};audio.onwaiting=()=>state.textContent='Buffer…';audio.onerror=()=>{state.textContent='Error al cargar';btn.textContent='↻'};btn.onclick=()=>audio.paused?audio.play().catch(()=>state.textContent='No se pudo reproducir'):audio.pause();$('[data-x]',el).onclick=stopRadio;try{if('mediaSession'in navigator){navigator.mediaSession.metadata=new MediaMetadata({title:r.name,artist:'Palabra Viva — Radio cristiana',album:r.type||''});navigator.mediaSession.setActionHandler('play',()=>audio.play().catch(()=>{}));navigator.mediaSession.setActionHandler('pause',()=>audio.pause());navigator.mediaSession.setActionHandler('stop',stopRadio)}}catch{} audio.play().catch(()=>{state.textContent='Tocá ▶ para iniciar';btn.textContent='▶'});currentRadio={audio,el,station:r};document.dispatchEvent(new CustomEvent('palabra-viva-radio',{detail:{name:r.name}}));}
+  function stopRadio(){
+    try{SHARED_AUDIO.pause();SHARED_AUDIO.src='';SHARED_AUDIO.load()}catch{}
+    if(currentRadio){currentRadio.el.remove();currentRadio=null}
+    try{if('mediaSession'in navigator){navigator.mediaSession.metadata=null;navigator.mediaSession.playbackState='none'}}catch{}
+  }
+
+  async function playRadio(r){
+    if(!r.stream){window.open(r.page||'#','_blank','noopener');return;}
+    // Detener stream anterior antes de cargar el nuevo
+    try{SHARED_AUDIO.pause();SHARED_AUDIO.src='';SHARED_AUDIO.load()}catch{}
+    if(currentRadio){currentRadio.el.remove();currentRadio=null}
+
+    // Reusar o crear el cartel del player
+    let el=document.querySelector('.cr-player');
+    if(!el){el=document.createElement('div');el.className='cr-player';document.body.appendChild(el);}
+    el.innerHTML=`<div><div class="cr-player-name">${r.name}</div><div class="cr-player-state">Conectando…</div></div><button class="cr-player-btn" data-t>⏸</button><button class="cr-player-close" data-x>✕</button>`;
+
+    const state=$('.cr-player-state',el),btn=$('[data-t]',el);
+    SHARED_AUDIO.onplaying=()=>{state.textContent='En vivo';btn.textContent='⏸';try{navigator.mediaSession.playbackState='playing'}catch{}};
+    SHARED_AUDIO.onpause=()=>{state.textContent='Pausado';btn.textContent='▶';try{navigator.mediaSession.playbackState='paused'}catch{}};
+    SHARED_AUDIO.onwaiting=()=>state.textContent='Buffer…';
+    SHARED_AUDIO.onerror=()=>{state.textContent='Sin señal — probá otra radio';btn.textContent='↻'};
+    btn.onclick=()=>SHARED_AUDIO.paused?SHARED_AUDIO.play().catch(()=>state.textContent='Tocá ▶ para iniciar'):SHARED_AUDIO.pause();
+    $('[data-x]',el).onclick=stopRadio;
+
+    try{if('mediaSession'in navigator){navigator.mediaSession.metadata=new MediaMetadata({title:r.name,artist:'Palabra Viva — Radio cristiana',album:r.type||''});navigator.mediaSession.setActionHandler('play',()=>SHARED_AUDIO.play().catch(()=>{}));navigator.mediaSession.setActionHandler('pause',()=>SHARED_AUDIO.pause());navigator.mediaSession.setActionHandler('stop',stopRadio)}}catch{}
+
+    // Cargar y reproducir el nuevo stream
+    SHARED_AUDIO.src = r.stream;
+    SHARED_AUDIO.load();
+    try{await SHARED_AUDIO.play()}catch(e){if(e?.name!=='AbortError')state.textContent='Tocá ▶ para iniciar';btn.textContent='▶';}
+    currentRadio={audio:SHARED_AUDIO,el,station:r};
+    document.dispatchEvent(new CustomEvent('palabra-viva-radio',{detail:{name:r.name}}));
+  }
 
   async function apiRadios(){const servers=['https://de1.api.radio-browser.info','https://de2.api.radio-browser.info','https://nl1.api.radio-browser.info','https://at1.api.radio-browser.info'];const path='/json/stations/search?tag=christian&language=spanish&hidebroken=true&order=clickcount&reverse=true&limit=80';for(const s of servers){try{const res=await fetch(s+path);if(!res.ok)continue;const data=await res.json();if(!Array.isArray(data))continue;return data.filter(x=>x.url_resolved&&isSpanishCountry(x)&&!isBlocked(x)&&(/MP3|AAC/i.test(x.codec||''))).slice(0,40).map(x=>({id:x.stationuuid,name:x.name?.trim()||'Sin nombre',type:`${x.country||'Internacional'} · ${x.codec||'Audio'}`,note:(x.tags||'').split(',').slice(0,3).join(', ')||'Radio cristiana evangélica',stream:x.url_resolved,page:x.homepage||'',favicon:x.favicon||''}))}catch{}}return[];}
   async function allRadios(){if(radiosCache)return radiosCache;if(loading)return null;loading=true;const a=await apiRadios().catch(()=>[]);const seen=new Set(),h=hidden();radiosCache=[...HARD_RADIOS,...a,...custom()].filter(r=>!h.includes(radioId(r))).filter(r=>{const id=radioId(r);if(seen.has(id))return false;seen.add(id);return true});loading=false;return radiosCache;}

@@ -85,7 +85,18 @@
     detail.querySelector('[data-back]').onclick=()=>closeDetail(true);detail.querySelector('[data-close]').onclick=()=>{closeDetail(false);closePanel(false)};
     detail.querySelector('[data-read]').onclick=e=>{mark(story);e.target.textContent='✓ Leída';e.target.style.background='#16a34a'};
     if(isRead(story)){const b=detail.querySelector('[data-read]');b.textContent='✓ Leída';b.style.background='#16a34a'}
-    const player=detail.querySelector('.pv-kids-player');if(player){currentAudio=player;let ai=0;detail.querySelector('[data-next-audio]').onclick=()=>{ai=(ai+1)%aud.length;player.src=aud[ai];player.play().catch(()=>{})};}
+    const player=detail.querySelector('.pv-kids-player');if(player){
+      currentAudio=player;
+      let ai=0;
+      player.onerror=()=>{
+        const errDiv=detail.querySelector('.pv-kids-audio-note');
+        if(errDiv){errDiv.innerHTML='⚠️ El audio narrado no se pudo cargar. Usá el botón <strong>🔊 Escuchar historia</strong> para la lectura automática.';errDiv.style.background='#fef2f2';errDiv.style.color='#991b1b';}
+        // Reemplazar botón de audio por TTS
+        const nextBtn=detail.querySelector('[data-next-audio]');
+        if(nextBtn){nextBtn.textContent='🔊 Leer en voz alta';nextBtn.onclick=()=>tts(`${story.title}. ${story.verse}. ${story.text}. Para pensar. ${story.q.join('. ')}. Oración. ${story.pray}`,nextBtn);}
+      };
+      detail.querySelector('[data-next-audio]').onclick=()=>{ai=(ai+1)%aud.length;player.src=aud[ai];player.play().catch(()=>{})};
+    }
     const tb=detail.querySelector('[data-tts]');if(tb)tb.onclick=()=>{if(tb.textContent.includes('Detener')){stopAll();tb.textContent='🔊 Escuchar historia'}else tts(`${story.title}. ${story.verse}. ${story.text}. Para pensar. ${story.q.join('. ')}. Oración. ${story.pray}`,tb)};
     window.addEventListener('popstate',onPop,{once:true});
   }
