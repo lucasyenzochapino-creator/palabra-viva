@@ -50,7 +50,7 @@
   AUD.preload = 'none';
   // No forzamos crossOrigin para evitar errores CORS en streams que no lo soportan
 
-  let current=null, cache=null, cacheLoading=false, panel=null, mode='dial', q='', dialIdx=0;
+  let current=null, cache=null, cachePromise=null, panel=null, mode='dial', q='', dialIdx=0;
 
   // ── Estilos ────────────────────────────────────────────────────────────────
   function injectCSS(){
@@ -113,6 +113,8 @@
     try{AUD.pause();AUD.src='';AUD.load()}catch{}
     current?.el?.remove();current=null;
     try{navigator.mediaSession&&(navigator.mediaSession.metadata=null,navigator.mediaSession.playbackState='none')}catch{}
+    document.dispatchEvent(new CustomEvent('pv-radio',{detail:{name:''}}));
+    document.dispatchEvent(new CustomEvent('palabra-viva-radio',{detail:{name:''}}));
   }
 
   async function playRadio(r){
@@ -162,6 +164,7 @@
     // Sincronizar dial
     if(cache){const i=cache.findIndex(x=>rid(x)===rid(r));if(i>=0)dialIdx=i;}
     document.dispatchEvent(new CustomEvent('pv-radio',{detail:{name:r.name}}));
+    document.dispatchEvent(new CustomEvent('palabra-viva-radio',{detail:{name:r.name}}));
   }
 
   // ── Buscar radios en Radio Browser API ────────────────────────────────────
@@ -202,16 +205,19 @@
 
   async function loadAll(){
     if(cache)return cache;
-    if(cacheLoading)return null;
-    cacheLoading=true;
-    const api=await fetchAPI().catch(()=>[]);
-    const hidden=lsGet(HIDDEN_KEY,[]);
-    const seen=new Set();
-    cache=[...HARD_RADIOS,...api,...lsGet(CUSTOM_KEY,[])]
-      .filter(r=>!hidden.includes(rid(r)))
-      .filter(r=>{const id=rid(r);if(seen.has(id))return false;seen.add(id);return true});
-    cacheLoading=false;
-    return cache;
+    if(!cachePromise){
+      cachePromise=(async()=>{
+        const api=await fetchAPI().catch(()=>[]);
+        const hidden=lsGet(HIDDEN_KEY,[]);
+        const seen=new Set();
+        cache=[...HARD_RADIOS,...api,...lsGet(CUSTOM_KEY,[])]
+          .filter(r=>!hidden.includes(rid(r)))
+          .filter(r=>{const id=rid(r);if(seen.has(id))return false;seen.add(id);return true});
+        cachePromise=null;
+        return cache;
+      })();
+    }
+    return cachePromise;
   }
   function myRadios(){
     const seen=new Set();
@@ -275,7 +281,7 @@
       const r={id:`custom-${Date.now()}`,name,type:'Mi radio',note:'Agregada por vos',stream,page};
       const c=lsGet(CUSTOM_KEY,[]);c.push(r);lsSet(CUSTOM_KEY,c);
       const f=lsGet(FAVS_KEY,[]);f.push(r);lsSet(FAVS_KEY,f);
-      cache=null; // forzar recarga
+      cache=null;cachePromise=null;
       renderList();
     };
     return d;
@@ -341,11 +347,11 @@
       e.stopPropagation();
       const h=lsGet(HIDDEN_KEY,[]);h.push(rid(items[dialIdx]));lsSet(HIDDEN_KEY,h);
       if(current&&rid(current.station)===rid(items[dialIdx]))stopRadio();
-      cache=null;renderList();
+      cache=null;cachePromise=null;renderList();
     });
     listEl.querySelector('[data-restore]')?.addEventListener('click',e=>{
       e.stopPropagation();
-      lsSet(HIDDEN_KEY,[]);cache=null;renderList();
+      lsSet(HIDDEN_KEY,[]);cache=null;cachePromise=null;renderList();
     });
   }
 
@@ -364,8 +370,9 @@
     }
 
     if(mode==='explorar'){
+      listEl.innerHTML='<div class="cr-spin">🔍 Buscando radios… (puede tardar unos segundos)</div>';
       const items=await loadAll();
-      if(!items){listEl.innerHTML='<div class="cr-spin">🔍 Buscando radios… (puede tardar unos segundos)</div>';return;}
+      if(!panel)return; // panel cerrado mientras cargaba
       const f=items.filter(r=>!q||norm(r.name+' '+r.note+' '+r.type).includes(norm(q)));
       if(!f.length){listEl.innerHTML='<div class="cr-empty">No encontramos radios con ese filtro.</div>';return;}
       listEl.innerHTML=f.map((r,i)=>cardHTML(r,i,'explore')).join('');
@@ -374,8 +381,9 @@
     }
 
     if(mode==='dial'){
+      listEl.innerHTML='<div class="cr-spin">📻 Cargando dial…</div>';
       const items=await loadAll();
-      if(!items){listEl.innerHTML='<div class="cr-spin">📻 Cargando dial…</div>';return;}
+      if(!panel)return; // panel cerrado mientras cargaba
       listEl.innerHTML=dialHTML(items);
       bindDial(listEl,items);
       listEl.appendChild(addForm());
@@ -421,12 +429,14 @@
     history.pushState({pvRadioPanel:true},'',location.href.split('#')[0]+'#radios');
 
     function closePanel(withHistory=true){
-      panel?.remove();panel=null;
       window.removeEventListener('popstate',onPop);
+      panel?.remove();panel=null;
       if(withHistory&&location.hash==='#radios')history.back();
     }
     function onPop(){
-      if(document.querySelector('.cr-panel'))closePanel(false);
+      // Siempre se limpia a sí mismo, tanto si back-navigation.js ya cerró el panel como si no
+      window.removeEventListener('popstate',onPop);
+      if(panel){panel.remove();panel=null;}
     }
     window.addEventListener('popstate',onPop);
 

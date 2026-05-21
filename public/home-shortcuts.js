@@ -65,13 +65,14 @@
     updateLive();
   }
 
-  function updateLive(){
+  function updateLive(e){
     const el=document.querySelector('.pv-home-shortcuts [data-live]');
     if(!el) return;
-    const name=getRadioName();
-    el.textContent=name ? `En vivo: ${name}` : '';
+    const name = (e?.detail?.name !== undefined) ? e.detail.name : getRadioName();
+    el.textContent=name ? `🔴 En vivo: ${name}` : '';
   }
 
+  document.addEventListener('pv-radio', updateLive);
   document.addEventListener('palabra-viva-radio', updateLive);
   function boot(){ injectStyles(); addShortcuts(); updateLive(); }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', boot); else boot();
