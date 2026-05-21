@@ -103,6 +103,12 @@
 .cr-dial-play{background:linear-gradient(135deg,#c0392b,#8e1010);border:2px solid rgba(255,220,150,.4);color:#fff;border-radius:999px;padding:13px;font-weight:900;font-size:15px;cursor:pointer;min-height:50px}
 .cr-dial-count{text-align:center;font-size:11px;color:#c4a030;opacity:.65;margin:8px 0}
 .cr-home-card{border-color:rgba(236,72,153,.4)!important;background:linear-gradient(135deg,rgba(236,72,153,.1),var(--card))!important}
+.cr-dial-search-wrap{position:relative;margin-bottom:12px}
+#cr-dial-sug{position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:20;background:var(--bg,#1a1007);border:1px solid var(--line,rgba(200,150,80,.3));border-radius:16px;overflow:hidden;max-height:220px;overflow-y:auto;display:none;box-shadow:0 8px 24px rgba(0,0,0,.5)}
+.cr-sug-item{display:block;width:100%;text-align:left;padding:11px 16px;border:0;border-bottom:1px solid var(--line,rgba(200,150,80,.1));background:transparent;color:var(--text,#f5deb3);cursor:pointer;font:inherit}
+.cr-sug-item:last-child{border-bottom:0}
+.cr-sug-item:hover,.cr-sug-item:focus{background:var(--card2,rgba(255,220,150,.1))}
+.cr-sug-item small{display:block;font-size:10px;opacity:.55;font-weight:400;margin-top:2px}
 @media(min-width:580px){.cr-list{grid-template-columns:1fr 1fr}}
 @media(max-width:400px){.cr-tabs{grid-template-columns:repeat(2,1fr)}}
     `;document.head.appendChild(st);
@@ -117,30 +123,30 @@
     document.dispatchEvent(new CustomEvent('palabra-viva-radio',{detail:{name:''}}));
   }
 
-  async function playRadio(r){
-    if(!r?.stream)return;
-    // Detener lo anterior
-    try{AUD.pause();AUD.src='';AUD.load()}catch{}
+  function playRadio(r){
+    if(!r?.stream)return Promise.resolve();
+    // Detener audio anterior SIN llamar load() — load() mata el play() siguiente con AbortError
+    try{AUD.pause();AUD.src=''}catch{}
     current?.el?.remove();current=null;
 
     // Construir/reusar el player fijo
     let el=document.querySelector('.cr-player');
     if(!el){el=document.createElement('div');el.className='cr-player';document.body.appendChild(el);}
     el.innerHTML=`
-      <div><div class="cr-pname">${r.name}</div><div class="cr-pstate">Conectando…</div></div>
-      <button class="cr-pbtn" data-pp>⏸</button>
-      <button class="cr-pbtn" style="font-size:13px" data-skip>→</button>
+      <div><div class="cr-pname">${r.name}</div><div class="cr-pstate">⏳ Conectando…</div></div>
+      <button class="cr-pbtn" data-pp>▶</button>
+      <button class="cr-pbtn" style="font-size:13px" data-skip title="Siguiente">→</button>
       <button class="cr-pclose" data-stop>✕</button>`;
 
     const stEl=$('.cr-pstate',el), ppBtn=$('[data-pp]',el);
 
     AUD.onplaying=()=>{stEl.textContent='🔴 En vivo';ppBtn.textContent='⏸';try{navigator.mediaSession.playbackState='playing'}catch{}};
     AUD.onpause=()=>{stEl.textContent='Pausado';ppBtn.textContent='▶';try{navigator.mediaSession.playbackState='paused'}catch{}};
-    AUD.onwaiting=()=>{stEl.textContent='Cargando…'};
-    AUD.onerror=()=>{stEl.textContent='Sin señal — tocá → para saltar';ppBtn.textContent='↻'};
-    AUD.onstalled=()=>{stEl.textContent='Sin respuesta…'};
+    AUD.onwaiting=()=>{stEl.textContent='⏳ Cargando…'};
+    AUD.onerror=()=>{stEl.textContent='❌ Sin señal — tocá → para saltar';ppBtn.textContent='↻'};
+    AUD.onstalled=()=>{stEl.textContent='⚠️ Sin respuesta…'};
 
-    ppBtn.onclick=e=>{e.stopPropagation();AUD.paused?AUD.play().catch(()=>stEl.textContent='Tocá ▶'):AUD.pause()};
+    ppBtn.onclick=e=>{e.stopPropagation();AUD.paused?AUD.play().catch(err=>{stEl.textContent=err?.name==='NotAllowedError'?'Tocá ▶':'❌ Sin señal';ppBtn.textContent='▶';}):AUD.pause()};
     $('[data-stop]',el).onclick=e=>{e.stopPropagation();stopRadio()};
     $('[data-skip]',el).onclick=e=>{
       e.stopPropagation();
@@ -157,14 +163,20 @@
       navigator.mediaSession.setActionHandler('nexttrack',()=>$('[data-skip]',el)?.click());
     }catch{}
 
+    // Asignar src y reproducir — NO llamar load() antes de play(), provoca AbortError silencioso
     AUD.src=r.stream;
-    AUD.load();
-    try{await AUD.play()}catch(e){if(e?.name!=='AbortError'){stEl.textContent='Tocá ▶ para iniciar';ppBtn.textContent='▶';}}
+    const playP=AUD.play();
+    if(playP){
+      playP.catch(err=>{
+        if(err?.name==='NotAllowedError'){stEl.textContent='Tocá ▶ para iniciar';ppBtn.textContent='▶';}
+        else{stEl.textContent='❌ Sin señal — tocá → para saltar';ppBtn.textContent='↻';}
+      });
+    }
     current={audio:AUD,el,station:r};
-    // Sincronizar dial
     if(cache){const i=cache.findIndex(x=>rid(x)===rid(r));if(i>=0)dialIdx=i;}
     document.dispatchEvent(new CustomEvent('pv-radio',{detail:{name:r.name}}));
     document.dispatchEvent(new CustomEvent('palabra-viva-radio',{detail:{name:r.name}}));
+    return playP||Promise.resolve();
   }
 
   // ── Buscar radios en Radio Browser API ────────────────────────────────────
@@ -296,6 +308,10 @@
     const pct=items.length===1?50:(dialIdx/(items.length-1))*100;
     return`<div class="cr-dial-box">
       <div class="cr-dial-brand">━━ PALABRA VIVA RADIO ━━</div>
+      <div class="cr-dial-search-wrap">
+        <input id="cr-dial-q" class="cr-search" placeholder="🔍 Buscar emisora…" autocomplete="off" style="margin:0">
+        <div id="cr-dial-sug"></div>
+      </div>
       <div class="cr-dial-screen">
         <div class="cr-dial-freq">${(88+dialIdx*(20/Math.max(1,items.length-1))).toFixed(1)} MHz</div>
         <div class="cr-dial-name" id="cr-dn">${r.name}</div>
@@ -353,6 +369,39 @@
       e.stopPropagation();
       lsSet(HIDDEN_KEY,[]);cache=null;cachePromise=null;renderList();
     });
+
+    // ── Búsqueda con sugerencias en el dial ─────────────────────────────────
+    const searchEl=listEl.querySelector('#cr-dial-q');
+    const sugEl=listEl.querySelector('#cr-dial-sug');
+    if(searchEl&&sugEl){
+      function showSug(q){
+        if(!q){sugEl.style.display='none';sugEl.innerHTML='';return;}
+        const matches=items
+          .map((r,i)=>({r,i}))
+          .filter(({r})=>norm(r.name+' '+r.type).includes(norm(q)))
+          .slice(0,10);
+        if(!matches.length){sugEl.style.display='none';return;}
+        sugEl.innerHTML=matches.map(({r,i})=>
+          `<button class="cr-sug-item" data-si="${i}">${r.name}<small>${r.type||''}</small></button>`
+        ).join('');
+        sugEl.style.display='block';
+        sugEl.querySelectorAll('.cr-sug-item').forEach(btn=>btn.addEventListener('mousedown',e=>{
+          // mousedown antes de blur para que no se cierre antes de registrar el click
+          e.preventDefault();e.stopPropagation();
+          dialIdx=+btn.dataset.si;
+          searchEl.value=items[dialIdx].name;
+          sugEl.style.display='none';
+          updateDialDisplay(items);
+          playRadio(items[dialIdx]);
+        }));
+      }
+      searchEl.addEventListener('input',e=>{e.stopPropagation();showSug(e.target.value.trim())});
+      searchEl.addEventListener('blur',()=>setTimeout(()=>{sugEl.style.display='none'},150));
+      searchEl.addEventListener('focus',e=>{if(e.target.value.trim())showSug(e.target.value.trim())});
+      searchEl.addEventListener('keydown',e=>{
+        if(e.key==='Escape'){sugEl.style.display='none';searchEl.value='';e.stopPropagation();}
+      });
+    }
   }
 
   // ── Render central ─────────────────────────────────────────────────────────
