@@ -1,0 +1,22 @@
+﻿{
+    "permissions":  {
+                        "allow":  [
+                                      "Bash(git add *)",
+                                      "Bash(git commit *)",
+                                      "Bash(git push *)",
+                                      "Bash(git push origin main)",
+                                      "Bash(cd * \u0026\u0026 git add *)",
+                                      "Bash(cd * \u0026\u0026 git commit *)",
+                                      "Bash(cd * \u0026\u0026 git push *)",
+                                      "Bash(cd * \u0026\u0026 git status)",
+                                      "PowerShell(Add-Type *)",
+                                      "PowerShell(Get-ChildItem *)",
+                                      "PowerShell(Get-Content *)",
+                                      "PowerShell(New-Item *)",
+                                      "PowerShell(Copy-Item *)",
+                                      "PowerShell(Test-Path *)",
+                                      "Bash(npm run *)",
+                                      "Bash(npm install *)"
+                                  ]
+                    }
+}
