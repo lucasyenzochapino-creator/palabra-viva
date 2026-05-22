@@ -549,6 +549,7 @@
   window.PalabraVivaCanales={
     open:openPanel,
     openDial:()=>{openPanel()},
+    stop:stopRadio,
     getCurrentRadio:()=>current?.station?.name||''
   };
 
