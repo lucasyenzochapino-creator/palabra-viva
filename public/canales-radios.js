@@ -144,6 +144,8 @@
 
   function playRadio(r){
     if(!r?.stream)return Promise.resolve();
+    // Exclusión mutua: si la Biblia en audio está sonando, pararla primero
+    try{if(window.PalabraVivaAudioBible?.isPlaying?.())window.PalabraVivaAudioBible.stop();}catch{}
     // Solo pausar — src='' dispara onerror asíncrono que cortocircuita el stream nuevo
     try{AUD.pause()}catch{}
     current?.el?.remove();current=null;

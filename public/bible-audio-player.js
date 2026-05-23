@@ -316,6 +316,10 @@
     const book = findBookByName(bookName);
     if (!book) return;
     chapter = Math.max(1, Math.min(chapter, book.chapters));
+    // Exclusión mutua: si la radio está sonando y vamos a reproducir, pararla primero
+    if (opts.autoplay !== false) {
+      try { if (window.PalabraVivaCanales?.isPlaying?.()) window.PalabraVivaCanales.stop(); } catch {}
+    }
 
     currentBook    = book.name;
     currentChapter = chapter;
