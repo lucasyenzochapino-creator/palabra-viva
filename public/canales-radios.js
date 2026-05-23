@@ -184,10 +184,25 @@
 
     const stEl=$('.cr-pstate',el), ppBtn=$('[data-pp]',el);
 
-    AUD.onplaying=()=>{stEl.textContent='🔴 En vivo';ppBtn.textContent='⏸';try{navigator.mediaSession.playbackState='playing'}catch{};document.dispatchEvent(new CustomEvent('pv-radio',{detail:{name:r.name,playing:true}}));};
+    // Timeout: si después de 15s no arrancó, mostrar error con sugerencia clara
+    let loadTimeout=null;
+    const startLoadTimeout=()=>{
+      if(loadTimeout)clearTimeout(loadTimeout);
+      loadTimeout=setTimeout(()=>{
+        if(AUD.paused||AUD.readyState<2){
+          stEl.textContent='⏰ Tarda mucho — tocá → para probar otra';
+          ppBtn.textContent='↻';
+        }
+      },15000);
+    };
+    const clearLoadTimeout=()=>{if(loadTimeout){clearTimeout(loadTimeout);loadTimeout=null;}};
+
+    AUD.onplaying=()=>{clearLoadTimeout();stEl.textContent='🔴 En vivo';ppBtn.textContent='⏸';try{navigator.mediaSession.playbackState='playing'}catch{};document.dispatchEvent(new CustomEvent('pv-radio',{detail:{name:r.name,playing:true}}));};
     AUD.onpause=()=>{stEl.textContent='Pausado';ppBtn.textContent='▶';try{navigator.mediaSession.playbackState='paused'}catch{};if(current)document.dispatchEvent(new CustomEvent('pv-radio',{detail:{name:r.name,playing:false}}));};
-    AUD.onwaiting=()=>{stEl.textContent='⏳ Cargando…'};
-    AUD.onerror=()=>{stEl.textContent='❌ Sin señal — tocá → para saltar';ppBtn.textContent='↻'};
+    AUD.onwaiting=()=>{stEl.textContent='⏳ Conectando con la radio…';startLoadTimeout();};
+    AUD.onloadstart=()=>{stEl.textContent='⏳ Conectando…';startLoadTimeout();};
+    AUD.oncanplay=()=>{clearLoadTimeout();};
+    AUD.onerror=()=>{clearLoadTimeout();stEl.textContent='❌ Sin señal — tocá → para saltar';ppBtn.textContent='↻'};
     AUD.onstalled=()=>{stEl.textContent='⚠️ Sin respuesta…'};
 
     ppBtn.onclick=e=>{e.stopPropagation();AUD.paused?AUD.play().catch(err=>{stEl.textContent=err?.name==='NotAllowedError'?'Tocá ▶':'❌ Sin señal';ppBtn.textContent='▶';}):AUD.pause()};

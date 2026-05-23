@@ -516,6 +516,7 @@
         <button class="pv-ba-btn" data-act="next">Cap. siguiente ⏭</button>
         <button class="pv-ba-btn primary full" data-act="resume">▶ Reanudar donde quedé</button>
         <button class="pv-ba-btn full"         data-act="start">⛪ Empezar desde Génesis 1</button>
+        <button class="pv-ba-btn full"         data-act="stop" style="background:rgba(251,113,133,.15);border:1px solid rgba(251,113,133,.5);color:#fb7185">🛑 Detener audio</button>
       </div>
 
       <div class="pv-ba-toggle">
@@ -561,6 +562,10 @@
       else loadChapter(card, 'Génesis', 1, { autoplay: true });
     };
     card.querySelector('[data-act="start"]').onclick = () => loadChapter(card, 'Génesis', 1, { autoplay: true });
+    card.querySelector('[data-act="stop"]').onclick  = () => {
+      if (confirm('¿Detener la lectura de audio y borrar la posición actual?')) stopBapAudio();
+      else AUD.pause(); // Solo pausa si no confirma
+    };
 
     // Si hay audio ya cargado, mostrar libro/cap actual en los selects
     if (currentBook && currentChapter) {
@@ -685,6 +690,7 @@
           <button class="pv-bap-p-btn" data-act="next">Cap. siguiente ⏭</button>
           <button class="pv-bap-p-btn primary" data-act="resume">▶ Reanudar donde quedé</button>
           <button class="pv-bap-p-btn primary" data-act="start" style="background:linear-gradient(135deg,#4a2810,#7c4a1e)">⛪ Desde Génesis 1</button>
+          <button class="pv-bap-p-btn" data-act="stop" style="grid-column:1/-1;background:rgba(251,113,133,.15);border-color:rgba(251,113,133,.5);color:#fb7185">🛑 Detener audio</button>
         </div>
         <div class="pv-ba-toggle">
           <label for="pv-bap-auto-p">Auto-avanzar al próximo capítulo</label>
@@ -736,6 +742,12 @@
       else loadChapter(panel, 'Génesis', 1, { autoplay: true });
     };
     panel.querySelector('[data-act="start"]').onclick   = () => loadChapter(panel, 'Génesis', 1, { autoplay: true });
+    panel.querySelector('[data-act="stop"]').onclick    = () => {
+      if (confirm('¿Detener la lectura de audio y borrar la posición actual?')) {
+        stopBapAudio();
+        closePanelKeepAudio(panel);
+      }
+    };
 
     document.body.appendChild(panel);
   }
