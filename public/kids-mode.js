@@ -116,5 +116,5 @@
   function addQuick(){const q=document.querySelector('.quick');if(!q||document.querySelector('.pv-kids-quick'))return;const b=document.createElement('button');b.className='pv-kids-quick';b.textContent='👶 Niños';b.onclick=openPanel;q.insertBefore(b,q.firstChild)}
   window.PalabraVivaNinos={open:openPanel};
   function boot(){css();document.querySelectorAll('.pv-kids-fab,.pv-kids-fab-old').forEach(e=>e.remove());addHome();addQuick()}
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();window.addEventListener('load',boot);setInterval(boot,900);
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();window.addEventListener('load',boot);setInterval(boot,2500);
 })();

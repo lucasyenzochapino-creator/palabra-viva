@@ -113,7 +113,7 @@
   function boot(){ injectStyles(); addHomeCard(); sendNotification(); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
   window.addEventListener('load', boot);
-  setInterval(() => { injectStyles(); addHomeCard(); }, 1500);
+  setInterval(() => { injectStyles(); addHomeCard(); }, 3000);
   setInterval(sendNotification, 60000);
   window.PalabraVivaNotif = { send: sendNotification };
 })();

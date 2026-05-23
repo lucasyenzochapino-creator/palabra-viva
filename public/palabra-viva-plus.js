@@ -226,5 +226,5 @@
   function quick(){ const q=$('.quick'); if(!q)return; if(!$('.pv-diary-btn')){const b=document.createElement('button');b.className='pv-diary-btn';b.textContent='Diario';b.onclick=()=>openJournal();q.insertBefore(b,q.firstChild)} if(!$('.pv-mode-btn')){const b=document.createElement('button');b.className='pv-mode-btn';b.textContent='Mi modo';b.onclick=openMode;q.insertBefore(b,q.firstChild)} }
 
   function tick(){ css(); addPathCard(); addChapterInsight(); addImageButtons(); addBeginner(); quick(); }
-  setInterval(tick,900); tick();
+  setInterval(tick,2500); tick();
 })();

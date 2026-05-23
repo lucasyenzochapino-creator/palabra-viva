@@ -125,5 +125,5 @@
     document.head.appendChild(style);
   }
   inject();
-  setInterval(inject, 1000);
+  setInterval(inject, 3000);
 })();

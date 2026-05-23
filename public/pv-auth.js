@@ -510,7 +510,7 @@
   setInterval(() => {
     const quick = document.querySelector('.quick');
     if (quick && !quick.querySelector('.pv-user-btn')) updateUI();
-  }, 1200);
+  }, 3000);
 
   // ── API pública ───────────────────────────────────────────────────────────
   window.PVAuth = {

@@ -69,6 +69,6 @@
     }
   }
 
-  setInterval(updateDailyWord, 900);
+  setInterval(updateDailyWord, 3000);
   updateDailyWord();
 })();

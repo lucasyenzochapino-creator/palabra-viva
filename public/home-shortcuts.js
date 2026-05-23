@@ -236,5 +236,5 @@
   function boot(){ injectStyles(); addShortcuts(); updateLive(); updateAudioLive(); }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', boot); else boot();
   window.addEventListener('load', boot);
-  setInterval(boot, 1000);
+  setInterval(boot, 2500);
 })();

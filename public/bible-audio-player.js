@@ -813,5 +813,5 @@
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
   else boot();
   window.addEventListener('load', boot);
-  setInterval(boot, 900);
+  setInterval(boot, 2500);
 })();

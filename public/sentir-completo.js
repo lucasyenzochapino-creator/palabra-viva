@@ -548,6 +548,6 @@
   }
 
   function boot() { document.querySelectorAll('.moodBox').forEach(render); }
-  setInterval(boot, 700);
+  setInterval(boot, 2500);
   boot();
 })();

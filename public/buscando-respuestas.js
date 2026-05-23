@@ -213,5 +213,5 @@
     mood.insertAdjacentElement('afterend', card);
   }
 
-  setInterval(() => { installButton(); addHomeCard(); }, 800);
+  setInterval(() => { installButton(); addHomeCard(); }, 3000);
 })();
