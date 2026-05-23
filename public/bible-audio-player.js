@@ -737,6 +737,13 @@
     getCurrentInfo: () => currentBook ? `${currentBook} ${currentChapter}` : ''
   };
 
+  // Soporte para botón Atrás de Android: back-navigation.js dispara este evento
+  // cuando detecta .pv-bap-panel abierto, en vez de hacer panel.remove() directo.
+  document.addEventListener('pv-close-bap-panel', () => {
+    const panel = document.querySelector('.pv-bap-panel');
+    if (panel) closePanelKeepAudio(panel);
+  });
+
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
   else boot();
   window.addEventListener('load', boot);

@@ -53,11 +53,22 @@
       '.pv-panel',
       '.pv-voice-panel',
       '.pv-audio-box',
-      '.pv-audio-settings'
+      '.pv-audio-settings',
+      '.pv-bap-panel',   // Panel Biblia en Audio
+      '.pv-adm-panel',   // Panel Admin
+      '.pv-auth-modal'   // Modal de login/registro
     ];
     const panels = selectors.flatMap(sel => Array.from(document.querySelectorAll(sel)));
     if (!panels.length) return false;
     const top = panels[panels.length - 1];
+
+    // El panel de Biblia en Audio necesita una lógica de cierre especial
+    // para preservar el audio en reproducción (el <audio> vive dentro del panel).
+    if (top.classList.contains('pv-bap-panel')) {
+      document.dispatchEvent(new CustomEvent('pv-close-bap-panel'));
+      return true;
+    }
+
     top.remove();
     return true;
   }
