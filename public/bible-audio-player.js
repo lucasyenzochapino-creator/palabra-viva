@@ -246,9 +246,11 @@
         <div class="pv-bap-state">${playing ? '🔴 Reproduciendo' : '⏸ Pausado'}</div>
       </div>
       <button class="pv-bap-pbtn" data-pp title="${playing?'Pausar':'Reproducir'}">${playing ? '⏸' : '▶'}</button>
+      <button class="pv-bap-pbtn" data-prev title="Capítulo anterior" style="font-size:13px">⏮</button>
       <button class="pv-bap-pbtn" data-next title="Capítulo siguiente" style="font-size:13px">⏭</button>
       <button class="pv-bap-pclose" data-stop title="Cerrar">✕</button>`;
     el.querySelector('[data-pp]').onclick   = () => { AUD.paused ? AUD.play().catch(()=>{}) : AUD.pause(); };
+    el.querySelector('[data-prev]').onclick = goPrevChapter;
     el.querySelector('[data-next]').onclick = goNextChapter;
     el.querySelector('[data-stop]').onclick = stopBapAudio;
   }
@@ -405,7 +407,7 @@
         border-radius:20px;
         padding:11px 14px;
         display:grid;
-        grid-template-columns:1fr auto auto auto;
+        grid-template-columns:1fr auto auto auto auto;
         gap:8px;align-items:center;
         box-shadow:0 16px 48px rgba(0,0,0,.55);
         max-width:720px;margin-left:auto;margin-right:auto;

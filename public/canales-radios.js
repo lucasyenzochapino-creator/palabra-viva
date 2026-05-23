@@ -100,7 +100,7 @@
 .cr-spin{padding:28px;text-align:center;color:var(--muted,#a08060)}
 .cr-form{border:1px solid var(--line,rgba(200,150,80,.2));background:var(--card,rgba(255,220,150,.05));border-radius:20px;padding:16px;display:flex;flex-direction:column;gap:10px}
 .cr-form input{border:1px solid var(--line,rgba(200,150,80,.25));background:var(--card2,rgba(255,220,150,.08));color:var(--text,#f5deb3);border-radius:14px;padding:11px 14px;font:inherit;width:100%;box-sizing:border-box}
-.cr-player{position:fixed;left:10px;right:10px;bottom:calc(72px + env(safe-area-inset-bottom));z-index:9001;background:var(--card,rgba(30,15,5,.96));border:1px solid var(--line,rgba(200,150,80,.3));border-radius:20px;padding:11px 14px;display:grid;grid-template-columns:1fr auto auto auto;gap:8px;align-items:center;box-shadow:0 16px 48px rgba(0,0,0,.5);max-width:720px;margin:0 auto;backdrop-filter:blur(16px)}
+.cr-player{position:fixed;left:10px;right:10px;bottom:calc(72px + env(safe-area-inset-bottom));z-index:9001;background:var(--card,rgba(30,15,5,.96));border:1px solid var(--line,rgba(200,150,80,.3));border-radius:20px;padding:11px 14px;display:grid;grid-template-columns:1fr auto auto auto auto;gap:8px;align-items:center;box-shadow:0 16px 48px rgba(0,0,0,.5);max-width:720px;margin:0 auto;backdrop-filter:blur(16px)}
 .cr-pname{font-weight:900;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .cr-pstate{font-size:11px;color:var(--muted,#a08060)}
 .cr-pbtn{border:0;width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,var(--brand,#9a3412),var(--brand2,#f97316));color:#fff;font-weight:900;font-size:16px;cursor:pointer}
@@ -154,7 +154,8 @@
     el.innerHTML=`
       <div><div class="cr-pname">${r.name}</div><div class="cr-pstate">⏳ Conectando…</div></div>
       <button class="cr-pbtn" data-pp>▶</button>
-      <button class="cr-pbtn" style="font-size:13px" data-skip title="Siguiente">→</button>
+      <button class="cr-pbtn" style="font-size:13px" data-prev title="Anterior">⏮</button>
+      <button class="cr-pbtn" style="font-size:13px" data-skip title="Siguiente">⏭</button>
       <button class="cr-pclose" data-stop>✕</button>`;
 
     const stEl=$('.cr-pstate',el), ppBtn=$('[data-pp]',el);
@@ -167,6 +168,12 @@
 
     ppBtn.onclick=e=>{e.stopPropagation();AUD.paused?AUD.play().catch(err=>{stEl.textContent=err?.name==='NotAllowedError'?'Tocá ▶':'❌ Sin señal';ppBtn.textContent='▶';}):AUD.pause()};
     $('[data-stop]',el).onclick=e=>{e.stopPropagation();stopRadio()};
+    $('[data-prev]',el).onclick=e=>{
+      e.stopPropagation();
+      if(!cache||cache.length<2)return;
+      dialIdx=(dialIdx-1+cache.length)%cache.length;
+      playRadio(cache[dialIdx]);
+    };
     $('[data-skip]',el).onclick=e=>{
       e.stopPropagation();
       if(!cache||cache.length<2)return;
