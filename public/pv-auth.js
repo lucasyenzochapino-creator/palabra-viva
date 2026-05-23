@@ -71,6 +71,35 @@
     updateUI();
   }
 
+  // ── Recuperación de contraseña ─────────────────────────────────────────────
+  // Manda email con link mágico. Supabase redirige a SITE_URL configurada
+  // en el dashboard (típicamente la URL de producción de Vercel).
+  async function sendRecovery(email) {
+    const redirectTo = location.origin + '/';
+    const { ok, data } = await authFetch('/auth/v1/recover', {
+      method: 'POST',
+      body: JSON.stringify({ email, gotrue_meta_security: {}, redirect_to: redirectTo })
+    });
+    if (!ok) throw new Error(data?.error_description || data?.message || 'No pudimos enviar el correo. Verificá el email.');
+    return true;
+  }
+
+  // Setea nueva contraseña usando un access_token de recovery.
+  async function setNewPassword(accessToken, newPassword) {
+    const res = await fetch(`${SUPA_URL}/auth/v1/user`, {
+      method: 'PUT',
+      headers: {
+        'apikey': SUPA_KEY,
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ password: newPassword })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data?.error_description || data?.message || 'No pudimos cambiar la contraseña.');
+    return data;
+  }
+
   // ── Estilos ────────────────────────────────────────────────────────────────
   function injectStyles() {
     if ($('#pv-auth-style')) return;
@@ -92,6 +121,7 @@
       .pv-auth-err{color:#fb7185;font-size:14px;background:rgba(251,113,133,.1);border:1px solid rgba(251,113,133,.3);border-radius:12px;padding:10px 14px;display:none}
       .pv-auth-ok{color:#22c55e;font-size:14px;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);border-radius:12px;padding:10px 14px;display:none}
       .pv-auth-close{align-self:flex-end;border:1px solid var(--line,#333447);background:var(--card2,#202031);color:var(--text,#f8fafc);border-radius:999px;padding:7px 14px;font-weight:900;cursor:pointer}
+      .pv-auth-link{background:none;border:0;color:var(--brand,#f59e0b);font-size:14px;font-weight:700;cursor:pointer;text-decoration:underline;text-underline-offset:3px;padding:6px;align-self:center}
       /* Botón de usuario en quick bar */
       .pv-user-btn{pointer-events:auto;border:1px solid var(--line,#333447);background:var(--card,#171722);color:var(--text,#f8fafc);border-radius:999px;padding:10px 14px;font-size:14px;font-weight:900;cursor:pointer;white-space:nowrap}
       .pv-user-btn.in{background:linear-gradient(135deg,rgba(245,158,11,.15),rgba(236,72,153,.15));border-color:rgba(245,158,11,.4)}
@@ -102,23 +132,33 @@
   }
 
   // ── Modal de auth ─────────────────────────────────────────────────────────
-  function openModal() {
+  // Modos: 'login' | 'register' | 'forgot' | 'reset'
+  function openModal(initialTab = 'login', initialMeta = {}) {
     if ($('.pv-auth-modal')) return;
     injectStyles();
 
     const modal = document.createElement('div');
     modal.className = 'pv-auth-modal';
 
-    let tab = 'login';
+    let tab = initialTab;
+    let resetToken = initialMeta.resetToken || '';   // para modo 'reset' tras email
     function render() {
+      const titles = {
+        login:    '👤 Iniciar sesión',
+        register: '✨ Crear cuenta',
+        forgot:   '🔑 Recuperar contraseña',
+        reset:    '🔐 Nueva contraseña'
+      };
       modal.innerHTML = `
         <div class="pv-auth-sheet" role="dialog" aria-modal="true">
           <button class="pv-auth-close" id="pv-auth-close-btn">Cerrar ✕</button>
-          <h2 style="margin:0;font-size:24px;letter-spacing:-.03em">${tab === 'login' ? '👤 Iniciar sesión' : '✨ Crear cuenta'}</h2>
-          <div class="pv-auth-tabs">
-            <button class="pv-auth-tab ${tab==='login'?'on':''}" data-t="login">Ingresar</button>
-            <button class="pv-auth-tab ${tab==='register'?'on':''}" data-t="register">Registrarse</button>
-          </div>
+          <h2 style="margin:0;font-size:24px;letter-spacing:-.03em">${titles[tab]}</h2>
+          ${(tab==='login'||tab==='register') ? `
+            <div class="pv-auth-tabs">
+              <button class="pv-auth-tab ${tab==='login'?'on':''}" data-t="login">Ingresar</button>
+              <button class="pv-auth-tab ${tab==='register'?'on':''}" data-t="register">Registrarse</button>
+            </div>
+          ` : ''}
           <div id="pv-auth-err" class="pv-auth-err"></div>
           <div id="pv-auth-ok" class="pv-auth-ok"></div>
           ${tab === 'register' ? `
@@ -127,25 +167,57 @@
               <input id="pv-auth-name" class="pv-auth-input" type="text" placeholder="María" autocomplete="name">
             </div>
           ` : ''}
-          <div>
-            <label class="pv-auth-label" for="pv-auth-email">Correo electrónico</label>
-            <input id="pv-auth-email" class="pv-auth-input" type="email" placeholder="tu@correo.com" autocomplete="email">
-          </div>
-          <div>
-            <label class="pv-auth-label" for="pv-auth-pass">Contraseña</label>
-            <input id="pv-auth-pass" class="pv-auth-input" type="password" placeholder="${tab==='register'?'Mínimo 6 caracteres':'Tu contraseña'}" autocomplete="${tab==='register'?'new-password':'current-password'}">
-          </div>
-          <button class="pv-auth-btn" id="pv-auth-submit">${tab === 'login' ? '▶ Entrar' : '✨ Crear mi cuenta'}</button>
+          ${(tab==='login'||tab==='register'||tab==='forgot') ? `
+            <div>
+              <label class="pv-auth-label" for="pv-auth-email">Correo electrónico</label>
+              <input id="pv-auth-email" class="pv-auth-input" type="email" placeholder="tu@correo.com" autocomplete="email">
+            </div>
+          ` : ''}
+          ${(tab==='login'||tab==='register') ? `
+            <div>
+              <label class="pv-auth-label" for="pv-auth-pass">Contraseña</label>
+              <input id="pv-auth-pass" class="pv-auth-input" type="password" placeholder="${tab==='register'?'Mínimo 6 caracteres':'Tu contraseña'}" autocomplete="${tab==='register'?'new-password':'current-password'}">
+            </div>
+          ` : ''}
+          ${tab==='reset' ? `
+            <p style="font-size:13px;color:var(--muted,#c8c5d8);margin:0">Ingresá tu nueva contraseña. Mínimo 6 caracteres.</p>
+            <div>
+              <label class="pv-auth-label" for="pv-auth-newpass">Nueva contraseña</label>
+              <input id="pv-auth-newpass" class="pv-auth-input" type="password" autocomplete="new-password">
+            </div>
+            <div>
+              <label class="pv-auth-label" for="pv-auth-newpass2">Confirmá tu nueva contraseña</label>
+              <input id="pv-auth-newpass2" class="pv-auth-input" type="password" autocomplete="new-password">
+            </div>
+          ` : ''}
+          ${tab==='forgot' ? `<p style="font-size:13px;color:var(--muted,#c8c5d8);margin:0">Te enviamos un correo con un link para crear una contraseña nueva.</p>` : ''}
+          <button class="pv-auth-btn" id="pv-auth-submit">${
+            tab==='login'    ? '▶ Entrar' :
+            tab==='register' ? '✨ Crear mi cuenta' :
+            tab==='forgot'   ? '📧 Enviarme el link' :
+                               '🔐 Guardar contraseña'
+          }</button>
+          ${tab==='login' ? `<button class="pv-auth-link" data-go="forgot">¿Olvidaste tu contraseña?</button>` : ''}
+          ${(tab==='forgot'||tab==='reset') ? `<button class="pv-auth-link" data-go="login">← Volver a iniciar sesión</button>` : ''}
         </div>`;
 
       $('#pv-auth-close-btn', modal).onclick = closeModal;
       modal.querySelectorAll('.pv-auth-tab').forEach(b => b.addEventListener('click', () => { tab = b.dataset.t; render(); }));
+      modal.querySelectorAll('[data-go]').forEach(b => b.addEventListener('click', () => { tab = b.dataset.go; render(); }));
       modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
 
       const errEl = () => $('#pv-auth-err', modal);
       const okEl  = () => $('#pv-auth-ok',  modal);
       const showErr = msg => { const e = errEl(); e.textContent = msg; e.style.display = 'block'; };
       const showOk  = msg => { const e = okEl();  e.textContent = msg; e.style.display = 'block'; };
+      const restoreBtn = (btn) => {
+        btn.disabled = false;
+        btn.textContent =
+          tab==='login'    ? '▶ Entrar' :
+          tab==='register' ? '✨ Crear mi cuenta' :
+          tab==='forgot'   ? '📧 Enviarme el link' :
+                             '🔐 Guardar contraseña';
+      };
 
       $('#pv-auth-submit', modal).addEventListener('click', async () => {
         const btn = $('#pv-auth-submit', modal);
@@ -157,17 +229,19 @@
         const email = $('#pv-auth-email', modal)?.value?.trim() || '';
         const pass  = $('#pv-auth-pass',  modal)?.value || '';
         const name  = $('#pv-auth-name',  modal)?.value?.trim() || '';
-
-        if (!email || !pass) { showErr('Completá el correo y la contraseña.'); btn.disabled = false; btn.textContent = tab==='login'?'▶ Entrar':'✨ Crear mi cuenta'; return; }
+        const np1   = $('#pv-auth-newpass',  modal)?.value || '';
+        const np2   = $('#pv-auth-newpass2', modal)?.value || '';
 
         try {
           if (tab === 'login') {
+            if (!email || !pass) throw new Error('Completá el correo y la contraseña.');
             await signIn(email, pass);
             document.dispatchEvent(new CustomEvent('pv-auth-change', { detail: getSession() }));
             updateUI();
             closeModal();
-          } else {
-            if (pass.length < 6) { showErr('La contraseña debe tener al menos 6 caracteres.'); btn.disabled = false; btn.textContent = '✨ Crear mi cuenta'; return; }
+          } else if (tab === 'register') {
+            if (!email || !pass) throw new Error('Completá el correo y la contraseña.');
+            if (pass.length < 6) throw new Error('La contraseña debe tener al menos 6 caracteres.');
             const { needsConfirm } = await signUp(email, pass, name);
             if (needsConfirm) {
               showOk('✅ ¡Registrada! Revisá tu correo para confirmar tu cuenta, luego iniciá sesión.');
@@ -177,11 +251,24 @@
               updateUI();
               closeModal();
             }
+          } else if (tab === 'forgot') {
+            if (!email) throw new Error('Ingresá tu correo.');
+            await sendRecovery(email);
+            showOk('📧 Listo. Si el correo está registrado, te llegará un mensaje con un link para crear una contraseña nueva. Revisá también la carpeta de spam.');
+            btn.textContent = '✅ Enviado';
+          } else if (tab === 'reset') {
+            if (!resetToken) throw new Error('Link inválido. Pedí otro correo de recuperación.');
+            if (np1.length < 6) throw new Error('Mínimo 6 caracteres.');
+            if (np1 !== np2)    throw new Error('Las contraseñas no coinciden.');
+            await setNewPassword(resetToken, np1);
+            // Limpiar el hash y mostrar OK
+            try { history.replaceState(null, '', location.pathname); } catch {}
+            showOk('✅ ¡Contraseña actualizada! Ya podés iniciar sesión.');
+            setTimeout(() => { tab = 'login'; resetToken = ''; render(); }, 1200);
           }
         } catch (err) {
           showErr(err.message || 'Ocurrió un error. Intentá nuevamente.');
-          btn.disabled = false;
-          btn.textContent = tab==='login'?'▶ Entrar':'✨ Crear mi cuenta';
+          restoreBtn(btn);
         }
       });
 
@@ -190,7 +277,7 @@
         inp.addEventListener('keydown', e => { if (e.key === 'Enter') $('#pv-auth-submit', modal)?.click(); });
       });
 
-      setTimeout(() => $('#pv-auth-email', modal)?.focus(), 80);
+      setTimeout(() => ($('#pv-auth-email', modal) || $('#pv-auth-newpass', modal))?.focus(), 80);
     }
 
     function closeModal() {
@@ -242,6 +329,42 @@
     }
   }
 
+  // ── Detector de callback de recovery email ────────────────────────────────
+  // Supabase redirige a SITE_URL + #access_token=...&type=recovery
+  // Detectamos ese hash al cargar y abrimos el modal en modo 'reset'.
+  function checkRecoveryCallback() {
+    const hash = location.hash || '';
+    if (!hash.includes('access_token=') || !hash.includes('type=recovery')) return;
+    const params = new URLSearchParams(hash.replace(/^#/, ''));
+    const token = params.get('access_token');
+    if (!token) return;
+    // Esperar a que el quick bar esté disponible (React renderice)
+    const tryOpen = () => {
+      if (document.querySelector('.quick') || document.body) {
+        openModal('reset', { resetToken: token });
+      } else {
+        setTimeout(tryOpen, 300);
+      }
+    };
+    setTimeout(tryOpen, 400);
+  }
+
+  // ── Función pública: compartir link de registro ────────────────────────────
+  // Cualquier persona con el link puede entrar y registrarse libremente.
+  async function shareInviteLink() {
+    const url = location.origin + '/';
+    const text = '✨ Te invito a Palabra Viva — Biblia, oración y radio cristiana en una app gratuita: ' + url;
+    if (navigator.share) {
+      try { await navigator.share({ title: 'Palabra Viva', text, url }); return; } catch {}
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      alert('📋 Link copiado al portapapeles:\n\n' + url);
+    } catch {
+      prompt('Copiá este link y compartilo:', url);
+    }
+  }
+
   // ── Boot ───────────────────────────────────────────────────────────────────
   function boot() {
     injectStyles();
@@ -250,6 +373,9 @@
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
   window.addEventListener('load', boot);
+  // Detectar recovery callback en el primer load
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', checkRecoveryCallback);
+  else checkRecoveryCallback();
   setInterval(() => {
     const quick = document.querySelector('.quick');
     if (quick && !quick.querySelector('.pv-user-btn')) updateUI();
@@ -262,6 +388,7 @@
     getToken,
     isAdmin,
     signOut,
-    openModal
+    openModal,
+    shareInviteLink
   };
 })();

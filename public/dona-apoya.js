@@ -85,10 +85,11 @@
     const wrap = document.createElement('div');
     wrap.className = 'pv-dona-wrap';
     wrap.innerHTML = `
-      <p class="pv-dona-hint">❤️ Esta app es gratuita. Si querés apoyarla:</p>
+      <p class="pv-dona-hint">❤️ Esta app es gratuita. Si querés apoyarla o invitar a alguien:</p>
       <div class="pv-dona-btns">
         <a class="pv-dona-btn" href="${CAFECITO_URL}" target="_blank" rel="noopener noreferrer">☕ Cafecito</a>
         <a class="pv-dona-btn" href="${MERCADOPAGO_URL}" target="_blank" rel="noopener noreferrer">💳 Mercado Pago</a>
+        <button class="pv-dona-btn" data-share>📤 Invitar amigo</button>
       </div>
       <button class="pv-dona-toggle">⭐ Funciones premium que vienen ▾</button>
       <div class="pv-dona-premium">
@@ -110,6 +111,15 @@
       btn.textContent = panel.classList.contains('open')
         ? '⭐ Funciones premium que vienen ▴'
         : '⭐ Funciones premium que vienen ▾';
+    });
+
+    // Compartir link de la app — usa Web Share API o fallback a clipboard
+    wrap.querySelector('[data-share]').addEventListener('click', () => {
+      window.PVAuth?.shareInviteLink?.() || (() => {
+        const url = location.origin + '/';
+        try { navigator.clipboard.writeText(url); alert('📋 Link copiado: ' + url); }
+        catch { prompt('Copiá este link:', url); }
+      })();
     });
 
     app.appendChild(wrap);
