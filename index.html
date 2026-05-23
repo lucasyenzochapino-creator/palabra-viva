@@ -2,20 +2,45 @@
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#7c4a1e" />
-    <meta name="description" content="Palabra Viva: Biblia, palabra diaria, oración y lectura espiritual gratuita." />
+    <meta name="description" content="Palabra Viva: Biblia, audio, radios cristianas, planes de lectura, oración y palabra diaria. Gratis." />
+
+    <!-- Content Security Policy: limita orígenes para defensa contra XSS -->
+    <meta http-equiv="Content-Security-Policy" content="
+      default-src 'self';
+      script-src 'self' 'unsafe-inline';
+      style-src  'self' 'unsafe-inline';
+      img-src    'self' data: blob: https:;
+      media-src  'self' blob: https://archive.org https://*.archive.org https://*.zeno.fm https://stream.zeno.fm https://*.radioca.st https://*.radiomast.io https://*.305stream.com https://*.livestreamcdn.net https://*.streamingecuador.net https://*.novotempo.com https://*.radio.co https://*.unoredcdn.net https://*.streams.radio;
+      connect-src 'self' https://archive.org https://*.archive.org https://fuxojzmwyyecefxczfrn.supabase.co wss://fuxojzmwyyecefxczfrn.supabase.co;
+      frame-src   https://www.youtube.com https://youtube.com;
+      font-src   'self' data:;
+      object-src 'none';
+      base-uri   'self';
+      form-action 'self';
+    " />
+
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Palabra Viva" />
+    <meta name="application-name" content="Palabra Viva" />
+    <meta name="robots" content="index, follow" />
+
+    <!-- Open Graph (compartir en redes con preview) -->
+    <meta property="og:title" content="Palabra Viva" />
+    <meta property="og:description" content="Biblia, audio, radios cristianas y oración. Gratis." />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="/icon-512.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-    <!-- Favicon: PNG va DESPUÉS del SVG para que los navegadores modernos lo usen -->
     <link rel="icon" type="image/svg+xml" href="/icon.svg" />
     <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
     <link rel="shortcut icon" href="/favicon-32.png" />
-    <title>Palabra Viva</title>
+    <title>Palabra Viva — Biblia, audio y oración</title>
     <!-- Sepia por defecto: corre antes que React lea localStorage -->
     <script>try{var _pvt=localStorage.getItem('pv-theme');if(!_pvt||_pvt==='dark')localStorage.setItem('pv-theme','sepia');}catch(e){}</script>
   </head>
