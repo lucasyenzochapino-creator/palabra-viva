@@ -243,6 +243,16 @@
   // ── Mini-player flotante ───────────────────────────────────────────────
   function refreshMiniPlayer() {
     if (!currentBook || !currentChapter) return;
+
+    // No mostrar el mini-player cuando hay una UI más completa disponible:
+    // · El panel fullscreen está abierto (.pv-bap-panel)
+    // · La card en la pestaña Biblia está visible (.pv-ba-card)
+    // En estos casos, remover el mini-player si existía y salir.
+    if (document.querySelector('.pv-bap-panel') || document.querySelector('.pv-ba-card')) {
+      document.querySelector('.pv-bap-player')?.remove();
+      return;
+    }
+
     let el = document.querySelector('.pv-bap-player');
     if (!el) { el = document.createElement('div'); el.className = 'pv-bap-player'; document.body.appendChild(el); }
     const playing = !AUD.paused;
@@ -622,6 +632,9 @@
     // Toggle: si ya está abierto, cerrarlo
     const existing = document.querySelector('.pv-bap-panel');
     if (existing) { closePanelKeepAudio(existing); return; }
+
+    // Ocultar mini-player inmediatamente (el panel lo reemplaza)
+    document.querySelector('.pv-bap-player')?.remove();
 
     const panel = document.createElement('div');
     panel.className = 'pv-bap-panel';
