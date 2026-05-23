@@ -127,79 +127,129 @@
     speechStop=true;
   }
 
-  // TTS robusto con workarounds para bugs conocidos de Chrome/Android/iOS
+  // TTS robusto v2 — Chrome corta TTS después de ~15s. Solución probada:
+  // hablar UNA frase a la vez (cada utterance < 15s), sin pause/resume
+  // (eso confundía a Chrome y cancelaba la cola). Watchdog que detecta
+  // si la voz se cayó mid-speech y reintenta automáticamente.
+  let _ttsSession = 0; // identificador único por reproducción
   async function tts(text,btn){
-    // 1) Verificar soporte
     if(!('speechSynthesis' in window)){
       alert('Tu navegador no soporta lectura en voz alta. Probá en Chrome o Safari actualizado.');
       return;
     }
-    // 2) Cancelar lo anterior + esperar a que limpie (bug Chrome: speak()
-    //    inmediatamente después de cancel() a veces se ignora)
-    speechStop=true;
-    try{speechSynthesis.cancel();}catch{}
-    await new Promise(r=>setTimeout(r,250));
 
-    // 3) Cargar voces (puede tardar en algunos browsers)
+    // Cancelar lo anterior y esperar a que limpie
+    speechStop=true;
+    _ttsSession++;
+    const session = _ttsSession;
+    try{speechSynthesis.cancel();}catch{}
+    await new Promise(r=>setTimeout(r,300));
+
     btn.textContent='⏳ Cargando voz…';
     btn.disabled=true;
     await loadVoices();
     btn.disabled=false;
 
-    // 4) Frases (agrupadas de a 2 para fluidez)
-    const sentences=text.match(/[^.!?]+[.!?]+|[^.!?]+$/g)||[text];
-    const parts=[];
-    for(let j=0;j<sentences.length;j+=2){parts.push(sentences.slice(j,j+2).join(' ').trim());}
-    let i=0;
+    // Si el usuario disparó OTRO play mientras cargaban voces, abortar este
+    if(session !== _ttsSession) return;
 
-    speechStop=false;
-    btn.textContent='⏸ Detener audio';
-    btn.dataset.playing='1';
-
-    const voice=pickBestSpanishVoice();
-    const voiceName=voice?.name||'voz del sistema';
-    const isHighQuality=voice && /neural|wavenet|natural|network|enhanced|premium/i.test((voice.name||'')+(voice.voiceURI||''));
-
-    // 5) Workaround para bug de Chrome donde speech se detiene después de ~15s:
-    //    pausar/reanudar periódicamente. NO afecta el audio audible.
-    const keepAliveTimer = setInterval(()=>{
-      if(speechStop){clearInterval(keepAliveTimer);return;}
-      try{speechSynthesis.pause();speechSynthesis.resume();}catch{}
-    },10000);
-
-    const cleanup=()=>{
-      clearInterval(keepAliveTimer);
-      btn.textContent=parts.length?'🔊 Leer de nuevo':'🔊 Escuchar historia';
-      btn.dataset.playing='';
-    };
-
-    const next=()=>{
-      if(speechStop||i>=parts.length){cleanup();return;}
-      const u=new SpeechSynthesisUtterance(parts[i++]);
-      u.lang=voice?.lang||'es-419';
-      u.rate=isHighQuality?0.95:0.88;
-      u.pitch=isHighQuality?1.0:1.08;
-      u.volume=1;
-      if(voice) u.voice=voice;
-      u.onend=()=>{ if(!speechStop) setTimeout(next,200); };
-      u.onerror=(ev)=>{
-        console.warn('TTS error en frase',i-1,ev?.error||ev);
-        if(!speechStop) setTimeout(next,200);
-      };
-      try{
-        speechSynthesis.speak(u);
-      }catch(err){
-        console.warn('TTS speak() falló:',err);
-        cleanup();
-        alert('No se pudo iniciar la voz. Probá tocar de nuevo o cambiar de voz en el selector.');
+    // Cortar por frases CORTAS (una a la vez para evitar el bug de 15s)
+    const sentences = text.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [text];
+    // Si una frase es muy larga (>200 chars), partir por comas
+    const parts = [];
+    for(const s of sentences){
+      const trimmed = s.trim();
+      if(!trimmed) continue;
+      if(trimmed.length <= 200){ parts.push(trimmed); }
+      else {
+        // Partir por comas para que cada chunk sea más corto
+        const subs = trimmed.split(/,\s*/);
+        let buf = '';
+        for(const sub of subs){
+          if((buf + sub).length > 200 && buf){ parts.push(buf); buf = sub; }
+          else { buf = buf ? buf + ', ' + sub : sub; }
+        }
+        if(buf) parts.push(buf);
       }
+    }
+
+    let i = 0;
+    speechStop = false;
+    btn.textContent = '⏸ Detener audio';
+    btn.dataset.playing = '1';
+
+    const voice = pickBestSpanishVoice();
+    const voiceName = voice?.name || 'voz del sistema';
+    const isHighQuality = voice && /neural|wavenet|natural|network|enhanced|premium/i.test((voice.name||'')+(voice.voiceURI||''));
+
+    console.log('[Niños TTS] voz:', voiceName, voice?.lang, '— calidad:', isHighQuality?'alta':'básica', '— frases:', parts.length);
+
+    let watchdog = null;
+    const cleanup = () => {
+      if(watchdog){ clearInterval(watchdog); watchdog = null; }
+      btn.textContent = '🔊 Leer de nuevo';
+      btn.dataset.playing = '';
     };
 
-    // Pequeño delay antes de la primera frase para que el botón se actualice
-    setTimeout(next,100);
+    const speakNext = () => {
+      if(speechStop || session !== _ttsSession || i >= parts.length){
+        cleanup();
+        return;
+      }
+      const text = parts[i];
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = voice?.lang || 'es-419';
+      u.rate = isHighQuality ? 0.95 : 0.90;
+      u.pitch = isHighQuality ? 1.0 : 1.05;
+      u.volume = 1;
+      if(voice) u.voice = voice;
 
-    // Log para debugging
-    console.log('[Niños TTS] usando voz:', voiceName, voice?.lang, '— calidad:', isHighQuality?'alta':'básica');
+      let advanced = false;
+      const advance = () => {
+        if(advanced) return;
+        advanced = true;
+        i++;
+        // Pequeña pausa entre frases para fluidez (no más de 200ms para no cortar el ritmo)
+        setTimeout(() => { if(!speechStop && session === _ttsSession) speakNext(); else cleanup(); }, 180);
+      };
+
+      u.onend = advance;
+      u.onerror = (ev) => {
+        console.warn('[Niños TTS] error frase', i, ev?.error || ev);
+        advance();
+      };
+
+      try {
+        speechSynthesis.speak(u);
+      } catch(err){
+        console.warn('[Niños TTS] speak() falló:', err);
+        advance();
+      }
+
+      // Watchdog: si después de 1.5s NO empezó a hablar (síntoma del bug de Chrome
+      // donde cancel→speak inmediato es ignorado), forzar retry.
+      if(watchdog) clearInterval(watchdog);
+      let waited = 0;
+      watchdog = setInterval(() => {
+        if(speechStop || session !== _ttsSession){ clearInterval(watchdog); return; }
+        waited += 500;
+        if(speechSynthesis.speaking){
+          // Sí está hablando — todo bien, dejar al watchdog para detectar caídas
+          return;
+        }
+        if(advanced){ clearInterval(watchdog); return; }
+        // No habla y no avanzó → algo salió mal
+        if(waited >= 2500){
+          console.warn('[Niños TTS] watchdog: no arrancó la frase', i, '— reintentando');
+          clearInterval(watchdog);
+          watchdog = null;
+          try{speechSynthesis.cancel();}catch{}
+          setTimeout(() => { if(!speechStop && session === _ttsSession) speakNext(); }, 250);
+        }
+      }, 500);
+    };
+
+    setTimeout(speakNext, 150);
   }
 
   // UI: mini selector de voz dentro del detail panel
