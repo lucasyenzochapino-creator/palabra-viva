@@ -55,14 +55,24 @@
       body: JSON.stringify({ email, password, data: { display_name: name } })
     });
     if (!ok) throw new Error(data?.error_description || data?.msg || 'Error al registrarse');
-    // Si ya hay sesión activa (email confirmado automáticamente)
+    // Caso 1: Supabase devolvió access_token (email confirmation desactivado)
     if (data.access_token) {
       const profile = await fetchProfile(data.user.id, data.access_token);
       const session = { ...data, user: { ...data.user, profile } };
       lsSet(SESSION_KEY, session);
       return { session, needsConfirm: false };
     }
-    return { session: null, needsConfirm: true };
+    // Caso 2: No vino access_token. Nuestro trigger auth.users auto-confirma
+    // el email, así que intentamos hacer signIn con las mismas credenciales.
+    // Si funciona, queda logueado al toque sin ver el correo de confirmación.
+    try {
+      const session = await signIn(email, password);
+      return { session, needsConfirm: false };
+    } catch {
+      // Si falla, la confirmación está habilitada y el trigger no corrió
+      // (raro). Pedimos al usuario que confirme su correo.
+      return { session: null, needsConfirm: true };
+    }
   }
 
   function signOut() {
