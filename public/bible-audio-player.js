@@ -574,7 +574,7 @@
 
   function removeOldInvasiveElements() {
     document.querySelectorAll(
-      '.pv-bap-fab,.pv-bap-quick,.pv-bap-home,.pv-bap-panel,' +
+      '.pv-bap-fab,.pv-bap-quick,.pv-bap-home,' +
       '.pv-audio-fixed,.pv-audio-box,.pv-audio-card-force,' +
       '.pv-voice-quick,.pv-voice-panel,.pv-audio-one,' +
       '.pv-archive-float,.pv-archive-panel,.pv-archive-home'
