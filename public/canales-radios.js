@@ -54,9 +54,9 @@
 
   // ── Estilos ────────────────────────────────────────────────────────────────
   function injectCSS(){
-    if($('#cr-style-v10'))return;
-    ['#cr-style-v7','#canales-radios-style-v7','#canales-radios-style-v4','#canales-radios-style'].forEach(id=>$(id)?.remove());
-    const st=document.createElement('style');st.id='cr-style-v10';st.textContent=`
+    if($('#cr-style-v11'))return;
+    ['#cr-style-v10','#cr-style-v7','#canales-radios-style-v7','#canales-radios-style-v4','#canales-radios-style'].forEach(id=>$(id)?.remove());
+    const st=document.createElement('style');st.id='cr-style-v11';st.textContent=`
 .cr-panel{position:fixed;inset:0;z-index:9000;background:var(--bg,#1a1007);color:var(--text,#f5deb3);overflow-y:auto;padding:14px 14px calc(200px + env(safe-area-inset-bottom))}
 .cr-inner{max-width:720px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
 .cr-head{position:sticky;top:0;z-index:2;backdrop-filter:blur(14px);background:linear-gradient(to bottom,var(--bg,#1a1007) 70%,transparent);padding:10px 0 14px;display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
@@ -159,11 +159,28 @@
     };
 
     try{
-      navigator.mediaSession.metadata=new MediaMetadata({title:r.name,artist:'Palabra Viva',album:r.type||''});
+      navigator.mediaSession.metadata=new MediaMetadata({
+        title:r.name,
+        artist:'Palabra Viva',
+        album:r.type||'Radio Cristiana',
+        artwork:[
+          {src:'/icon-192.png',sizes:'192x192',type:'image/png'},
+          {src:'/icon-512.png',sizes:'512x512',type:'image/png'}
+        ]
+      });
       navigator.mediaSession.setActionHandler('play',()=>AUD.play().catch(()=>{}));
       navigator.mediaSession.setActionHandler('pause',()=>AUD.pause());
       navigator.mediaSession.setActionHandler('stop',stopRadio);
-      navigator.mediaSession.setActionHandler('nexttrack',()=>$('[data-skip]',el)?.click());
+      navigator.mediaSession.setActionHandler('nexttrack',()=>{
+        if(!cache||cache.length<2)return;
+        dialIdx=(dialIdx+1)%cache.length;
+        playRadio(cache[dialIdx]);
+      });
+      navigator.mediaSession.setActionHandler('previoustrack',()=>{
+        if(!cache||cache.length<2)return;
+        dialIdx=(dialIdx-1+cache.length)%cache.length;
+        playRadio(cache[dialIdx]);
+      });
     }catch{}
 
     // Asignar src y reproducir — NO llamar load() antes de play(), provoca AbortError silencioso
