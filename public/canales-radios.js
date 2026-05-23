@@ -13,7 +13,7 @@
   // ── Radios hardcoded — URLs verificadas en Radio Browser API (lastcheckok=1) ──
   const HARD_RADIOS = [
     // USA en Español — verificadas
-    { id:'aliento-ks',    name:'Radio Aliento 100.5 FM',     type:'USA · Kansas · Cristiana',       note:'Radio cristiana evangélica en español de Kansas.', stream:'https://streams.radio.co:80/s22a35bf51/listen' },
+    { id:'aliento-cielo', name:'Aliento del Cielo Radio',   type:'USA · Cristiana · Hispana',      note:'Radio cristiana evangélica en español 24/7.',      stream:'https://streams.radio.co/s22a35bf51/listen' },
     { id:'bbn-es',        name:'BBN Radio Español',          type:'USA · Internacional · Bíblica',  note:'Música cristiana, Biblia y enseñanza 24/7.',       stream:'https://streams.radiomast.io/475ebed1-595e-4717-b888-64fe8fc6b09f' },
     { id:'buen-sam',      name:'El Buen Samaritano 102.3 FM',type:'USA · Florida · Cristiana',      note:'Radio cristiana en español desde Florida.',        stream:'https://stream1.305stream.com/proxy/buensamaritano?mp=/stream' },
     { id:'vision-crist',  name:'Radio Visión Cristiana',     type:'USA · Internacional · Cristiana',note:'Alabanza, predicaciones y familia cristiana.',     stream:'https://livestreamcdn.net:2000/stream/RadioVisionCristianaRadio/' },
@@ -28,7 +28,15 @@
     { id:'radio-familia-mx', name:'Radio Familia Parral',    type:'México · Cristiana',             note:'Radio familiar cristiana desde Chihuahua.',        stream:'https://radiofamilia1.radioca.st/stream' },
     { id:'estereo-vida',  name:'Estéreo Vida 93.1 FM',       type:'México · Cristiana',             note:'Radio cristiana desde Ciudad del Carmen.',         stream:'https://stream.zeno.fm/5y45gqtbcchvv' },
     // Latinoamérica — verificada
-    { id:'nuevo-tiempo',  name:'Radio Nuevo Tiempo',         type:'Latinoamérica · Cristiana',      note:'Música y esperanza para la familia.',              stream:'https://stream.live.novotempo.com/radio/smil:radionuevotiempo.smil/playlist.m3u8' },
+    { id:'nuevo-tiempo',  name:'Radio Nuevo Tiempo',         type:'Latinoamérica · Cristiana',      note:'Música y esperanza para la familia.',              stream:'https://stream.live.novotempo.com/radio/smil:rntLimaPE.smil/playlist.m3u8' },
+    // Honduras — top votada en Radio Browser
+    { id:'dcr-103',       name:'DCR Difusora Cristiana 103.1 FM', type:'Honduras · Cristiana',      note:'Música cristiana y mensajes desde Honduras.',      stream:'https://stream.playerlive.info/8165/stream' },
+    // Venezuela — top votada
+    { id:'cristiana-ve',  name:'Radio Cristiana Venezuela',  type:'Venezuela · Evangélica',         note:'Música y mensajes del evangelio en español.',      stream:'https://stream.zeno.fm/r7zrx18xcfhvv' },
+    // Argentina — top votada
+    { id:'cristiana-883', name:'Radio Cristiana FM 88.3',    type:'Argentina · Cristiana',          note:'Radio cristiana argentina con mensajes y música.', stream:'https://rr5100.globalhost1.com/8540/;' },
+    // México — verificada (Esperanza Monterrey)
+    { id:'esperanza-mty', name:'Radio Esperanza 1140 AM',    type:'México · Cristiana',             note:'Música cristiana desde Monterrey.',                stream:'https://playerservices.streamtheworld.com/api/livestream-redirect/RADIO_ESPERANZA_1140AM.mp3' },
   ];
 
   const BLOCKED = ['catolic','católic','catholic','radio maria','radio maría','vatican','vaticano','guadalupe','fatima','fátima','virgen','santuario','cope ','mariana','arquidiocesis','diocesis','parroquia','sagrado corazon','inmaculada','pontificia','eucaristia'];
