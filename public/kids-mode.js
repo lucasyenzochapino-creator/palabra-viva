@@ -38,19 +38,38 @@
 
   const CATS=[['todas','📖','Todas'],['creacion','🌍','Creación'],['moises','🔥','Moisés'],['reyes','👑','Reyes y profetas'],['jesus','✨','Jesús'],['pascua','✝️','Parábolas y Pascua']];
   const PROGRESS_KEY='pv-kids-read';
-  const MIA_BASE='https://ministerioinfantil.com/wp-content/uploads/2019/02/';
-  const AUDIO_MAP={
-    'Dios crea el mundo':[MIA_BASE+'2-La-Creación-de-DIOS.-Parte-1..mp3',MIA_BASE+'3-La-Creación-de-DIOS.-Parte-2..mp3'],
-    'Adán y Eva en el jardín':[MIA_BASE+'4-DIOS-crea-al-hombre.mp3',MIA_BASE+'5-Las-primeras-personas-pecan.mp3'],
-    'Noé y el arca':[MIA_BASE+'7-No-construye-un-arca.mp3',MIA_BASE+'8-Empieza-el-diluvio.mp3',MIA_BASE+'9-Termina-el-diluvio-y-la-seal-del-arco-iris.mp3'],
-    'Abraham y la promesa':[MIA_BASE+'10-El-hijo-prometido-Parte-1.mp3'],
-    'José y sus hermanos':[MIA_BASE+'16-Jos-es-vendido-como-esclavo.-Parte-1.mp3'],
-    'Moisés en el río':[MIA_BASE+'25-Nace-Moiss.mp3'],
-    'La zarza ardiente':[MIA_BASE+'27-DIOS-llama-a-Moiss.mp3'],
-    'Las plagas de Egipto':[MIA_BASE+'30-DIOS-enva-plagas-a-Egipto-Parte-1.mp3'],
-    'Cruzando el mar Rojo':[MIA_BASE+'34-Cruzando-el-mar-rojo.mp3'],
-    'Maná del cielo':[MIA_BASE+'35-DIOS-alimenta-a-su-pueblo.mp3'],
-    'Los diez mandamientos':[MIA_BASE+'36-Los-diez-mandamientos.mp3']
+
+  // ── AUDIO HUMANO REAL ─────────────────────────────────────────────────────
+  // Serie "La Biblia Infantil" de Oceano Multimedia en archive.org.
+  // Voz humana real, narración cálida pensada para niños, ~2-3 min cada una.
+  // CC BY-NC-ND license — uso permitido en app no comercial gratuita.
+  const IA_BASE = 'https://archive.org/download/';
+  const AUDIO_MAP = {
+    'Dios crea el mundo':         [IA_BASE+'102-la-creacion-del-mundo_202210/102%20-%20La%20Creacio%CC%81n%20Del%20Mundo.mp3'],
+    'Adán y Eva en el jardín':    [IA_BASE+'103-la-primera-pareja-adan-y-eva_202210/103%20-%20La%20Primera%20Pareja-%20Ada%CC%81n%20Y%20Eva.mp3'],
+    'Noé y el arca':              [IA_BASE+'105-el-arca-de-noe/105%20-%20El%20Arca%20De%20Noe%CC%81.mp3'],
+    'La torre de Babel':          [IA_BASE+'107-la-torre-de-babel/107%20-%20La%20Torre%20De%20Babel.mp3'],
+    'Abraham y la promesa':       [IA_BASE+'108-sacrificio-de-isaac/108%20-%20Sacrificio%20De%20Isaac.mp3'],
+    'José y sus hermanos':        [IA_BASE+'110-jose-en-egipto/110%20-%20Jose%CC%81%20En%20Egipto.mp3'],
+    'Moisés en el río':           [IA_BASE+'113-el-pequeno-moises/113%20-%20El%20Pequen%CC%83o%20Moise%CC%81s.mp3'],
+    'Las plagas de Egipto':       [IA_BASE+'115-las-plagas-de-egipto/115%20-%20Las%20Plagas%20De%20Egipto.mp3'],
+    'Cruzando el mar Rojo':       [IA_BASE+'116-el-paso-del-mar-rojo/116%20-%20El%20Paso%20Del%20Mar%20Rojo.mp3'],
+    'Los diez mandamientos':      [IA_BASE+'118-las-tablas-de-la-ley/118%20-%20Las%20Tablas%20De%20La%20Ley.mp3'],
+    'David y Goliat':             [IA_BASE+'124-el-gigante-goliat/124%20-%20El%20Gigante%20Goliat.mp3'],
+    'Salomón y la sabiduría':     [IA_BASE+'125-el-sabio-salomon/125%20-%20El%20Sabio%20Salomo%CC%81n.mp3'],
+    'Elías y los cuervos':        [IA_BASE+'128-el-profeta-elias/128%20-%20El%20Profeta%20Eli%CC%81as.mp3'],
+    'Jonás y el pez grande':      [IA_BASE+'131-jonas-y-la-ballena/131%20-%20Jona%CC%81s%20Y%20La%20Ballena.mp3'],
+    'Jesús nace en Belén':        [IA_BASE+'203-el-nacimiento-de-jesus_202210/203%20-%20El%20Nacimiento%20De%20Jesu%CC%81s.mp3'],
+    'Cinco panes y dos peces':    [IA_BASE+'214-la-multiplicacion-de-los-panes-y-los-peces_202210/214%20-%20La%20Multiplicacio%CC%81n%20De%20Los%20Panes%20Y%20Los%20Peces.mp3'],
+    'Jesús camina sobre el agua': [IA_BASE+'215-jesus-camina-sobre-las-aguas_202210/215%20-%20Jesu%CC%81s%20Camina%20Sobre%20Las%20Aguas.mp3'],
+    'Jesús ama a los niños':      [IA_BASE+'218-jesus-y-los-ninos_202210/218%20-%20Jesu%CC%81s%20Y%20Los%20Nin%CC%83os.mp3'],
+    'Jesús resucita a Lázaro':    [IA_BASE+'219-la-resurreccion-de-lazaro_202210/219%20-%20La%20Resurreccio%CC%81n%20De%20La%CC%81zaro.mp3'],
+    'El buen samaritano':         [IA_BASE+'217-jesus-cuenta-parabolas_202210/217%20-%20Jesu%CC%81s%20Cuenta%20Para%CC%81bolas.mp3'],
+    'El hijo que volvió':         [IA_BASE+'217-jesus-cuenta-parabolas_202210/217%20-%20Jesu%CC%81s%20Cuenta%20Para%CC%81bolas.mp3'],
+    'La oveja perdida':           [IA_BASE+'217-jesus-cuenta-parabolas_202210/217%20-%20Jesu%CC%81s%20Cuenta%20Para%CC%81bolas.mp3'],
+    'El sembrador':               [IA_BASE+'217-jesus-cuenta-parabolas_202210/217%20-%20Jesu%CC%81s%20Cuenta%20Para%CC%81bolas.mp3'],
+    'Jesús muere por nosotros':   [IA_BASE+'228-la-crucifixion_202210/228%20-%20La%20Crucifixio%CC%81n.mp3'],
+    'Jesús vive':                 [IA_BASE+'230-la-resureccion-del-senor_202210/230%20-%20La%20Resureccio%CC%81n%20Del%20Sen%CC%83or.mp3']
   };
 
   const idOf=s=>`${s.c}-${s.title.replace(/\s+/g,'-')}`;
