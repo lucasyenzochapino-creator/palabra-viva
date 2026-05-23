@@ -115,6 +115,11 @@
       .pv-auth-tab.on{background:linear-gradient(135deg,var(--brand,#f59e0b),var(--brand2,#ec4899));color:#fff;border-color:transparent}
       .pv-auth-input{width:100%;border:1px solid var(--line,#333447);background:var(--card2,#202031);color:var(--text,#f8fafc);border-radius:16px;padding:14px 16px;font:inherit;font-size:16px;outline:none;box-sizing:border-box}
       .pv-auth-input:focus{border-color:var(--brand,#f59e0b)}
+      /* Contraseña con ojo para mostrar/ocultar */
+      .pv-auth-pass-wrap{position:relative}
+      .pv-auth-pass-wrap .pv-auth-input{padding-right:54px}
+      .pv-auth-pass-eye{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:transparent;border:0;cursor:pointer;font-size:22px;padding:8px 10px;line-height:1;color:var(--muted,#c8c5d8);border-radius:12px}
+      .pv-auth-pass-eye:hover{background:var(--card2,#202031)}
       .pv-auth-label{font-size:13px;font-weight:900;color:var(--muted,#c8c5d8);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px;display:block}
       .pv-auth-btn{width:100%;border:0;border-radius:999px;padding:15px;font-weight:900;font-size:17px;cursor:pointer;background:linear-gradient(135deg,var(--brand,#f59e0b),var(--brand2,#ec4899));color:#fff;margin-top:4px}
       .pv-auth-btn:disabled{opacity:.6;cursor:not-allowed}
@@ -175,19 +180,31 @@
           ` : ''}
           ${(tab==='login'||tab==='register') ? `
             <div>
-              <label class="pv-auth-label" for="pv-auth-pass">Contraseña</label>
-              <input id="pv-auth-pass" class="pv-auth-input" type="password" placeholder="${tab==='register'?'Mínimo 6 caracteres':'Tu contraseña'}" autocomplete="${tab==='register'?'new-password':'current-password'}">
+              <div style="display:flex;justify-content:space-between;align-items:baseline">
+                <label class="pv-auth-label" for="pv-auth-pass">Contraseña</label>
+                ${tab==='login' ? `<button class="pv-auth-link" data-go="forgot" style="font-size:13px;padding:0">¿Olvidaste tu contraseña?</button>` : ''}
+              </div>
+              <div class="pv-auth-pass-wrap">
+                <input id="pv-auth-pass" class="pv-auth-input" type="password" placeholder="${tab==='register'?'Mínimo 6 caracteres':'Tu contraseña'}" autocomplete="${tab==='register'?'new-password':'current-password'}">
+                <button class="pv-auth-pass-eye" type="button" data-eye="pv-auth-pass" title="Mostrar contraseña" aria-label="Mostrar contraseña">👁</button>
+              </div>
             </div>
           ` : ''}
           ${tab==='reset' ? `
             <p style="font-size:13px;color:var(--muted,#c8c5d8);margin:0">Ingresá tu nueva contraseña. Mínimo 6 caracteres.</p>
             <div>
               <label class="pv-auth-label" for="pv-auth-newpass">Nueva contraseña</label>
-              <input id="pv-auth-newpass" class="pv-auth-input" type="password" autocomplete="new-password">
+              <div class="pv-auth-pass-wrap">
+                <input id="pv-auth-newpass" class="pv-auth-input" type="password" autocomplete="new-password">
+                <button class="pv-auth-pass-eye" type="button" data-eye="pv-auth-newpass" title="Mostrar contraseña" aria-label="Mostrar contraseña">👁</button>
+              </div>
             </div>
             <div>
               <label class="pv-auth-label" for="pv-auth-newpass2">Confirmá tu nueva contraseña</label>
-              <input id="pv-auth-newpass2" class="pv-auth-input" type="password" autocomplete="new-password">
+              <div class="pv-auth-pass-wrap">
+                <input id="pv-auth-newpass2" class="pv-auth-input" type="password" autocomplete="new-password">
+                <button class="pv-auth-pass-eye" type="button" data-eye="pv-auth-newpass2" title="Mostrar contraseña" aria-label="Mostrar contraseña">👁</button>
+              </div>
             </div>
           ` : ''}
           ${tab==='forgot' ? `<p style="font-size:13px;color:var(--muted,#c8c5d8);margin:0">Te enviamos un correo con un link para crear una contraseña nueva.</p>` : ''}
@@ -197,13 +214,23 @@
             tab==='forgot'   ? '📧 Enviarme el link' :
                                '🔐 Guardar contraseña'
           }</button>
-          ${tab==='login' ? `<button class="pv-auth-link" data-go="forgot">¿Olvidaste tu contraseña?</button>` : ''}
           ${(tab==='forgot'||tab==='reset') ? `<button class="pv-auth-link" data-go="login">← Volver a iniciar sesión</button>` : ''}
         </div>`;
 
       $('#pv-auth-close-btn', modal).onclick = closeModal;
       modal.querySelectorAll('.pv-auth-tab').forEach(b => b.addEventListener('click', () => { tab = b.dataset.t; render(); }));
       modal.querySelectorAll('[data-go]').forEach(b => b.addEventListener('click', () => { tab = b.dataset.go; render(); }));
+      // 👁 Toggle de visibilidad de contraseña
+      modal.querySelectorAll('[data-eye]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const inp = $('#' + btn.dataset.eye, modal);
+          if (!inp) return;
+          const showing = inp.type === 'text';
+          inp.type = showing ? 'password' : 'text';
+          btn.textContent = showing ? '👁' : '🙈';
+          btn.title = showing ? 'Mostrar contraseña' : 'Ocultar contraseña';
+        });
+      });
       modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
 
       const errEl = () => $('#pv-auth-err', modal);
