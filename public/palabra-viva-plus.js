@@ -33,25 +33,166 @@
     $('[data-a="answers"]',card).onclick=openAnswers;
   }
 
+  // ── Guía de capítulos — 70+ capítulos ────────────────────────────────────
   const CH = {
-    'juan 3':['Jesús habla con Nicodemo sobre nacer de nuevo.','La fe no es solo religión externa: es una vida nueva que nace de Dios.','Acercate con una oración honesta, aunque no entiendas todo.'],
-    'juan 14':['Jesús consuela a sus discípulos y habla del camino al Padre.','Jesús se presenta como camino, verdad y vida, y promete paz.','Pedile a Dios dirección y paz para tu próximo paso.'],
-    'mateo 6':['Jesús enseña sobre oración, prioridades y ansiedad.','Dios conoce tus necesidades y llama a buscar primero su reino.','Transformá una preocupación en oración.'],
-    'mateo 11':['Jesús invita a los cansados a venir a Él.','La fe también incluye descanso, no solo esfuerzo.','Hacé una pausa y orá sin apuro.'],
-    'salmos 23':['David describe a Dios como pastor cercano y cuidador.','Dios guía y acompaña incluso en valle oscuro.','Repetí: Dios está conmigo en este camino.'],
-    'romanos 8':['Pablo habla de esperanza, vida en el Espíritu y amor de Dios.','Nada puede separar al creyente del amor de Dios.','Guardá una frase del capítulo para volver a ella.'],
-    'filipenses 4':['Pablo habla de paz, oración, contentamiento y fortaleza.','La paz de Dios guarda el corazón cuando llevamos todo a Él.','Convertí una preocupación en oración.'],
-    '1 juan 1':['Juan habla de luz, verdad, confesión y perdón.','Dios no llama a esconder el pecado, sino a caminar en verdad.','Pedí perdón y corregí un paso concreto.']
+    // Juan
+    'juan 1':['Juan presenta a Jesús como el Verbo eterno hecho carne, la Luz del mundo.','Jesús no es solo un maestro: es Dios que entra en la historia para salvar.','Acercate a Jesús como el pan y la luz que tu vida necesita.'],
+    'juan 3':['Jesús habla con Nicodemo sobre nacer de nuevo y la fe que salva.','La fe no es religión externa: es una vida nueva que nace del Espíritu de Dios.','Orá con honestidad aunque no entiendas todo todavía.'],
+    'juan 4':['Jesús habla con la samaritana y ofrece agua de vida eterna.','Dios busca a quienes nadie más busca, sin importar el pasado.','Pedile a Dios que sacie la sed que las cosas del mundo no calman.'],
+    'juan 8':['Jesús perdona a la mujer, declara ser la luz y anuncia la verdad que libera.','La condena no es la última palabra de Dios; tampoco la mentira que esclaviza.','Pedí ser libre de algo que te tiene atado.'],
+    'juan 10':['Jesús se presenta como el Buen Pastor que da su vida por las ovejas.','Dios no es un desconocido; te conoce, te cuida y te llama por nombre.','Escuchá la voz de Dios en la lectura y la oración de hoy.'],
+    'juan 11':['Jesús llora con María y resucita a Lázaro.','Jesús siente el dolor humano y tiene poder sobre la muerte.','Confiá tus situaciones sin salida al que puede hacer lo imposible.'],
+    'juan 13':['Jesús lava los pies de sus discípulos y anuncia la traición.','El liderazgo cristiano empieza por servir, no por ser servido.','Buscá una forma concreta de servir a alguien hoy.'],
+    'juan 14':['Jesús consuela a sus discípulos: él es el camino, la verdad y la vida.','No hay que tener todo resuelto para caminar con Dios; solo hace falta seguirle.','Pedile a Dios paz y dirección para tu próximo paso.'],
+    'juan 15':['Jesús habla de la vid y los pámpanos: la vida viene de permanecer en Él.','Sin conexión con Dios, los frutos no duran. Con Él, dan fruto abundante.','¿Qué te está alejando de esa conexión? Volvé hoy.'],
+    'juan 16':['Jesús prepara a los discípulos para su partida y promete el Consolador.','En el mundo hay aflicción, pero Jesús ya venció al mundo.','Guardá Juan 16:33 para el próximo momento difícil.'],
+    'juan 20':['María, Pedro y Juan encuentran la tumba vacía. Jesús resucitado se aparece.','La resurrección es real: cambia todo lo que creemos sobre la vida y la muerte.','La fe no se basa en emociones sino en hechos: Jesús resucitó.'],
+    // Mateo
+    'mateo 5':['Jesús enseña el Sermón del Monte: bienaventuranzas, sal, luz, ley.','El reino de Dios invierte los valores del mundo: el humilde es bendecido.','Elegí una bienaventuranza y pensá qué significa para tu vida hoy.'],
+    'mateo 6':['Jesús enseña sobre oración auténtica, tesoros y la ansiedad del mañana.','Dios ya sabe lo que necesitás; la oración no es convencerlo sino confiar en Él.','Transformá una preocupación en oración concreta.'],
+    'mateo 7':['Jesús habla de juzgar, pedir, la regla de oro y edificar sobre la roca.','La fe se prueba en la práctica, no solo en el conocimiento.','¿Qué área de tu vida necesita aplicar estas enseñanzas hoy?'],
+    'mateo 11':['Jesús invita a los cansados a venir a Él y descansar.','La fe también incluye descanso, no solo esfuerzo constante.','Hacé una pausa real y orá sin apuro.'],
+    'mateo 22':['Jesús enseña sobre el mayor mandamiento: amar a Dios y al prójimo.','Toda la ley se resume en amor. Sin amor, la religión está vacía.','¿A quién podés amar mejor hoy con acciones concretas?'],
+    'mateo 28':['La resurrección y el mandato de ir a todas las naciones.','Jesús resucitó y está con nosotros todos los días hasta el fin del mundo.','Llevá hoy algo del evangelio a alguien de tu entorno.'],
+    // Marcos
+    'marcos 1':['Marcos presenta a Jesús que llama discípulos, sana y echa demonios.','Jesús actúa con autoridad: su palabra transforma vidas concretas.','Pedile a Jesús que actúe con esa misma autoridad en tu situación.'],
+    'marcos 4':['Parábola del sembrador y la semilla: distintos terrenos y frutos.','La Palabra de Dios cae en corazones distintos; lo importante es el terreno del corazón.','¿Qué tipo de terreno es tu corazón hoy? ¿Qué lo endurece o lo prepara?'],
+    'marcos 10':['Jesús bendice niños, habla al joven rico y anuncia su muerte y resurrección.','Lo que el mundo considera grande, Dios lo ve diferente: sirve, no domina.','Pedí humildad y apertura para lo que Dios te está mostrando.'],
+    // Lucas
+    'lucas 1':['El ángel anuncia el nacimiento de Juan el Bautista y de Jesús a María.','Dios entra en la historia de manera inesperada, a través de personas sencillas.','La respuesta de María ("Hágase en mí según tu palabra") puede ser tu oración hoy.'],
+    'lucas 2':['El nacimiento de Jesús en Belén. Los pastores y Simeón lo reconocen.','Dios se hace vulnerable para estar cerca de los que menos esperan visita.','La Navidad no es solo tradición: es Dios eligiendo tu mundo para venir.'],
+    'lucas 15':['Tres parábolas: la oveja perdida, la moneda perdida, el hijo pródigo.','Dios busca activamente al que se perdió, y celebra cuando vuelve.','Si sentís que estás lejos, la puerta del Padre siempre está abierta.'],
+    'lucas 19':['Jesús entra en Jericó, se hospeda con Zaqueo y entra a Jerusalén.','Jesús no espera que uno sea perfecto para entrar: va al que lo necesita.','¿Hay algo que te impide recibir a Jesús hoy?'],
+    // Hechos
+    'hechos 1':['Jesús asciende y promete el Espíritu Santo. Los discípulos esperan en oración.','El comienzo de la iglesia es oración, comunidad y espera en Dios.','Pasá unos minutos en oración antes de actuar hoy.'],
+    'hechos 2':['Pentecostés: el Espíritu Santo llega. Pedro predica y nacen 3.000 creyentes.','El Espíritu de Dios puede transformar una vida ordinaria en algo extraordinario.','Pedile al Espíritu Santo que guíe tus palabras y tus acciones hoy.'],
+    'hechos 9':['La conversión de Saulo en el camino a Damasco.','Nadie está tan lejos de Dios como para no poder cambiar radicalmente.','¿Hay algo en tu vida que Dios quiere transformar por completo?'],
+    // Romanos
+    'romanos 1':['Pablo presenta el evangelio como poder de Dios para todo el que cree.','El evangelio no es solo para ciertos tipos de personas: es para todos.','¿En qué área de tu vida necesitás este poder de Dios hoy?'],
+    'romanos 3':['Todos pecaron y se justifican gratuitamente por la fe en Cristo.','La salvación no es por méritos propios sino por gracia, mediante la fe.','Descansá: no tenés que ganarte el amor de Dios. Ya es tuyo por fe.'],
+    'romanos 5':['La justificación por fe trae paz con Dios y esperanza en las tribulaciones.','Las dificultades producen carácter; el carácter produce esperanza.','¿Qué tribulación podés mirar diferente con esta perspectiva hoy?'],
+    'romanos 6':['Muertos al pecado, vivos para Dios. La gracia no es excusa para pecar.','La nueva vida en Cristo no es solo perdón: es transformación real.','¿En qué área de tu vida querés ver esa transformación concreta?'],
+    'romanos 8':['Vida en el Espíritu, esperanza, intercesión y amor indestructible de Dios.','Nada puede separar al creyente del amor de Dios en Cristo Jesús.','Guardá Romanos 8:28 y 8:38-39 para los momentos difíciles.'],
+    'romanos 10':['La fe viene por el oír, y el oír por la Palabra de Cristo.','Creer y confesar son el camino a la salvación, no los rituales externos.','Compartí algo del evangelio con alguien cercano esta semana.'],
+    'romanos 12':['Vivir el evangelio: sacrificio vivo, renovación de la mente, amor real.','La fe cristiana tiene consecuencias concretas en cómo tratamos a otros.','Elegí una enseñanza de este capítulo y aplicala hoy en una relación.'],
+    // 1 Corintios
+    '1 corintios 1':['Pablo habla de la sabiduría del mundo vs. la sabiduría de la cruz.','Lo que el mundo desprecia, Dios lo usa para confundir a los poderosos.','Dios puede usar tu debilidad si se la entregás con fe.'],
+    '1 corintios 13':['El famoso capítulo del amor: sus características y su permanencia.','Sin amor, todos los dones, el conocimiento y la fe son vacíos.','Leé las características del amor y evaluá una relación tuya con esa lista.'],
+    '1 corintios 15':['La resurrección de Cristo como fundamento de toda la fe cristiana.','Si Cristo resucitó, el pecado, la muerte y la desesperanza no tienen la última palabra.','La resurrección no es poesía: cambia cómo vivís hoy.'],
+    // 2 Corintios
+    '2 corintios 4':['Pablo habla de la fragilidad humana como recipiente del tesoro de Dios.','Somos vasijas de barro, pero llevamos dentro el poder de Dios.','Tu debilidad no te descalifica; es el espacio donde Dios trabaja mejor.'],
+    '2 corintios 5':['Reconciliación con Dios: nueva criatura, embajadores del evangelio.','En Cristo todo es nuevo. No es una mejora: es una transformación real.','¿En qué área de tu vida necesitás esa renovación hoy?'],
+    // Gálatas
+    'gálatas 3':['La justificación es por fe en Cristo, no por obras de la ley.','La fe en Cristo nos hace herederos de las promesas de Abraham.','Descansá de intentar ganarte a Dios con esfuerzo. Ya lo tenés por fe.'],
+    'gálatas 5':['Libertad cristiana vs. carne. El fruto del Espíritu Santo.','La vida en el Espíritu no es lista de reglas: es carácter que crece.','¿Cuál fruto del Espíritu querés pedirle a Dios que desarrolle en vos?'],
+    // Efesios
+    'efesios 1':['Las riquezas espirituales en Cristo: elección, redención, herencia.','Antes de nacer ya eras amado y elegido por Dios con un propósito.','Leé Ef 1:3-5 en voz alta como declaración de identidad.'],
+    'efesios 2':['Salvados por gracia mediante la fe, no por obras. Somos su hechura.','No tenés que merecer el amor de Dios: ya sos su obra maestra.','¿Qué cambiaría en tu día si creyeras que sos hechura de Dios?'],
+    'efesios 6':['La armadura de Dios para resistir las batallas espirituales.','La lucha cristiana no es contra personas sino contra fuerzas espirituales.','Vestite con la armadura de Dios antes de salir a tu día.'],
+    // Filipenses
+    'filipenses 1':['Pablo escribe desde prisión con gozo y propósito claro.','El gozo cristiano no depende de las circunstancias sino de Cristo.','¿Podés encontrar motivos de gratitud incluso en una situación difícil?'],
+    'filipenses 2':['Humildad como la de Cristo: vaciarse para servir a otros.','El modelo de liderazgo cristiano es Jesús que se humilló, no que dominó.','¿En qué relación podés aplicar humildad concreta hoy?'],
+    'filipenses 3':['Pablo considera basura todo lo que tenía antes, por conocer a Cristo.','Lo que el mundo valora no define tu identidad: Cristo sí.','¿Hay algo que estés poniendo antes que tu relación con Dios?'],
+    'filipenses 4':['Gozo, paz, contentamiento y fortaleza en Cristo.','La paz de Dios guarda el corazón cuando llevamos todo a Él en oración.','Escribí una preocupación y conviértela en oración concreta ahora.'],
+    // Colosenses
+    'colosenses 1':['Cristo supremo sobre toda la creación y la iglesia.','Jesús no es uno más: es el primogénito de toda creación, cabeza de la iglesia.','¿Qué lugar real tiene Cristo en tu toma de decisiones diarias?'],
+    'colosenses 3':['Renovación de la mente, vida familiar y laboral como adoración.','Todo lo que hacés puede ser un acto de adoración a Dios.','Elegí una tarea de hoy y hacela "como para el Señor".'],
+    // Hebreos
+    'hebreos 11':['El capítulo de la fe: Abel, Noé, Abraham, Sara, Moisés y más.','La fe no es sentimiento; es actuar sobre lo que Dios prometió aunque no se vea.','¿Qué promesa de Dios necesitás seguir creyendo aunque no la veas aún?'],
+    'hebreos 12':['Correr con paciencia la carrera mirando a Jesús.','Jesús corrió su carrera hasta el final; es nuestro modelo para no desmayar.','¿Qué peso o pecado te está frenando en tu carrera de fe?'],
+    // Santiago
+    'santiago 1':['Fe que produce paciencia, sabiduría, y se prueba en la tentación.','La fe real transforma el carácter, no solo cambia el estado espiritual.','¿Qué prueba de hoy podés recibir como entrenamiento de carácter?'],
+    'santiago 2':['La fe sin obras está muerta. Cuidado con favoritismos.','Creer no alcanza si no se refleja en cómo tratamos a los demás.','¿Hay alguien a quien estás ignorando o juzgando que necesita tu ayuda?'],
+    // 1 Pedro
+    '1 pedro 2':['Piedras vivas, sacerdocio real, vida entre los que no creen.','Somos pueblo de Dios llamado a vivir diferente en medio del mundo.','¿Cómo reflejás ese "sacerdocio real" en tu trabajo o familia?'],
+    '1 pedro 5':['Humillad ante Dios, resistí al diablo, echá la ansiedad en Dios.','Dios resiste al soberbio y da gracia al humilde. La ansiedad no es para cargarla solos.','Echá tu ansiedad sobre Dios en oración específica ahora mismo.'],
+    // 1 Juan
+    '1 juan 1':['Luz, comunión, verdad, confesión y perdón.','Dios no llama a esconder el pecado, sino a caminar en verdad y recibir perdón real.','Pedí perdón y corregí un paso concreto.'],
+    '1 juan 3':['Somos hijos de Dios; la diferencia entre amor real y amor de palabras.','El amor cristiano no es solo emoción: se prueba en acciones concretas.','¿Cómo podés amar de manera práctica a alguien hoy?'],
+    '1 juan 4':['Dios es amor; probad los espíritus; el amor perfecto echa el temor.','El amor de Dios no depende de lo que hagamos: es su naturaleza.','El miedo se va cuando el amor de Dios ocupa ese espacio. Pedilo en oración.'],
+    '1 juan 5':['La fe que vence al mundo; certeza de la vida eterna.','Podés tener certeza de tu relación con Dios: no es presunción, es fe.','¿Qué te hace dudar de tu relación con Dios? Llevalo en oración.'],
+    // Apocalipsis
+    'apocalipsis 1':['La visión de Juan del Cristo glorificado. "Yo soy el Alfa y la Omega".','El Cristo que conocemos en los Evangelios es el mismo Señor glorioso del fin.','La adoración empieza por ver quién es realmente Jesús.'],
+    'apocalipsis 21':['Nueva creación: nueva Jerusalén, no más muerte ni llanto.','La historia no termina en destrucción sino en restauración total.','Lo que hoy duele no es la última palabra; viene una creación nueva.'],
+    // Salmos
+    'salmos 1':['Bienaventurado el que medita en la ley de Dios día y noche.','La prosperidad real viene de nutrir el alma con la Palabra de Dios.','Elegí un versículo de hoy y repetilo durante el día.'],
+    'salmos 22':['Clamor al Dios que parece ausente; confianza que persiste hasta la alabanza.','Jesús oró este salmo en la cruz. El abandono es real; la confianza también.','¿Podés llevar tu sensación de abandono a Dios sin pretender que no existe?'],
+    'salmos 23':['El Señor como pastor que provee, guía y acompaña incluso en lo oscuro.','Dios no promete ausencia de valles, sino su compañía en ellos.','Repetí en voz alta: "El Señor es mi pastor; nada me faltará."'],
+    'salmos 27':['Confianza en Dios frente al miedo: una sola petición, buscar su rostro.','El miedo se enfrenta buscando el rostro de Dios, no evitando la realidad.','¿Qué miedo podés entregarle a Dios hoy buscando su presencia?'],
+    'salmos 34':['Alabanza de David: Dios libra a los afligidos y está cerca del quebrantado.','Dios no está lejos cuando más duele; está más cerca de lo que parece.','Agradecé específicamente por alguna forma en que Dios te libró.'],
+    'salmos 46':['Dios es nuestro refugio y fortaleza; estad quietos y conoced que soy Dios.','En medio del caos, la quietud ante Dios es una respuesta de fe.','Tomá 5 minutos de silencio ante Dios hoy.'],
+    'salmos 51':['Oración de arrepentimiento genuino de David después de su pecado.','El arrepentimiento real no es sentirse mal: es volver a Dios con humildad.','Orá el Salmo 51:10 como oración personal hoy.'],
+    'salmos 91':['Protección divina para el que habita en el abrigo del Altísimo.','Confiar en Dios no elimina los peligros; pone a Dios en medio de ellos.','Memorizá Salmos 91:1-2 para los momentos de miedo.'],
+    'salmos 100':['Aclamad a Dios, entrad en su presencia con acción de gracias.','La adoración no espera que todo esté bien: empieza en la decisión de agradecer.','Entrá a tu día con tres motivos concretos de gratitud.'],
+    'salmos 103':['Bendice a Dios y no te olvides de sus beneficios: perdón, sanidad, amor.','Dios no te trata como merecen tus pecados; actúa desde su misericordia.','Nombrá tres "beneficios" concretos de Dios en tu vida esta semana.'],
+    'salmos 119':['El más largo de los salmos: alabanza a la Palabra de Dios.','La Palabra de Dios no es información: es lámpara, guía, consuelo y vida.','Elegí 5 versículos de este salmo y hacelos oración tuya.'],
+    'salmos 121':['El Señor guarda tu salida y tu entrada, no se adormece ni duerme.','El Dios que guarda no descansa; su cuidado es permanente, no esporádico.','Salí hoy con la confianza de que Dios guarda tu camino.'],
+    'salmos 139':['Dios te conoce completamente: pensamientos, caminos, antes de nacer.','No podés escapar de su presencia ni de su conocimiento; tampoco de su amor.','Leé Sal 139:23-24 como oración de apertura y honestidad con Dios.'],
+    // Proverbios
+    'proverbios 1':['El comienzo de la sabiduría es el temor de Dios.','La sabiduría no es solo inteligencia: es vivir conforme al orden de Dios.','¿Qué decisión de hoy necesita más sabiduría que información?'],
+    'proverbios 3':['Confiar en Dios con todo el corazón; honrarlo con las primicias.','Reconocer a Dios en todos los caminos es el secreto de una vida bien dirigida.','Entregale a Dios una decisión que estás intentando resolver solo.'],
+    'proverbios 31':['La mujer virtuosa: su carácter, trabajo, familia y temor a Dios.','El valor cristiano no es externo sino de carácter, servicio y sabiduría.','¿Qué característica de este capítulo querés desarrollar más?'],
+    // Isaías
+    'isaías 40':['Consolaos, pueblo mío. Dios da fuerzas al cansado.','Dios no se cansa; los que esperan en Él renuevan sus fuerzas.','Descansá en Isaías 40:31 si estás agotado/a hoy.'],
+    'isaías 41':['No temas, porque yo soy contigo; no desmayes, soy tu Dios.','Dios repite "no temas" porque sabe cuánto miedo sentimos. No lo ignora.','Repetí Isaías 41:10 en voz alta tres veces hoy.'],
+    'isaías 53':['El Siervo sufriente: herido por nuestras transgresiones.','Isaías describe a Jesús 700 años antes de su nacimiento. La cruz no fue accidente.','Leé este capítulo pensando en Jesús en la cruz por vos.'],
+    'isaías 55':['Venid a las aguas; buscad a Dios mientras puede ser hallado.','La invitación de Dios es amplia y gratuita; solo hay que responder.','¿Qué te impide responder a la invitación de Dios hoy?'],
+    // Jeremías
+    'jeremías 29':['Carta a los exiliados: busquen el bienestar de la ciudad y conféen en Dios.','Los planes de Dios son de bien, no de mal, aunque estemos en un tiempo difícil.','Confiá en Jer 29:11 aunque el contexto actual parezca contradecirlo.'],
+    // Daniel
+    'daniel 3':['Los tres jóvenes en el horno de fuego que no los quema.','Obedecer a Dios puede costar caro; Dios acompaña en el horno, no solo lo evita.','¿En qué situación te cuesta mantener tus convicciones de fe?'],
+    'daniel 6':['Daniel en el foso de los leones por no dejar de orar.','La fe que vale se mantiene cuando cuesta mantenerla.','¿Hay algo de tu fe que estás escondiendo por miedo a las consecuencias?'],
+    // Génesis
+    'génesis 1':['Dios crea el universo y lo declara bueno; el ser humano como su imagen.','La creación no es accidente: tiene origen, diseño y propósito en Dios.','Si sos imagen de Dios, ¿cómo lo refllejás en cómo tratás a otros hoy?'],
+    'génesis 3':['La caída: desobediencia, vergüenza, consecuencias y primera promesa.','El pecado entró al mundo, pero Dios ya prometió la solución desde el principio.','La primera promesa de un Salvador (Gén 3:15) se cumplió en Jesús.'],
+    'génesis 12':['El llamado de Abraham: dejá tu tierra y ve. Promesa de bendición.','La fe de Abraham empieza obedeciendo sin conocer el destino.','¿A qué te está llamando Dios que aún no te animás a dar el paso?'],
+    'génesis 22':['Dios prueba a Abraham pidiéndole a Isaac; el carnero en el matorral.','Dios provee en el momento exacto; lo que parece un final puede ser el punto de provisión.','¿Qué estás aferrando que tal vez Dios te pide confiarle?'],
+    // Josué
+    'josué 1':['Josué recibe el mando y la promesa: "Sé fuerte y valiente; Dios está contigo".','El coraje cristiano no viene de la confianza en uno mismo sino en Dios.','Repetí Josué 1:9 antes de enfrentar algo difícil hoy.'],
   };
-  function chapterKey(){ const ref=$('.stack .card .ref')?.textContent?.toLowerCase().replace(':',' ')||''; const m=ref.match(/^(.+?)\s+(\d+)/); return m?`${m[1].trim()} ${m[2]}`:''; }
+
+  // ── Leer el libro/capítulo REAL desde los selectores del DOM ─────────────
+  function chapterKey(){
+    // 1. Leer directamente de los <select> del React — es lo más confiable
+    const selects = $$('.fieldLabel select.select');
+    if(selects.length >= 2){
+      const book = (selects[0].value||'').toLowerCase().trim();
+      const chapter = (selects[1].value||'').trim();
+      if(book && chapter) return `${book} ${chapter}`;
+    }
+    // 2. Fallback: primer .ref con número de capítulo
+    const ref = ($('.stack .card .ref')?.textContent||'').toLowerCase().replace(/:/g,' ');
+    const m = ref.match(/^(.+?)\s+(\d+)/);
+    return m ? `${m[1].trim()} ${m[2]}` : '';
+  }
+
   function addChapterInsight(){
     if(!($('h1')?.textContent||'').includes('Biblia')) return;
-    const key=chapterKey(); if(!key) return;
-    const old=$('.pv-chapter-card'); if(old?.dataset.key===key) return; old?.remove();
-    const d=CH[key]||['Este capítulo debe leerse dentro del contexto del libro.','Buscá qué revela sobre Dios, el ser humano y la esperanza.','Leé despacio y marcá una frase para tu día.'];
-    const first=$$('.card').find(c=>c.querySelector('.ref')&&c.querySelector('.verse')); if(!first) return;
-    const card=document.createElement('section'); card.className='card pv-chapter-card'; card.dataset.key=key;
-    card.innerHTML=`<p class="ref">Entender este capítulo</p><h3>${key.replace(/\b\w/g,l=>l.toUpperCase())}</h3><p><strong>Qué está pasando:</strong> ${d[0]}</p><p><strong>Qué enseña:</strong> ${d[1]}</p><p><strong>Qué puedo aplicar hoy:</strong> ${d[2]}</p>`;
+    // Si está buscando (search activo), no insertar
+    if(document.querySelector('.stack input.search')?.value?.trim()) return;
+    const key = chapterKey(); if(!key) return;
+    const old = $('.pv-chapter-card');
+    if(old?.dataset.key === key) return;  // ya está el correcto
+    old?.remove();
+    const d = CH[key] || [
+      'Este capítulo forma parte de una historia más grande.',
+      'Buscá qué revela sobre Dios, el ser humano y la esperanza.',
+      'Leé despacio y marcá una frase que te llegue hoy.'
+    ];
+    // Insertar antes del primer versículo visible
+    const first = $$('.card').find(c => c.querySelector('.ref') && c.querySelector('.verse'));
+    if(!first) return;
+    const card = document.createElement('section');
+    card.className = 'card pv-chapter-card';
+    card.dataset.key = key;
+    const title = key.replace(/\b\w/g, l => l.toUpperCase());
+    card.innerHTML = `
+      <p class="ref">📖 Entender este capítulo</p>
+      <h3>${title}</h3>
+      <p><strong>¿Qué está pasando?</strong> ${d[0]}</p>
+      <p><strong>¿Qué enseña?</strong> ${d[1]}</p>
+      <p><strong>¿Qué puedo aplicar hoy?</strong> ${d[2]}</p>
+    `;
     first.insertAdjacentElement('beforebegin', card);
   }
 
