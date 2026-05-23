@@ -142,10 +142,18 @@
     document.dispatchEvent(new CustomEvent('palabra-viva-radio',{detail:{name:''}}));
   }
 
+  // pauseRadio: pausa SIN limpiar `current` ni el mini-player.
+  // Usado para exclusión mutua — el usuario puede retomar desde donde quedó.
+  function pauseRadio(){
+    if(!current) return;
+    try{AUD.pause()}catch{}
+    // AUD.onpause dispara el evento pv-radio con playing:false → mini-player muestra ⏸
+  }
+
   function playRadio(r){
     if(!r?.stream)return Promise.resolve();
-    // Exclusión mutua: si la Biblia en audio está sonando, pararla primero
-    try{if(window.PalabraVivaAudioBible?.isPlaying?.())window.PalabraVivaAudioBible.stop();}catch{}
+    // Exclusión mutua: pausar Biblia en audio (mantiene su mini-player visible para retomar)
+    try{window.PalabraVivaAudioBible?.pause?.();}catch{}
     // Solo pausar — src='' dispara onerror asíncrono que cortocircuita el stream nuevo
     try{AUD.pause()}catch{}
     current?.el?.remove();current=null;
@@ -561,6 +569,9 @@
 
   function openYT(c){
     if(!c.embed){window.open(c.channel,'_blank','noopener');return;}
+    // Exclusión mutua: pausar radio + Biblia (sin perder la posición)
+    try{pauseRadio();}catch{}
+    try{window.PalabraVivaAudioBible?.pause?.();}catch{}
     const v=document.createElement('section');
     v.style.cssText='position:fixed;inset:0;z-index:9100;background:var(--bg,#1a1007);padding:14px;display:flex;flex-direction:column;gap:10px';
     v.innerHTML=`<div style="display:flex;justify-content:space-between"><h3>${c.name}</h3><button class="cr-close">Cerrar</button></div><iframe style="flex:1;border:1px solid var(--line,rgba(200,150,80,.2));border-radius:18px;background:#000" src="${c.embed}" allow="accelerometer;autoplay;clipboard-write;encrypted-media;gyroscope;picture-in-picture" allowfullscreen></iframe>`;
@@ -598,9 +609,20 @@
     open:openPanel,
     openDial:()=>{openPanel()},
     stop:stopRadio,
+    pause:pauseRadio,
     getCurrentRadio:()=>current?.station?.name||'',
     isPlaying:()=>!!current&&!AUD.paused,
-    togglePlay:()=>{if(!current)return;AUD.paused?AUD.play().catch(()=>{}):AUD.pause();},
+    hasContent:()=>!!current,
+    togglePlay:()=>{
+      if(!current)return;
+      if(AUD.paused){
+        // Al retomar, pausar la Biblia para evitar superposición
+        try{window.PalabraVivaAudioBible?.pause?.();}catch{}
+        AUD.play().catch(()=>{});
+      } else {
+        AUD.pause();
+      }
+    },
     prev:()=>{if(!cache||cache.length<2)return;dialIdx=(dialIdx-1+cache.length)%cache.length;playRadio(cache[dialIdx]);},
     next:()=>{if(!cache||cache.length<2)return;dialIdx=(dialIdx+1)%cache.length;playRadio(cache[dialIdx]);}
   };

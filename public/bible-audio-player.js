@@ -240,6 +240,14 @@
     document.dispatchEvent(new CustomEvent('pv-bible-audio', { detail: { playing: false, info: '' } }));
   }
 
+  // pauseBapAudio: pausa SIN limpiar currentBook/currentChapter ni el mini-player.
+  // Usado para exclusión mutua — el usuario puede retomar desde donde quedó.
+  function pauseBapAudio() {
+    if (!currentBook) return;
+    try { AUD.pause(); } catch {}
+    // AUD pause event dispara updateMiniPlayerState + evento pv-bible-audio playing:false
+  }
+
   // ── Mini-player flotante ───────────────────────────────────────────────
   // refreshMiniPlayer: crea el mini-player si no existe; luego siempre
   // actualiza solo las partes dinámicas (evita recrear el DOM cada 900ms).
@@ -346,9 +354,9 @@
     const book = findBookByName(bookName);
     if (!book) return;
     chapter = Math.max(1, Math.min(chapter, book.chapters));
-    // Exclusión mutua: si la radio está sonando y vamos a reproducir, pararla primero
+    // Exclusión mutua: si vamos a reproducir, pausar la radio (mantiene su mini-player)
     if (opts.autoplay !== false) {
-      try { if (window.PalabraVivaCanales?.isPlaying?.()) window.PalabraVivaCanales.stop(); } catch {}
+      try { window.PalabraVivaCanales?.pause?.(); } catch {}
     }
 
     currentBook    = book.name;
@@ -755,14 +763,42 @@
     }
   }
 
+  // playReference: API pública para que otros módulos reproduzcan una referencia
+  // como "Juan 3" o "Salmos 23". Detecta el libro + capítulo y arranca a reproducir.
+  function playReference(ref) {
+    if (!ref || typeof ref !== 'string') return;
+    // Parsear: "Juan 3", "1 Corintios 13", "Salmos 23"
+    const m = ref.trim().match(/^(.+?)\s+(\d+)(?::|$)/);
+    if (!m) return;
+    const bookName = m[1].trim();
+    const chapter = parseInt(m[2], 10);
+    const book = findBookByName(bookName);
+    if (!book) return;
+    // Abrir el panel y cargar el capítulo
+    openBapPanel();
+    setTimeout(() => loadChapter(getUIContainer(), book.name, chapter, { autoplay: true }), 50);
+  }
+
   window.PalabraVivaAudioBible = {
     open:         openBapPanel,
     openInBibleTab: openBapPanel,   // ahora abre el panel en lugar de navegar a la pestaña
     stop:         stopBapAudio,
+    pause:        pauseBapAudio,
     next:         goNextChapter,
     prev:         goPrevChapter,
+    play:         playReference,    // playReference("Juan 3") — usado desde Planes
     isPlaying:    () => !!currentBook && !AUD.paused,
-    togglePlay:   () => { if (!currentBook) return; AUD.paused ? AUD.play().catch(()=>{}) : AUD.pause(); },
+    hasContent:   () => !!currentBook,
+    togglePlay:   () => {
+      if (!currentBook) return;
+      if (AUD.paused) {
+        // Al retomar, pausar la radio para evitar superposición
+        try { window.PalabraVivaCanales?.pause?.(); } catch {}
+        AUD.play().catch(()=>{});
+      } else {
+        AUD.pause();
+      }
+    },
     getCurrentInfo: () => currentBook ? `${currentBook} ${currentChapter}` : ''
   };
 
