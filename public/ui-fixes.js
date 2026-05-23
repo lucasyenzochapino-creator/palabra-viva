@@ -1,4 +1,16 @@
 (() => {
+  // Migración: forzar sepia como tema predeterminado.
+  // Si el usuario nunca tocó ajustes (tenía 'dark' viejo), se pasa a sepia.
+  // Si eligió 'light' explícitamente, se respeta.
+  (function migrateTheme() {
+    const t = localStorage.getItem('pv-theme');
+    if (!t || t === 'dark') {
+      localStorage.setItem('pv-theme', 'sepia');
+      // Aplicar de inmediato sin esperar que React monte
+      document.body && (document.body.dataset.theme = 'sepia');
+    }
+  })();
+
   function inject() {
     if (document.getElementById('pv-ui-fixes')) return;
     const style = document.createElement('style');

@@ -152,11 +152,17 @@
     let el=document.querySelector('.cr-player');
     if(!el){el=document.createElement('div');el.className='cr-player';document.body.appendChild(el);}
     el.innerHTML=`
-      <div><div class="cr-pname">${r.name}</div><div class="cr-pstate">⏳ Conectando…</div></div>
-      <button class="cr-pbtn" data-pp>▶</button>
+      <div style="display:flex;align-items:center;gap:8px;min-width:0">
+        <span style="font-size:22px;flex-shrink:0">📻</span>
+        <div style="min-width:0">
+          <div class="cr-pname">${r.name}</div>
+          <div class="cr-pstate">⏳ Conectando…</div>
+        </div>
+      </div>
+      <button class="cr-pbtn" data-pp title="Play/Pausa">▶</button>
       <button class="cr-pbtn" style="font-size:13px" data-prev title="Anterior">⏮</button>
       <button class="cr-pbtn" style="font-size:13px" data-skip title="Siguiente">⏭</button>
-      <button class="cr-pclose" data-stop>✕</button>`;
+      <button class="cr-pclose" data-stop title="Cerrar">✕</button>`;
 
     const stEl=$('.cr-pstate',el), ppBtn=$('[data-pp]',el);
 
