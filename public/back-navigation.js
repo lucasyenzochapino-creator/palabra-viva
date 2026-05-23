@@ -126,6 +126,14 @@
   }
 
   function onPopState() {
+    // Los paneles (radio, admin, auth) que manejan su propio history.pushState
+    // ponen window._pvPanelClosing=true antes de llamar history.back() al cerrarse.
+    // En ese caso solo restauramos el guard, sin correr handleBack().
+    if (window._pvPanelClosing) {
+      window._pvPanelClosing = false;
+      pushGuard();
+      return;
+    }
     handleBack();
   }
 

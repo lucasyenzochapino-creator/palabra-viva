@@ -541,7 +541,7 @@
     function closePanel(withHistory=true){
       window.removeEventListener('popstate',onPop);
       panel?.remove();panel=null;
-      if(withHistory&&location.hash==='#radios')history.back();
+      if(withHistory&&location.hash==='#radios'){window._pvPanelClosing=true;history.back();}
     }
     function onPop(){
       // Siempre se limpia a sí mismo, tanto si back-navigation.js ya cerró el panel como si no
@@ -566,7 +566,7 @@
     v.innerHTML=`<div style="display:flex;justify-content:space-between"><h3>${c.name}</h3><button class="cr-close">Cerrar</button></div><iframe style="flex:1;border:1px solid var(--line,rgba(200,150,80,.2));border-radius:18px;background:#000" src="${c.embed}" allow="accelerometer;autoplay;clipboard-write;encrypted-media;gyroscope;picture-in-picture" allowfullscreen></iframe>`;
     document.body.appendChild(v);
     history.pushState({pvYT:true},'',location.href.split('#')[0]+'#canal');
-    v.querySelector('.cr-close').onclick=()=>{v.remove();history.back()};
+    v.querySelector('.cr-close').onclick=()=>{v.remove();window._pvPanelClosing=true;history.back()};
     window.addEventListener('popstate',()=>v.remove(),{once:true});
   }
 

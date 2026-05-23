@@ -193,13 +193,17 @@
       setTimeout(() => $('#pv-auth-email', modal)?.focus(), 80);
     }
 
-    function closeModal() { modal.remove(); }
+    function closeModal() {
+      window.removeEventListener('popstate', onPop);
+      modal.remove();
+      if (location.hash === '#auth') { window._pvPanelClosing = true; history.back(); }
+    }
+    const onPop = () => { window.removeEventListener('popstate', onPop); modal.remove(); };
 
     render();
     document.body.appendChild(modal);
     history.pushState({ pvAuthModal: true }, '', location.href.split('#')[0] + '#auth');
-    const onPop = () => { modal.remove(); };
-    window.addEventListener('popstate', onPop, { once: true });
+    window.addEventListener('popstate', onPop);
   }
 
   // ── Actualizar botón de usuario en quick bar ───────────────────────────────

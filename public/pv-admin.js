@@ -97,7 +97,7 @@
     function closePanel(withHistory = true) {
       window.removeEventListener('popstate', onPop);
       panel?.remove(); panel = null;
-      if (withHistory && location.hash === '#admin') history.back();
+      if (withHistory && location.hash === '#admin') { window._pvPanelClosing = true; history.back(); }
     }
     function onPop() { window.removeEventListener('popstate', onPop); if (panel) { panel.remove(); panel = null; } }
     window.addEventListener('popstate', onPop);
