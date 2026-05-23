@@ -232,6 +232,7 @@
     currentBook = null; currentChapter = null;
     try { navigator.mediaSession.playbackState = 'none'; navigator.mediaSession.metadata = null; } catch {}
     document.querySelector('.pv-bap-player')?.remove();
+    document.dispatchEvent(new CustomEvent('pv-bible-audio', { detail: { playing: false, info: '' } }));
   }
 
   // ── Mini-player flotante ───────────────────────────────────────────────
@@ -271,6 +272,7 @@
     updateMiniPlayerState();
     const statusEl = document.querySelector('.pv-ba-status');
     if (statusEl && currentBook && currentChapter) statusEl.textContent = `${currentBook} ${currentChapter} — sonando`;
+    document.dispatchEvent(new CustomEvent('pv-bible-audio', { detail: { playing: true, info: currentBook ? `${currentBook} ${currentChapter}` : '' } }));
   });
 
   AUD.addEventListener('pause', () => {
@@ -281,6 +283,7 @@
       const card = document.querySelector('.pv-ba-card');
       if (card) updateResumeBanner(card, currentBook, currentChapter, AUD.currentTime);
     }
+    if (currentBook) document.dispatchEvent(new CustomEvent('pv-bible-audio', { detail: { playing: false, info: currentBook ? `${currentBook} ${currentChapter}` : '' } }));
   });
 
   AUD.addEventListener('waiting',  () => {
@@ -363,6 +366,9 @@
 
     // MediaSession
     setupMediaSession();
+
+    // Notificar al home-shortcuts del nuevo capítulo cargado
+    document.dispatchEvent(new CustomEvent('pv-bible-audio', { detail: { playing: !AUD.paused, info: `${book.name} ${chapter}` } }));
 
     if (opts.autoplay !== false) {
       AUD.play().catch(() => {
@@ -613,7 +619,8 @@
     stop:  stopBapAudio,
     next:  goNextChapter,
     prev:  goPrevChapter,
-    isPlaying: () => !AUD.paused,
+    isPlaying:    () => !!currentBook && !AUD.paused,
+    togglePlay:   () => { if (!currentBook) return; AUD.paused ? AUD.play().catch(()=>{}) : AUD.pause(); },
     getCurrentInfo: () => currentBook ? `${currentBook} ${currentChapter}` : ''
   };
 

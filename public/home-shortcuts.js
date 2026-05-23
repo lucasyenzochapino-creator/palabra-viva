@@ -41,20 +41,17 @@
       .pv-rc-btn:active{background:rgba(239,68,68,.3)!important}
       .pv-rc-pp{background:linear-gradient(135deg,rgba(239,68,68,.28),rgba(239,68,68,.12))!important;font-size:12px!important}
       .pv-rc-stop{font-size:9px!important}
-      /* Detener audio biblia */
-      .pv-stop-btn.audio{
-        margin-top:3px;
-        background:rgba(124,74,30,.15);
-        border:1px solid rgba(124,74,30,.5);
-        color:#b45309;
-        border-radius:999px;
-        padding:3px 10px;
-        font-size:10px;
-        font-weight:900;
-        cursor:pointer;
-        white-space:nowrap;
+      /* Mini-controles inline dentro del botón Audio Biblia */
+      .pv-audio-controls{display:flex;align-items:center;justify-content:center;gap:5px;margin-top:5px;width:100%}
+      .pv-ac-btn{
+        background:rgba(124,74,30,.12);border:1px solid rgba(124,74,30,.35);
+        color:#b45309;border-radius:50%;width:26px;height:26px;
+        font-size:10px;cursor:pointer;display:grid;place-items:center;
+        flex-shrink:0;padding:0;line-height:1
       }
-      .pv-stop-btn.audio:active{background:rgba(124,74,30,.3)}
+      .pv-ac-btn:active{background:rgba(124,74,30,.3)!important}
+      .pv-ac-pp{background:linear-gradient(135deg,rgba(124,74,30,.28),rgba(124,74,30,.12))!important;font-size:12px!important}
+      .pv-ac-stop{font-size:9px!important}
 
       /* Pie de autoría */
       .pv-copyright{
@@ -109,7 +106,8 @@
       if(window.PalabraVivaCanales?.openDial) window.PalabraVivaCanales.openDial();
       else if(window.PalabraVivaCanales?.open) window.PalabraVivaCanales.open();
     };
-    wrap.querySelector('[data-a="audio"]').onclick=()=>{
+    wrap.querySelector('[data-a="audio"]').onclick=(e)=>{
+      if(e.target.closest('.pv-audio-controls,.pv-stop-btn')) return;
       if(window.PalabraVivaAudioBible?.openInBibleTab) window.PalabraVivaAudioBible.openInBibleTab();
       else if(window.PalabraVivaAudioBible?.open) window.PalabraVivaAudioBible.open();
       else {
@@ -182,36 +180,58 @@
     }
   }
 
-  function updateAudioLive(){
+  function updateAudioLive(e){
     const card=document.querySelector('.pv-home-shortcuts [data-a="audio"]');
     const liveEl=document.querySelector('.pv-home-shortcuts [data-audio-live]');
+
+    // En home: ocultar floating mini-player de Biblia; fuera del home: mostrarlo
+    const bapPlayer=document.querySelector('.pv-bap-player');
+    if(bapPlayer) bapPlayer.style.display=card?'none':'';
+
     if(!liveEl || !card) return;
 
-    const playing = window.PalabraVivaAudioBible?.isPlaying?.();
-    const info    = window.PalabraVivaAudioBible?.getCurrentInfo?.() || '';
+    const isPlaying=(e?.detail?.playing!==undefined)
+      ?e.detail.playing
+      :window.PalabraVivaAudioBible?.isPlaying?.();
+    const info=(e?.detail?.info!==undefined)
+      ?e.detail.info
+      :(window.PalabraVivaAudioBible?.getCurrentInfo?.() || '');
 
-    if(playing && info){
+    if(info){
       card.classList.add('playing');
       liveEl.textContent=`🔴 ${info}`;
-      if(!card.querySelector('.pv-stop-btn')){
-        const stopBtn=document.createElement('button');
-        stopBtn.className='pv-stop-btn audio';
-        stopBtn.textContent='⏹ Detener';
-        stopBtn.addEventListener('click', e=>{
-          e.stopPropagation();
-          window.PalabraVivaAudioBible?.stop?.();
-        });
-        card.appendChild(stopBtn);
+      card.querySelectorAll('.pv-stop-btn').forEach(el=>el.remove());
+
+      // Controles inline ⏮ ▶/⏸ ⏭ ⏹
+      let ctrl=card.querySelector('.pv-audio-controls');
+      if(!ctrl){
+        ctrl=document.createElement('div');
+        ctrl.className='pv-audio-controls';
+        ctrl.innerHTML=`
+          <button class="pv-ac-btn" data-ac-prev title="Capítulo anterior">⏮</button>
+          <button class="pv-ac-btn pv-ac-pp" data-ac-pp title="Play/Pausa">⏸</button>
+          <button class="pv-ac-btn" data-ac-next title="Capítulo siguiente">⏭</button>
+          <button class="pv-ac-btn pv-ac-stop" data-ac-stop title="Detener">⏹</button>`;
+        ctrl.querySelector('[data-ac-prev]').addEventListener('click',ev=>{ev.stopPropagation();window.PalabraVivaAudioBible?.prev?.();});
+        ctrl.querySelector('[data-ac-pp]').addEventListener('click',ev=>{ev.stopPropagation();window.PalabraVivaAudioBible?.togglePlay?.();});
+        ctrl.querySelector('[data-ac-next]').addEventListener('click',ev=>{ev.stopPropagation();window.PalabraVivaAudioBible?.next?.();});
+        ctrl.querySelector('[data-ac-stop]').addEventListener('click',ev=>{ev.stopPropagation();window.PalabraVivaAudioBible?.stop?.();});
+        card.appendChild(ctrl);
       }
+      // Actualizar ícono ▶/⏸
+      const ppBtn=ctrl.querySelector('[data-ac-pp]');
+      if(ppBtn) ppBtn.textContent=isPlaying?'⏸':'▶';
     } else {
       card.classList.remove('playing');
       liveEl.textContent='';
-      card.querySelector('.pv-stop-btn.audio')?.remove();
+      card.querySelector('.pv-audio-controls')?.remove();
+      card.querySelector('.pv-stop-btn')?.remove();
     }
   }
 
   document.addEventListener('pv-radio', updateLive);
   document.addEventListener('palabra-viva-radio', updateLive);
+  document.addEventListener('pv-bible-audio', updateAudioLive);
 
   function boot(){ injectStyles(); addShortcuts(); updateLive(); updateAudioLive(); }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', boot); else boot();
