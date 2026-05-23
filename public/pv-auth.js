@@ -142,6 +142,16 @@
       .pv-user-btn.in{background:linear-gradient(135deg,rgba(245,158,11,.15),rgba(236,72,153,.15));border-color:rgba(245,158,11,.4)}
       /* Badge admin */
       .pv-admin-btn{pointer-events:auto;border:1px solid rgba(245,158,11,.5);background:linear-gradient(135deg,rgba(245,158,11,.2),rgba(236,72,153,.15));color:var(--brand,#f59e0b);border-radius:999px;padding:10px 14px;font-size:14px;font-weight:900;cursor:pointer}
+      /* Menú desplegable del usuario */
+      .pv-user-menu-backdrop{position:fixed;inset:0;z-index:9400;background:transparent}
+      .pv-user-menu{position:fixed;z-index:9401;background:var(--card,#171722);border:1px solid var(--line,#333447);border-radius:16px;padding:6px;min-width:200px;box-shadow:0 18px 50px rgba(0,0,0,.5);display:flex;flex-direction:column;gap:2px}
+      .pv-user-menu-header{padding:10px 12px;border-bottom:1px solid var(--line,#333447);margin-bottom:4px}
+      .pv-user-menu-name{font-weight:900;font-size:14px;color:var(--text,#f8fafc);margin:0}
+      .pv-user-menu-email{font-size:12px;color:var(--muted,#c8c5d8);margin:2px 0 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+      .pv-user-menu-item{background:none;border:0;text-align:left;padding:12px 14px;border-radius:10px;cursor:pointer;color:var(--text,#f8fafc);font-size:15px;font-weight:700;display:flex;align-items:center;gap:10px}
+      .pv-user-menu-item:hover{background:var(--card2,#202031)}
+      .pv-user-menu-item.danger{color:#fb7185}
+      .pv-user-menu-item.danger:hover{background:rgba(251,113,133,.1)}
     `;
     document.head.appendChild(st);
   }
@@ -330,6 +340,65 @@
     window.addEventListener('popstate', onPop);
   }
 
+  // ── Menú desplegable del usuario (con opción CERRAR SESIÓN visible) ───────
+  function openUserMenu(anchorBtn, name) {
+    // Si ya existe, lo cerramos (toggle)
+    if (document.querySelector('.pv-user-menu')) {
+      document.querySelector('.pv-user-menu-backdrop')?.remove();
+      document.querySelector('.pv-user-menu')?.remove();
+      return;
+    }
+
+    const user = getUser();
+    const email = user?.email || '';
+
+    // Backdrop transparente para cerrar al tocar afuera
+    const backdrop = document.createElement('div');
+    backdrop.className = 'pv-user-menu-backdrop';
+    const closeAll = () => { backdrop.remove(); menu.remove(); };
+    backdrop.onclick = closeAll;
+
+    const menu = document.createElement('div');
+    menu.className = 'pv-user-menu';
+    menu.innerHTML = `
+      <div class="pv-user-menu-header">
+        <p class="pv-user-menu-name">👤 ${name}</p>
+        <p class="pv-user-menu-email">${email}</p>
+      </div>
+      <button class="pv-user-menu-item" data-act="share">📤 Compartir Palabra Viva</button>
+      ${isAdmin() ? `<button class="pv-user-menu-item" data-act="admin">⚙️ Panel Admin</button>` : ''}
+      <button class="pv-user-menu-item danger" data-act="logout">🚪 Cerrar sesión</button>
+    `;
+    menu.onclick = (ev) => ev.stopPropagation();
+
+    // Posicionar arriba del botón (porque el botón está abajo en la quick bar)
+    document.body.appendChild(backdrop);
+    document.body.appendChild(menu);
+    const rect = anchorBtn.getBoundingClientRect();
+    const menuRect = menu.getBoundingClientRect();
+    let top = rect.top - menuRect.height - 8;
+    if (top < 10) top = rect.bottom + 8;        // si no entra arriba, ponerlo abajo
+    let left = rect.right - menuRect.width;
+    if (left < 10) left = 10;
+    if (left + menuRect.width > window.innerWidth - 10) left = window.innerWidth - menuRect.width - 10;
+    menu.style.top  = top + 'px';
+    menu.style.left = left + 'px';
+
+    // Handlers
+    menu.querySelector('[data-act="share"]')?.addEventListener('click', () => {
+      closeAll();
+      shareInviteLink();
+    });
+    menu.querySelector('[data-act="admin"]')?.addEventListener('click', () => {
+      closeAll();
+      window.PVAdmin?.open?.();
+    });
+    menu.querySelector('[data-act="logout"]').addEventListener('click', () => {
+      closeAll();
+      if (confirm(`¿Cerrar sesión de ${name}?`)) signOut();
+    });
+  }
+
   // ── Actualizar botón de usuario en quick bar ───────────────────────────────
   function updateUI() {
     injectStyles();
@@ -350,9 +419,10 @@
       const name = user.profile?.display_name || user.email?.split('@')[0] || 'Vos';
       const btn = document.createElement('button');
       btn.className = 'pv-user-btn in';
-      btn.innerHTML = `👤 ${name}`;
-      btn.onclick = () => {
-        if (confirm(`¿Cerrar sesión de ${name}?`)) signOut();
+      btn.innerHTML = `👤 ${name} ▾`;
+      btn.onclick = (ev) => {
+        ev.stopPropagation();
+        openUserMenu(btn, name);
       };
       quick.appendChild(btn);
 
