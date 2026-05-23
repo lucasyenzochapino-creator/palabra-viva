@@ -347,6 +347,26 @@
       }
     };
     setTimeout(tryOpen, 400);
+    return true; // hubo callback de recovery
+  }
+
+  // ── Prompt automático al entrar a la app ──────────────────────────────────
+  // Si no hay sesión, mostrar el modal de login UNA VEZ por sesión de navegador.
+  // El usuario puede cerrarlo y seguir usando la app (acceso público), pero
+  // se le pide registrarse o entrar para personalizar su experiencia.
+  function maybePromptLogin() {
+    if (getSession()) return;                       // ya tiene sesión
+    if (sessionStorage.getItem('pv_auth_prompted')) return; // ya se le mostró esta sesión
+    // Esperar a que React renderice y el quick bar exista
+    const tryShow = (intentos = 0) => {
+      if (document.querySelector('.quick')) {
+        sessionStorage.setItem('pv_auth_prompted', '1');
+        openModal('login');
+      } else if (intentos < 30) {
+        setTimeout(() => tryShow(intentos + 1), 300);
+      }
+    };
+    setTimeout(tryShow, 800);
   }
 
   // ── Función pública: compartir link de registro ────────────────────────────
@@ -373,9 +393,13 @@
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
   window.addEventListener('load', boot);
-  // Detectar recovery callback en el primer load
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', checkRecoveryCallback);
-  else checkRecoveryCallback();
+  // Al primer load: detectar recovery callback. Si NO hay callback, pedir login.
+  const initAuthFlow = () => {
+    const hadRecovery = checkRecoveryCallback();
+    if (!hadRecovery) maybePromptLogin();
+  };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initAuthFlow);
+  else initAuthFlow();
   setInterval(() => {
     const quick = document.querySelector('.quick');
     if (quick && !quick.querySelector('.pv-user-btn')) updateUI();

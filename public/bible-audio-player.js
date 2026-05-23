@@ -764,7 +764,9 @@
   }
 
   // playReference: API pública para que otros módulos reproduzcan una referencia
-  // como "Juan 3" o "Salmos 23". Detecta el libro + capítulo y arranca a reproducir.
+  // como "Juan 3" o "Salmos 23". Carga el capítulo y arranca a reproducir
+  // SIN abrir el panel — el mini-player flotante aparece solo y el usuario
+  // se queda en la sección donde estaba (ej: Planes).
   function playReference(ref) {
     if (!ref || typeof ref !== 'string') return;
     // Parsear: "Juan 3", "1 Corintios 13", "Salmos 23"
@@ -774,9 +776,8 @@
     const chapter = parseInt(m[2], 10);
     const book = findBookByName(bookName);
     if (!book) return;
-    // Abrir el panel y cargar el capítulo
-    openBapPanel();
-    setTimeout(() => loadChapter(getUIContainer(), book.name, chapter, { autoplay: true }), 50);
+    // Cargar y reproducir sin tocar la UI actual. El mini-player se muestra solo.
+    loadChapter(getUIContainer(), book.name, chapter, { autoplay: true });
   }
 
   window.PalabraVivaAudioBible = {
