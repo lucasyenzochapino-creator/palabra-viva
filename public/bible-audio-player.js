@@ -583,6 +583,7 @@
 
   function insertIntoBibleTab() {
     if (!isBibleTab()) return false;
+    if (document.querySelector('.pv-bap-panel')) return false; // panel abierto — no tocar AUD
     if (document.querySelector('.pv-ba-card')) {
       // Ya está el card — asegurarse de que el <audio> esté dentro del slot
       const slot = document.querySelector('.pv-ba-audio-slot');

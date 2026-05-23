@@ -150,7 +150,7 @@
 
     if(name){
       card.classList.add('playing');
-      liveEl.textContent=`🔴 ${name}`;
+      liveEl.textContent=playing?`🔴 ${name}`:`⏸ ${name}`;
       card.querySelectorAll('.pv-stop-btn').forEach(el=>el.remove());
 
       // Controles inline ⏮ ▶/⏸ ⏭ ⏹
@@ -199,7 +199,7 @@
 
     if(info){
       card.classList.add('playing');
-      liveEl.textContent=`🔴 ${info}`;
+      liveEl.textContent=isPlaying?`🔴 ${info}`:`⏸ ${info}`;
       card.querySelectorAll('.pv-stop-btn').forEach(el=>el.remove());
 
       // Controles inline ⏮ ▶/⏸ ⏭ ⏹
