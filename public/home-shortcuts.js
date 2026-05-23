@@ -16,10 +16,16 @@
       .pv-home-shortcut.audio{border-color:rgba(124,74,30,.30)}
       .pv-home-shortcut.kids{border-color:rgba(34,197,94,.30)}
 
-      /* Estado reproduciendo */
+      /* Estado reproduciendo — radio */
       .pv-home-shortcut.radio.playing{
         border-color:rgba(239,68,68,.7);
         background:linear-gradient(135deg,rgba(239,68,68,.12),rgba(239,68,68,.05));
+        min-height:76px;
+      }
+      /* Estado reproduciendo — audio biblia */
+      .pv-home-shortcut.audio.playing{
+        border-color:rgba(124,74,30,.8);
+        background:linear-gradient(135deg,rgba(124,74,30,.15),rgba(124,74,30,.05));
         min-height:76px;
       }
       .pv-stop-btn{
@@ -35,6 +41,12 @@
         white-space:nowrap;
       }
       .pv-stop-btn:active{background:rgba(239,68,68,.3)}
+      .pv-stop-btn.audio{
+        background:rgba(124,74,30,.15);
+        border-color:rgba(124,74,30,.5);
+        color:#b45309;
+      }
+      .pv-stop-btn.audio:active{background:rgba(124,74,30,.3)}
 
       /* Pie de autoría */
       .pv-copyright{
@@ -75,7 +87,11 @@
         <span class="txt">Radio</span>
         <span class="live" data-live></span>
       </button>
-      <button class="pv-home-shortcut audio" data-a="audio"><span class="ico">🎧</span><span class="txt">Audio Biblia</span></button>
+      <button class="pv-home-shortcut audio" data-a="audio">
+        <span class="ico">🎧</span>
+        <span class="txt">Audio Biblia</span>
+        <span class="live" data-audio-live></span>
+      </button>
       <button class="pv-home-shortcut kids" data-a="kids"><span class="ico">👶</span><span class="txt">Niños</span></button>
     `;
 
@@ -120,10 +136,8 @@
     const name = (e?.detail?.name !== undefined) ? e.detail.name : getRadioName();
 
     if(name){
-      // Radio activa: mostrar nombre, botón detener, estado visual
       card.classList.add('playing');
       liveEl.textContent=`🔴 ${name}`;
-
       if(!card.querySelector('.pv-stop-btn')){
         const stopBtn=document.createElement('button');
         stopBtn.className='pv-stop-btn';
@@ -135,17 +149,44 @@
         card.appendChild(stopBtn);
       }
     } else {
-      // Radio detenida: restaurar estado normal
       card.classList.remove('playing');
       liveEl.textContent='';
       card.querySelector('.pv-stop-btn')?.remove();
     }
   }
 
+  function updateAudioLive(){
+    const card=document.querySelector('.pv-home-shortcuts [data-a="audio"]');
+    const liveEl=document.querySelector('.pv-home-shortcuts [data-audio-live]');
+    if(!liveEl || !card) return;
+
+    const playing = window.PalabraVivaAudioBible?.isPlaying?.();
+    const info    = window.PalabraVivaAudioBible?.getCurrentInfo?.() || '';
+
+    if(playing && info){
+      card.classList.add('playing');
+      liveEl.textContent=`🔴 ${info}`;
+      if(!card.querySelector('.pv-stop-btn')){
+        const stopBtn=document.createElement('button');
+        stopBtn.className='pv-stop-btn audio';
+        stopBtn.textContent='⏹ Detener';
+        stopBtn.addEventListener('click', e=>{
+          e.stopPropagation();
+          window.PalabraVivaAudioBible?.stop?.();
+        });
+        card.appendChild(stopBtn);
+      }
+    } else {
+      card.classList.remove('playing');
+      liveEl.textContent='';
+      card.querySelector('.pv-stop-btn.audio')?.remove();
+    }
+  }
+
   document.addEventListener('pv-radio', updateLive);
   document.addEventListener('palabra-viva-radio', updateLive);
 
-  function boot(){ injectStyles(); addShortcuts(); updateLive(); }
+  function boot(){ injectStyles(); addShortcuts(); updateLive(); updateAudioLive(); }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', boot); else boot();
   window.addEventListener('load', boot);
   setInterval(boot, 1000);
