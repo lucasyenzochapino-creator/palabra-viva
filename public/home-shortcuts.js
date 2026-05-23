@@ -20,7 +20,6 @@
       .pv-home-shortcut.radio.playing{
         border-color:rgba(239,68,68,.7);
         background:linear-gradient(135deg,rgba(239,68,68,.12),rgba(239,68,68,.05));
-        min-height:76px;
       }
       /* Estado reproduciendo — audio biblia */
       .pv-home-shortcut.audio.playing{
@@ -28,23 +27,32 @@
         background:linear-gradient(135deg,rgba(124,74,30,.15),rgba(124,74,30,.05));
         min-height:76px;
       }
-      .pv-stop-btn{
+      /* Mini-controles inline dentro del botón Radio */
+      .pv-radio-controls{
+        display:flex;align-items:center;justify-content:center;gap:5px;
+        margin-top:5px;width:100%
+      }
+      .pv-rc-btn{
+        background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.35);
+        color:#ef4444;border-radius:50%;width:26px;height:26px;
+        font-size:10px;cursor:pointer;display:grid;place-items:center;
+        flex-shrink:0;padding:0;line-height:1
+      }
+      .pv-rc-btn:active{background:rgba(239,68,68,.3)!important}
+      .pv-rc-pp{background:linear-gradient(135deg,rgba(239,68,68,.28),rgba(239,68,68,.12))!important;font-size:12px!important}
+      .pv-rc-stop{font-size:9px!important}
+      /* Detener audio biblia */
+      .pv-stop-btn.audio{
         margin-top:3px;
-        background:rgba(239,68,68,.15);
-        border:1px solid rgba(239,68,68,.4);
-        color:#ef4444;
+        background:rgba(124,74,30,.15);
+        border:1px solid rgba(124,74,30,.5);
+        color:#b45309;
         border-radius:999px;
         padding:3px 10px;
         font-size:10px;
         font-weight:900;
         cursor:pointer;
         white-space:nowrap;
-      }
-      .pv-stop-btn:active{background:rgba(239,68,68,.3)}
-      .pv-stop-btn.audio{
-        background:rgba(124,74,30,.15);
-        border-color:rgba(124,74,30,.5);
-        color:#b45309;
       }
       .pv-stop-btn.audio:active{background:rgba(124,74,30,.3)}
 
@@ -95,10 +103,9 @@
       <button class="pv-home-shortcut kids" data-a="kids"><span class="ico">👶</span><span class="txt">Niños</span></button>
     `;
 
-    // Radio: abre el dial
+    // Radio: abre el dial (salvo que el clic haya sido en los controles)
     wrap.querySelector('[data-a="radio"]').onclick=(e)=>{
-      // Si el clic fue en el botón de detener, no abrir el dial
-      if(e.target.closest('.pv-stop-btn')) return;
+      if(e.target.closest('.pv-radio-controls,.pv-stop-btn')) return;
       if(window.PalabraVivaCanales?.openDial) window.PalabraVivaCanales.openDial();
       else if(window.PalabraVivaCanales?.open) window.PalabraVivaCanales.open();
     };
@@ -131,26 +138,46 @@
   function updateLive(e){
     const card=document.querySelector('.pv-home-shortcuts [data-a="radio"]');
     const liveEl=document.querySelector('.pv-home-shortcuts [data-live]');
+
+    // En home: ocultar floating mini-player; fuera del home: mostrarlo
+    const crPlayer=document.querySelector('.cr-player');
+    if(crPlayer) crPlayer.style.display=card?'none':'';
+
     if(!liveEl || !card) return;
 
-    const name = (e?.detail?.name !== undefined) ? e.detail.name : getRadioName();
+    const name=(e?.detail?.name!==undefined)?e.detail.name:getRadioName();
+    const playing=(e?.detail?.playing!==undefined)
+      ?e.detail.playing
+      :(name?window.PalabraVivaCanales?.isPlaying?.()!==false:false);
 
     if(name){
       card.classList.add('playing');
       liveEl.textContent=`🔴 ${name}`;
-      if(!card.querySelector('.pv-stop-btn')){
-        const stopBtn=document.createElement('button');
-        stopBtn.className='pv-stop-btn';
-        stopBtn.textContent='⏹ Detener';
-        stopBtn.addEventListener('click', e=>{
-          e.stopPropagation();
-          window.PalabraVivaCanales?.stop?.();
-        });
-        card.appendChild(stopBtn);
+      card.querySelectorAll('.pv-stop-btn').forEach(el=>el.remove());
+
+      // Controles inline ⏮ ▶/⏸ ⏭ ⏹
+      let ctrl=card.querySelector('.pv-radio-controls');
+      if(!ctrl){
+        ctrl=document.createElement('div');
+        ctrl.className='pv-radio-controls';
+        ctrl.innerHTML=`
+          <button class="pv-rc-btn" data-rc-prev title="Anterior">⏮</button>
+          <button class="pv-rc-btn pv-rc-pp" data-rc-pp title="Play/Pausa">⏸</button>
+          <button class="pv-rc-btn" data-rc-next title="Siguiente">⏭</button>
+          <button class="pv-rc-btn pv-rc-stop" data-rc-stop title="Detener">⏹</button>`;
+        ctrl.querySelector('[data-rc-prev]').addEventListener('click',ev=>{ev.stopPropagation();window.PalabraVivaCanales?.prev?.();});
+        ctrl.querySelector('[data-rc-pp]').addEventListener('click',ev=>{ev.stopPropagation();window.PalabraVivaCanales?.togglePlay?.();});
+        ctrl.querySelector('[data-rc-next]').addEventListener('click',ev=>{ev.stopPropagation();window.PalabraVivaCanales?.next?.();});
+        ctrl.querySelector('[data-rc-stop]').addEventListener('click',ev=>{ev.stopPropagation();window.PalabraVivaCanales?.stop?.();});
+        card.appendChild(ctrl);
       }
+      // Actualizar ícono ▶/⏸
+      const ppBtn=ctrl.querySelector('[data-rc-pp]');
+      if(ppBtn) ppBtn.textContent=playing?'⏸':'▶';
     } else {
       card.classList.remove('playing');
       liveEl.textContent='';
+      card.querySelector('.pv-radio-controls')?.remove();
       card.querySelector('.pv-stop-btn')?.remove();
     }
   }

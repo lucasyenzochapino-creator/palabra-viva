@@ -16,6 +16,8 @@
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
     <link rel="shortcut icon" href="/favicon-32.png" />
     <title>Palabra Viva</title>
+    <!-- Sepia por defecto: corre antes que React lea localStorage -->
+    <script>try{var _pvt=localStorage.getItem('pv-theme');if(!_pvt||_pvt==='dark')localStorage.setItem('pv-theme','sepia');}catch(e){}</script>
   </head>
   <body>
     <div id="root"></div>

@@ -166,8 +166,8 @@
 
     const stEl=$('.cr-pstate',el), ppBtn=$('[data-pp]',el);
 
-    AUD.onplaying=()=>{stEl.textContent='🔴 En vivo';ppBtn.textContent='⏸';try{navigator.mediaSession.playbackState='playing'}catch{}};
-    AUD.onpause=()=>{stEl.textContent='Pausado';ppBtn.textContent='▶';try{navigator.mediaSession.playbackState='paused'}catch{}};
+    AUD.onplaying=()=>{stEl.textContent='🔴 En vivo';ppBtn.textContent='⏸';try{navigator.mediaSession.playbackState='playing'}catch{};document.dispatchEvent(new CustomEvent('pv-radio',{detail:{name:r.name,playing:true}}));};
+    AUD.onpause=()=>{stEl.textContent='Pausado';ppBtn.textContent='▶';try{navigator.mediaSession.playbackState='paused'}catch{};if(current)document.dispatchEvent(new CustomEvent('pv-radio',{detail:{name:r.name,playing:false}}));};
     AUD.onwaiting=()=>{stEl.textContent='⏳ Cargando…'};
     AUD.onerror=()=>{stEl.textContent='❌ Sin señal — tocá → para saltar';ppBtn.textContent='↻'};
     AUD.onstalled=()=>{stEl.textContent='⚠️ Sin respuesta…'};
@@ -596,7 +596,11 @@
     open:openPanel,
     openDial:()=>{openPanel()},
     stop:stopRadio,
-    getCurrentRadio:()=>current?.station?.name||''
+    getCurrentRadio:()=>current?.station?.name||'',
+    isPlaying:()=>!!current&&!AUD.paused,
+    togglePlay:()=>{if(!current)return;AUD.paused?AUD.play().catch(()=>{}):AUD.pause();},
+    prev:()=>{if(!cache||cache.length<2)return;dialIdx=(dialIdx-1+cache.length)%cache.length;playRadio(cache[dialIdx]);},
+    next:()=>{if(!cache||cache.length<2)return;dialIdx=(dialIdx+1)%cache.length;playRadio(cache[dialIdx]);}
   };
 
   function boot(){
