@@ -89,6 +89,10 @@
           <h2>💛 Donaciones</h2>
           <div class="pv-adm-spin">⏳ Cargando…</div>
         </div>
+        <div class="pv-adm-section" id="pv-adm-sugerencias">
+          <h2>💌 Sugerencias</h2>
+          <div class="pv-adm-spin">⏳ Cargando…</div>
+        </div>
       </div>`;
 
     document.body.appendChild(panel);
@@ -219,6 +223,66 @@
           </tr>`).join('')}
           </tbody>
         </table></div>`;
+    }
+
+    // ── Sugerencias ──
+    const { ok: sugOk, data: sugData } = await supa('/rest/v1/suggestions?select=*&order=created_at.desc&limit=200');
+    const suggestions = sugOk && Array.isArray(sugData) ? sugData : [];
+    if (!panel) return;
+    const sugEl = $('#pv-adm-sugerencias', panel);
+    if (!suggestions.length) {
+      sugEl.innerHTML = '<h2>💌 Sugerencias</h2><div class="pv-adm-empty">No hay sugerencias todavía.</div>';
+    } else {
+      const escapeHtml = s => (s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+      const nw = suggestions.filter(s => s.status === 'new').length;
+      sugEl.innerHTML = `<h2>💌 Sugerencias <span style="font-size:13px;color:var(--muted,#c8c5d8);font-weight:400">(${suggestions.length}${nw ? ` · ${nw} nuevas` : ''})</span></h2>
+        <div style="display:flex;flex-direction:column;gap:10px">
+        ${suggestions.map(s => {
+          const isNew = s.status === 'new';
+          const dt = s.created_at ? new Date(s.created_at).toLocaleString('es-AR') : '';
+          return `<article style="background:var(--card2,#202031);border:1px solid ${isNew ? 'rgba(245,158,11,.5)' : 'var(--line,#333447)'};border-radius:16px;padding:12px 14px">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:6px">
+              <div style="font-size:13px"><strong>${escapeHtml(s.name) || '(anónimo)'}</strong>${s.email ? ` · <a href="mailto:${escapeHtml(s.email)}" style="color:var(--brand,#f59e0b)">${escapeHtml(s.email)}</a>` : ''}</div>
+              ${isNew ? '<span class="pv-adm-badge admin" style="font-size:10px">NUEVA</span>' : ''}
+            </div>
+            <p style="margin:0 0 8px;font-size:15px;line-height:1.5;white-space:pre-wrap;color:var(--text,#f8fafc)">${escapeHtml(s.message)}</p>
+            <div style="font-size:11px;color:var(--muted,#c8c5d8);display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap">
+              <span>📅 ${dt}</span>
+              <div style="display:flex;gap:4px">
+                ${isNew ? `<button data-sug-mark="${s.id}" style="background:transparent;border:1px solid var(--line);color:var(--muted);border-radius:999px;padding:2px 8px;font-size:11px;cursor:pointer">✓ Marcar leída</button>` : ''}
+                <button data-sug-del="${s.id}" style="background:transparent;border:1px solid rgba(251,113,133,.4);color:#fb7185;border-radius:999px;padding:2px 8px;font-size:11px;cursor:pointer">🗑</button>
+              </div>
+            </div>
+          </article>`;
+        }).join('')}
+        </div>`;
+
+      sugEl.querySelectorAll('[data-sug-mark]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const id = btn.dataset.sugMark;
+          btn.disabled = true; btn.textContent = '⏳';
+          const { ok } = await supa(`/rest/v1/suggestions?id=eq.${id}`, {
+            method: 'PATCH',
+            body: JSON.stringify({ status: 'read' }),
+            headers: { 'Prefer': 'return=minimal' }
+          });
+          if (ok) setTimeout(loadData, 500);
+          else { btn.textContent = '❌'; btn.disabled = false; }
+        });
+      });
+      sugEl.querySelectorAll('[data-sug-del]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          if (!confirm('¿Borrar esta sugerencia? No se puede recuperar.')) return;
+          const id = btn.dataset.sugDel;
+          btn.disabled = true; btn.textContent = '⏳';
+          const { ok } = await supa(`/rest/v1/suggestions?id=eq.${id}`, {
+            method: 'DELETE',
+            headers: { 'Prefer': 'return=minimal' }
+          });
+          if (ok) setTimeout(loadData, 500);
+          else { btn.textContent = '❌'; btn.disabled = false; }
+        });
+      });
     }
   }
 

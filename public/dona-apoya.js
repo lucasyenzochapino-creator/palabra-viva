@@ -1,6 +1,6 @@
 (() => {
   // ── Palabra Viva — Card de donación (sutil, al fondo) ─────────────────────
-  const CAFECITO_URL    = 'https://cafecito.app/palabraviva';
+  const CAFECITO_URL    = 'https://cafecito.app/palabravivamm';
   const MERCADOPAGO_URL = 'https://link.mercadopago.com.ar/palabravivamm';
 
   const $ = (s, r = document) => r.querySelector(s);
