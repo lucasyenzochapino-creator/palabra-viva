@@ -118,6 +118,8 @@
   function finish() {
     try { localStorage.setItem(FLAG_KEY, '1'); } catch {}
     document.querySelector('.pv-onb-overlay')?.remove();
+    // Notificar a otros módulos (pv-auth) que el onboarding terminó
+    document.dispatchEvent(new CustomEvent('pv-onboarding-done'));
   }
 
   function boot() {

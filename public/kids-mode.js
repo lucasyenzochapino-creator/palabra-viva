@@ -62,6 +62,54 @@
 
   let panel=null, detail=null, currentAudio=null, speechParts=[], speechStop=false;
 
+  // ── Voces: cargar voces disponibles (puede tardar en algunos browsers) ────
+  let _voicesCache=null;
+  function loadVoices(){
+    return new Promise(resolve=>{
+      const vs=speechSynthesis.getVoices();
+      if(vs&&vs.length){_voicesCache=vs;return resolve(vs);}
+      speechSynthesis.addEventListener('voiceschanged',()=>{
+        _voicesCache=speechSynthesis.getVoices();
+        resolve(_voicesCache);
+      },{once:true});
+      setTimeout(()=>resolve(speechSynthesis.getVoices()||[]),1500);
+    });
+  }
+
+  // Seleccionar la mejor voz en español disponible, priorizando voces
+  // neurales/network/premium que suenan más humanas que las robot básicas.
+  // El usuario puede sobreescribir con localStorage.pv-kids-voice.
+  function pickBestSpanishVoice(){
+    const vs=_voicesCache||speechSynthesis.getVoices()||[];
+    if(!vs.length) return null;
+    const preferred=localStorage.getItem('pv-kids-voice');
+    if(preferred){const m=vs.find(v=>v.voiceURI===preferred||v.name===preferred);if(m)return m;}
+    // Heurística: priorizar voces de alta calidad
+    const score=v=>{
+      let s=0;
+      const n=(v.name||'').toLowerCase(), uri=(v.voiceURI||'').toLowerCase(), lang=(v.lang||'').toLowerCase();
+      if(!lang.startsWith('es')) return -100;
+      // Voces neurales/network = mucho más naturales
+      if(/neural|wavenet|natural|network|enhanced|premium|online/.test(n+uri)) s+=50;
+      // Voces nombradas de personas (suelen ser mejor calidad)
+      if(/elena|tomas|sabina|paulina|conchita|sofia|jorge|monica|paola|lupe|laura|miguel/.test(n)) s+=20;
+      // Voces es-AR / es-MX / es-419 (Latinoamérica, más natural para el target)
+      if(/ar|419/.test(lang)) s+=15;
+      else if(/mx|us|co/.test(lang)) s+=10;
+      else s+=5;
+      // Penalizar voces "compact" o explícitamente robóticas
+      if(/compact|robot|basic|standard/.test(n+uri)) s-=10;
+      return s;
+    };
+    return [...vs].sort((a,b)=>score(b)-score(a))[0];
+  }
+
+  // Lista de voces ES para el selector
+  function listSpanishVoices(){
+    const vs=_voicesCache||speechSynthesis.getVoices()||[];
+    return vs.filter(v=>(v.lang||'').toLowerCase().startsWith('es'));
+  }
+
   function css(){
     if(document.getElementById('pv-kids-style-v5'))return;
     document.getElementById('pv-kids-style')?.remove();document.getElementById('pv-kids-style-v2')?.remove();
@@ -74,13 +122,57 @@
   }
 
   function stopAll(){try{currentAudio?.pause();currentAudio=null;if('speechSynthesis'in window)speechSynthesis.cancel()}catch{} speechStop=true;}
-  function tts(text,btn){stopAll();speechStop=false;const parts=text.match(/[^.!?]+[.!?]+|[^.!?]+$/g)||[text];let i=0;btn.textContent='⏸ Detener audio';const next=()=>{if(speechStop||i>=parts.length){btn.textContent='🔊 Escuchar historia';return;}const u=new SpeechSynthesisUtterance(parts[i++].trim());u.lang='es-419';u.rate=.82;u.pitch=1.18;const vs=speechSynthesis.getVoices();u.voice=vs.find(v=>/google|microsoft|apple/i.test(v.name)&&/^es/i.test(v.lang))||vs.find(v=>/^es/i.test(v.lang))||null;u.onend=()=>setTimeout(next,280);speechSynthesis.speak(u)};next();}
+
+  // TTS mejorado: voz seleccionada, pacing natural, frases enteras
+  async function tts(text,btn){
+    stopAll();speechStop=false;
+    await loadVoices();
+    // Cortar por frases naturales pero no demasiado cortas (suena fragmentado)
+    const sentences=text.match(/[^.!?]+[.!?]+|[^.!?]+$/g)||[text];
+    // Agrupar de a 2 frases para que la voz fluya más natural
+    const parts=[];
+    for(let j=0;j<sentences.length;j+=2){parts.push(sentences.slice(j,j+2).join(' ').trim());}
+    let i=0;
+    btn.textContent='⏸ Detener audio';
+    btn.dataset.playing='1';
+    const voice=pickBestSpanishVoice();
+    const isHighQuality=voice && /neural|wavenet|natural|network|enhanced|premium/i.test((voice.name||'')+(voice.voiceURI||''));
+
+    const next=()=>{
+      if(speechStop||i>=parts.length){
+        btn.textContent='🔊 Escuchar historia';
+        btn.dataset.playing='';
+        return;
+      }
+      const u=new SpeechSynthesisUtterance(parts[i++]);
+      u.lang=voice?.lang||'es-419';
+      // Voces neurales suenan natural a velocidad normal (.95-1.0)
+      // Voces robóticas necesitan ir más lento para entenderse
+      u.rate=isHighQuality?0.95:0.85;
+      // Pitch más alto solo si la voz es muy plana
+      u.pitch=isHighQuality?1.0:1.1;
+      if(voice) u.voice=voice;
+      u.onend=()=>setTimeout(next,180); // pausa corta entre frases
+      u.onerror=()=>setTimeout(next,180);
+      try{speechSynthesis.speak(u);}catch{next();}
+    };
+    next();
+  }
+
+  // UI: mini selector de voz dentro del detail panel
+  function buildVoiceSelector(){
+    const voices=listSpanishVoices();
+    if(voices.length<=1) return ''; // no hay alternativas
+    const current=localStorage.getItem('pv-kids-voice')||'';
+    const opts=voices.map(v=>`<option value="${v.voiceURI||v.name}" ${current===(v.voiceURI||v.name)?'selected':''}>${v.name} (${v.lang})</option>`).join('');
+    return `<div style="background:#fff;border-radius:14px;padding:10px 12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="font-size:13px;font-weight:900;color:#7c4a1e">🎙️ Voz:</span><select class="pv-kids-voice-sel" style="flex:1;min-width:160px;border:1px solid #d1b083;background:#fff;color:#27190c;border-radius:10px;padding:7px 10px;font-size:13px;font-weight:600"><option value="">Mejor disponible (auto)</option>${opts}</select></div>`;
+  }
 
   function openDetail(story){
     stopAll();document.querySelector('.pv-kids-detail')?.remove();
     history.pushState({pvKidsDetail:true},'',location.href.split('#')[0]+'#kids-detail');
     detail=document.createElement('section');detail.className='pv-kids-detail';const aud=AUDIO_MAP[story.title]||[];
-    detail.innerHTML=`<div class="pv-kids-detail-inner"><div class="pv-kids-detail-head"><button class="pv-kids-btn ghost" data-back>← Volver</button><button class="pv-kids-btn ghost" data-close>Cerrar</button></div><div class="big-emoji">${story.emoji}</div><h1>${story.title}</h1>${aud.length?'<div class="pv-kids-audio-note">🎧 Esta historia tiene voz narrada. Las demás usan lectura automática del dispositivo.</div>':'<div class="pv-kids-audio-note">🔊 Esta historia usa lectura automática. La voz depende del celular.</div>'}<div class="verse-box"><span class="label">${story.ref}</span><em>“${story.verse}”</em></div><div class="story-text">${story.text}</div><div class="questions"><span class="label">Para pensar juntos</span><ol>${story.q.map(x=>`<li>${x}</li>`).join('')}</ol></div><div class="pray-box"><span class="label">Oración</span><p>${story.pray}</p></div>${aud.length?`<audio class="pv-kids-player" controls preload="none" src="${aud[0]}"></audio><div class="pv-kids-actions"><button class="pv-kids-btn audio" data-next-audio>🎧 Siguiente audio</button><button class="pv-kids-btn primary" data-read>⭐ Marcar como leída</button></div>`:`<div class="pv-kids-actions"><button class="pv-kids-btn audio" data-tts>🔊 Escuchar historia</button><button class="pv-kids-btn primary" data-read>⭐ Marcar como leída</button></div>`}</div>`;
+    detail.innerHTML=`<div class="pv-kids-detail-inner"><div class="pv-kids-detail-head"><button class="pv-kids-btn ghost" data-back>← Volver</button><button class="pv-kids-btn ghost" data-close>Cerrar</button></div><div class="big-emoji">${story.emoji}</div><h1>${story.title}</h1>${aud.length?'<div class="pv-kids-audio-note">🎧 Esta historia tiene voz narrada. Si no carga, tocá <strong>🔊 Leer en voz alta</strong>.</div>':'<div class="pv-kids-audio-note">🔊 Esta historia se lee con la voz del celular. Elegí la mejor voz disponible abajo.</div>'}${buildVoiceSelector()}<div class="verse-box"><span class="label">${story.ref}</span><em>“${story.verse}”</em></div><div class="story-text">${story.text}</div><div class="questions"><span class="label">Para pensar juntos</span><ol>${story.q.map(x=>`<li>${x}</li>`).join('')}</ol></div><div class="pray-box"><span class="label">Oración</span><p>${story.pray}</p></div>${aud.length?`<audio class="pv-kids-player" controls preload="none" src="${aud[0]}"></audio><div class="pv-kids-actions"><button class="pv-kids-btn audio" data-next-audio>🎧 Siguiente parte</button><button class="pv-kids-btn audio" data-tts>🔊 Leer en voz alta</button><button class="pv-kids-btn primary full" data-read>⭐ Marcar como leída</button></div>`:`<div class="pv-kids-actions"><button class="pv-kids-btn audio full" data-tts>🔊 Escuchar historia</button><button class="pv-kids-btn primary full" data-read>⭐ Marcar como leída</button></div>`}</div>`;
     document.body.appendChild(detail);
     detail.querySelector('[data-back]').onclick=()=>closeDetail(true);detail.querySelector('[data-close]').onclick=()=>{closeDetail(false);closePanel(false)};
     detail.querySelector('[data-read]').onclick=e=>{mark(story);e.target.textContent='✓ Leída';e.target.style.background='#16a34a'};
@@ -97,7 +189,22 @@
       };
       detail.querySelector('[data-next-audio]').onclick=()=>{ai=(ai+1)%aud.length;player.src=aud[ai];player.play().catch(()=>{})};
     }
-    const tb=detail.querySelector('[data-tts]');if(tb)tb.onclick=()=>{if(tb.textContent.includes('Detener')){stopAll();tb.textContent='🔊 Escuchar historia'}else tts(`${story.title}. ${story.verse}. ${story.text}. Para pensar. ${story.q.join('. ')}. Oración. ${story.pray}`,tb)};
+    const tb=detail.querySelector('[data-tts]');if(tb)tb.onclick=()=>{if(tb.dataset.playing){stopAll();tb.textContent='🔊 Leer en voz alta';tb.dataset.playing='';}else tts(`${story.title}. ${story.verse}. ${story.text}. Para pensar juntos: ${story.q.join('. ')} Oración: ${story.pray}`,tb)};
+    // Selector de voz: guardar preferencia
+    const vs=detail.querySelector('.pv-kids-voice-sel');
+    if(vs){vs.onchange=()=>{try{localStorage.setItem('pv-kids-voice',vs.value||'');}catch{} stopAll();if(tb)tb.textContent='🔊 Leer en voz alta';};}
+    // Pre-cargar voces para que el selector se llene
+    loadVoices().then(()=>{
+      const newVs=detail.querySelector('.pv-kids-voice-sel');
+      if(newVs && newVs.options.length<=1){
+        // Re-render del selector si recién se cargaron voces
+        const wrap=newVs.parentElement;
+        if(wrap){wrap.outerHTML=buildVoiceSelector();
+          const newSel=detail.querySelector('.pv-kids-voice-sel');
+          if(newSel)newSel.onchange=()=>{try{localStorage.setItem('pv-kids-voice',newSel.value||'');}catch{} stopAll();};
+        }
+      }
+    });
     window.addEventListener('popstate',onPop,{once:true});
   }
   function onPop(){closeDetail(false)}

@@ -459,13 +459,23 @@
 
   // ── Prompt automático al entrar a la app ──────────────────────────────────
   // Si no hay sesión, mostrar el modal de login UNA VEZ por sesión de navegador.
-  // El usuario puede cerrarlo y seguir usando la app (acceso público), pero
-  // se le pide registrarse o entrar para personalizar su experiencia.
+  // El usuario puede cerrarlo y seguir usando la app, pero se le pide
+  // registrarse o entrar para personalizar su experiencia.
+  // IMPORTANTE: Esperar a que termine el onboarding si está en pantalla
+  // (sino el modal queda detrás de la overlay y el usuario nunca lo ve).
   function maybePromptLogin() {
-    if (getSession()) return;                       // ya tiene sesión
-    if (sessionStorage.getItem('pv_auth_prompted')) return; // ya se le mostró esta sesión
-    // Esperar a que React renderice y el quick bar exista
+    if (getSession()) return;                                  // ya tiene sesión
+    if (sessionStorage.getItem('pv_auth_prompted')) return;    // ya se le mostró
+    if (sessionStorage.getItem('pv_auth_skip_session')) return; // pidió saltar esta vez
+
     const tryShow = (intentos = 0) => {
+      // Si hay onboarding en pantalla, esperar a que termine
+      if (document.querySelector('.pv-onb-overlay')) {
+        document.addEventListener('pv-onboarding-done', () => {
+          setTimeout(() => maybePromptLogin(), 400);
+        }, { once: true });
+        return;
+      }
       if (document.querySelector('.quick')) {
         sessionStorage.setItem('pv_auth_prompted', '1');
         openModal('login');
@@ -473,7 +483,8 @@
         setTimeout(() => tryShow(intentos + 1), 300);
       }
     };
-    setTimeout(tryShow, 800);
+    // Esperar onboarding si todavía no está montado pero podría estarlo
+    setTimeout(tryShow, 1200);
   }
 
   // ── Función pública: compartir link de registro ────────────────────────────
