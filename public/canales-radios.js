@@ -48,7 +48,23 @@
   // ── Audio único compartido ─────────────────────────────────────────────────
   const AUD = new Audio();
   AUD.preload = 'none';
-  // No forzamos crossOrigin para evitar errores CORS en streams que no lo soportan
+  AUD.setAttribute('playsinline', '');           // iOS: no pantalla completa
+  AUD.setAttribute('webkit-playsinline', '');    // iOS legacy
+  AUD.setAttribute('x-webkit-airplay', 'allow'); // AirPlay
+
+  // ── Reanudar si iOS pausó el audio al volver al primer plano ──────────────
+  let _radioWasPlaying = false;
+  let _radioLastSrc = '';
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      _radioWasPlaying = !!current && !AUD.paused;
+      _radioLastSrc = AUD.src || '';
+    } else if (_radioWasPlaying && AUD.paused && _radioLastSrc && current) {
+      // iOS pausó el stream en background — intentar reanudar
+      AUD.play().catch(() => {});
+      _radioWasPlaying = false;
+    }
+  });
 
   let current=null, cache=null, cachePromise=null, panel=null, mode='dial', q='', dialIdx=0;
 

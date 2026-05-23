@@ -87,10 +87,31 @@
   const AUD = document.createElement('audio');
   AUD.preload  = 'none';
   AUD.controls = true;
+  AUD.setAttribute('playsinline', '');           // iOS: no pantalla completa
+  AUD.setAttribute('webkit-playsinline', '');    // iOS legacy
+  AUD.setAttribute('x-webkit-airplay', 'allow'); // AirPlay
   AUD.style.cssText = 'width:100%;margin-top:12px;border-radius:14px;outline:none;display:block';
 
   let currentBook    = null;
   let currentChapter = null;
+
+  // ── Reanudar si iOS pausó el audio al volver al primer plano ──────────
+  let _bapWasPlaying = false;
+  let _bapLastSrc = '';
+  let _bapLastTime = 0;
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      _bapWasPlaying = !!currentBook && !AUD.paused;
+      _bapLastSrc  = AUD.src || '';
+      _bapLastTime = AUD.currentTime || 0;
+    } else if (_bapWasPlaying && AUD.paused && _bapLastSrc) {
+      // iOS pausó el audio en background — reanudar desde donde quedó
+      if (AUD.src !== _bapLastSrc) { AUD.src = _bapLastSrc; AUD.load(); }
+      AUD.currentTime = _bapLastTime;
+      AUD.play().catch(() => {});
+      _bapWasPlaying = false;
+    }
+  });
   let fileIndex      = null;
   let indexLoadPromise = null;
   let lastSave = 0;
