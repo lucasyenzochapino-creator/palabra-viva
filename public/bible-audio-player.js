@@ -241,6 +241,8 @@
   }
 
   // ── Mini-player flotante ───────────────────────────────────────────────
+  // refreshMiniPlayer: crea el mini-player si no existe; luego siempre
+  // actualiza solo las partes dinámicas (evita recrear el DOM cada 900ms).
   function refreshMiniPlayer() {
     if (!currentBook || !currentChapter) return;
 
@@ -254,21 +256,34 @@
     }
 
     let el = document.querySelector('.pv-bap-player');
-    if (!el) { el = document.createElement('div'); el.className = 'pv-bap-player'; document.body.appendChild(el); }
+    if (!el) {
+      // Crear el mini-player una sola vez
+      el = document.createElement('div');
+      el.className = 'pv-bap-player';
+      el.innerHTML = `
+        <div class="pv-bap-info">
+          <div class="pv-bap-name"></div>
+          <div class="pv-bap-state"></div>
+        </div>
+        <button class="pv-bap-pbtn" data-pp></button>
+        <button class="pv-bap-pbtn" data-prev title="Capítulo anterior" style="font-size:13px">⏮</button>
+        <button class="pv-bap-pbtn" data-next title="Capítulo siguiente" style="font-size:13px">⏭</button>
+        <button class="pv-bap-pclose" data-stop title="Cerrar">✕</button>`;
+      el.querySelector('[data-pp]').onclick   = () => { AUD.paused ? AUD.play().catch(()=>{}) : AUD.pause(); };
+      el.querySelector('[data-prev]').onclick = goPrevChapter;
+      el.querySelector('[data-next]').onclick = goNextChapter;
+      el.querySelector('[data-stop]').onclick = stopBapAudio;
+      document.body.appendChild(el);
+    }
+
+    // Actualizar solo las partes que cambian (título, estado, ícono)
     const playing = !AUD.paused;
-    el.innerHTML = `
-      <div class="pv-bap-info">
-        <div class="pv-bap-name">📖 ${currentBook} ${currentChapter}</div>
-        <div class="pv-bap-state">${playing ? '🔴 Reproduciendo' : '⏸ Pausado'}</div>
-      </div>
-      <button class="pv-bap-pbtn" data-pp title="${playing?'Pausar':'Reproducir'}">${playing ? '⏸' : '▶'}</button>
-      <button class="pv-bap-pbtn" data-prev title="Capítulo anterior" style="font-size:13px">⏮</button>
-      <button class="pv-bap-pbtn" data-next title="Capítulo siguiente" style="font-size:13px">⏭</button>
-      <button class="pv-bap-pclose" data-stop title="Cerrar">✕</button>`;
-    el.querySelector('[data-pp]').onclick   = () => { AUD.paused ? AUD.play().catch(()=>{}) : AUD.pause(); };
-    el.querySelector('[data-prev]').onclick = goPrevChapter;
-    el.querySelector('[data-next]').onclick = goNextChapter;
-    el.querySelector('[data-stop]').onclick = stopBapAudio;
+    const nameEl = el.querySelector('.pv-bap-name');
+    const stEl   = el.querySelector('.pv-bap-state');
+    const ppBtn  = el.querySelector('[data-pp]');
+    if (nameEl) nameEl.textContent = `📖 ${currentBook} ${currentChapter}`;
+    if (stEl)   stEl.textContent   = playing ? '🔴 Reproduciendo' : '⏸ Pausado';
+    if (ppBtn)  { ppBtn.textContent = playing ? '⏸' : '▶'; ppBtn.title = playing ? 'Pausar' : 'Reproducir'; }
   }
 
   function updateMiniPlayerState() {
@@ -733,8 +748,9 @@
     } else {
       removeCardIfNotBibleTab();
     }
-    // Si hay audio activo, mantener el mini-player visible
-    if (currentBook && currentChapter && !AUD.paused) {
+    // Si hay un capítulo cargado (aunque esté pausado), mantener el mini-player
+    // visible para que el usuario pueda retomar desde cualquier pestaña.
+    if (currentBook && currentChapter) {
       refreshMiniPlayer();
     }
   }
