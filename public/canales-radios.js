@@ -37,6 +37,20 @@
     { id:'cristiana-883', name:'Radio Cristiana FM 88.3',    type:'Argentina · Cristiana',          note:'Radio cristiana argentina con mensajes y música.', stream:'https://rr5100.globalhost1.com/8540/;' },
     // México — verificada (Esperanza Monterrey)
     { id:'esperanza-mty', name:'Radio Esperanza 1140 AM',    type:'México · Cristiana',             note:'Música cristiana desde Monterrey.',                stream:'https://playerservices.streamtheworld.com/api/livestream-redirect/RADIO_ESPERANZA_1140AM.mp3' },
+    // Bonaire (Caribe) — Radio Transmundial, top votada
+    { id:'transmundial',  name:'Radio Transmundial Bonaire 800 KHz', type:'Caribe · TWR · Cristiana', note:'TWR — Trans World Radio en español.',            stream:'https://cdn.instream.audio/:9050/stream' },
+    // República Dominicana
+    { id:'nacional-rd',   name:'Radio Nacional Cristiana 710 AM',  type:'República Dominicana · Cristiana', note:'Red Nacional Cristiana RD — mensajes y música.', stream:'https://node-09.zeno.fm/03yn1w98swzuv' },
+    // Guatemala
+    { id:'viva-gt',       name:'Radio Viva 95.3 FM',         type:'Guatemala · Cristiana',          note:'Radio Viva — Ciudad de Guatemala.',                stream:'https://stream.zeno.fm/uus2ugdadkhvv' },
+    // Colombia
+    { id:'cristiana-co',  name:'Radio Cristiana Colombia',   type:'Colombia · Cristiana',           note:'Mensajes y música cristiana en español.',           stream:'https://stream.zeno.fm/a3y646rxcfhvv' },
+    // Colombia (segunda opción)
+    { id:'su-presencia',  name:'Su Presencia Radio',         type:'Colombia · Cristiana',           note:'Música de adoración 24/7.',                         stream:'https://supresenciaradio.out.airtime.pro/supresenciaradio_a' },
+    // Venezuela (segunda opción)
+    { id:'ebenezer-ve',   name:'Ebenezer 94.5 FM',           type:'Venezuela · Cristiana',          note:'Música cristiana y palabra desde Venezuela.',       stream:'https://stream.zeno.fm/shfz70w4k1nvv' },
+    // Guatemala (segunda opción)
+    { id:'hacker-cristo', name:'Hacker por Cristo Network',  type:'Guatemala · Cristiana',          note:'Música cristiana y mensajes evangélicos.',          stream:'https://radio.forensedigital.gt:8010/stream' },
   ];
 
   const BLOCKED = ['catolic','católic','catholic','radio maria','radio maría','vatican','vaticano','guadalupe','fatima','fátima','virgen','santuario','cope ','mariana','arquidiocesis','diocesis','parroquia','sagrado corazon','inmaculada','pontificia','eucaristia'];
