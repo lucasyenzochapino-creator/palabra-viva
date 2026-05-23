@@ -45,6 +45,18 @@
       .pv-igl-empty{color:var(--muted,#c8c5d8);text-align:center;padding:24px 16px}
       .pv-igl-error{background:rgba(251,113,133,.1);border:1px solid rgba(251,113,133,.4);color:#fda4af;border-radius:14px;padding:14px;font-size:14px}
       .pv-igl-home{border-color:rgba(34,197,94,.45)!important;background:linear-gradient(135deg,rgba(34,197,94,.12),var(--card))!important}
+      /* Leaflet map container */
+      .pv-igl-map{height:340px;width:100%;border-radius:18px;overflow:hidden;border:1px solid var(--line,#333447);background:#222}
+      .pv-igl-map .leaflet-control-zoom a{background:#fff;color:#1a1007}
+      .pv-igl-map .leaflet-popup-content-wrapper{background:var(--card,#171722);color:var(--text,#f8fafc);border:1px solid var(--line,#333447);border-radius:14px}
+      .pv-igl-map .leaflet-popup-tip{background:var(--card,#171722)}
+      .pv-igl-map .leaflet-popup-content{margin:12px;font-size:14px;line-height:1.4}
+      .pv-igl-map .leaflet-popup-content h4{margin:0 0 4px;font-size:15px;color:var(--text,#f8fafc)}
+      .pv-igl-map .leaflet-popup-content .denom{font-size:11px;color:var(--brand,#f59e0b);font-weight:900;text-transform:uppercase}
+      .pv-igl-map .leaflet-popup-content a{display:inline-block;background:linear-gradient(135deg,#7c4a1e,#b45309);color:#fff;text-decoration:none;border-radius:999px;padding:6px 10px;font-weight:700;font-size:12px;margin-top:6px}
+      .pv-igl-toggle{display:flex;gap:6px;background:var(--card2,#202031);border:1px solid var(--line,#333447);border-radius:14px;padding:4px;width:fit-content;margin:0 auto}
+      .pv-igl-toggle button{border:0;background:transparent;color:var(--muted,#c8c5d8);border-radius:10px;padding:7px 14px;font-weight:900;font-size:13px;cursor:pointer}
+      .pv-igl-toggle button.on{background:linear-gradient(135deg,#7c4a1e,#b45309);color:#fff}
     `;
     document.head.appendChild(st);
   }
@@ -179,6 +191,11 @@ out center body;`;
           <p style="margin:0;font-size:13px;color:var(--muted,#c8c5d8)">No guardamos tu ubicación en ningún lado. Solo la usamos para buscar.</p>
           <button class="pv-igl-btn-loc" data-loc>📍 Usar mi ubicación</button>
         </div>
+        <div class="pv-igl-toggle" id="pv-igl-toggle" style="display:none">
+          <button class="on" data-view="map">🗺️ Mapa</button>
+          <button data-view="list">📋 Lista</button>
+        </div>
+        <div class="pv-igl-map" id="pv-igl-map" style="display:none" aria-label="Mapa de iglesias"></div>
         <div class="pv-igl-list" id="pv-igl-list"></div>
       </div>`;
 
@@ -195,9 +212,73 @@ out center body;`;
     panel.querySelector('[data-close]').onclick = () => closePanel(true);
 
     let userLoc = null;
+    let mapInstance = null;
+    let markerLayer = null;
+    let lastChurches = [];
+    let view = 'map'; // 'map' | 'list'
     const statusEl = panel.querySelector('#pv-igl-status');
     const listEl   = panel.querySelector('#pv-igl-list');
+    const mapEl    = panel.querySelector('#pv-igl-map');
+    const toggleEl = panel.querySelector('#pv-igl-toggle');
     const radiusSel = panel.querySelector('#pv-igl-radius');
+
+    function initMap(lat, lon) {
+      if (typeof L === 'undefined') return false; // Leaflet aún no cargó
+      if (mapInstance) {
+        mapInstance.setView([lat, lon], 14);
+        return true;
+      }
+      mapInstance = L.map(mapEl, { zoomControl: true, attributionControl: true }).setView([lat, lon], 14);
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '© OpenStreetMap'
+      }).addTo(mapInstance);
+      markerLayer = L.layerGroup().addTo(mapInstance);
+      return true;
+    }
+
+    function plotMarkers(churches) {
+      if (!mapInstance || !markerLayer) return;
+      markerLayer.clearLayers();
+      // Marker del usuario (azul)
+      if (userLoc) {
+        L.circleMarker([userLoc.lat, userLoc.lon], {
+          radius: 9, fillColor: '#3b82f6', color: '#fff', weight: 3, fillOpacity: 1
+        }).addTo(markerLayer).bindPopup('<strong>📍 Estás acá</strong>');
+      }
+      const escape = s => (s || '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+      churches.forEach(c => {
+        const distStr = c.dist < 1 ? `${Math.round(c.dist * 1000)} m` : `${c.dist.toFixed(1)} km`;
+        const popup = `<div>
+          <span class="denom">${escape(denomPretty(c.denomination))} · ${distStr}</span>
+          <h4>${escape(c.name)}</h4>
+          ${c.addr ? `<div style="font-size:12px;color:#c8c5d8">${escape(c.addr)}</div>` : ''}
+          <a href="https://www.google.com/maps/dir/?api=1&destination=${c.lat},${c.lon}" target="_blank" rel="noopener noreferrer">🗺️ Cómo llegar</a>
+        </div>`;
+        L.marker([c.lat, c.lon]).addTo(markerLayer).bindPopup(popup);
+      });
+      // Ajustar vista para mostrar todos los pins
+      if (churches.length && userLoc) {
+        const bounds = L.latLngBounds([
+          [userLoc.lat, userLoc.lon],
+          ...churches.map(c => [c.lat, c.lon])
+        ]);
+        mapInstance.fitBounds(bounds, { padding: [40, 40], maxZoom: 15 });
+      }
+    }
+
+    function applyView() {
+      mapEl.style.display    = view === 'map'  ? 'block' : 'none';
+      listEl.style.display   = view === 'list' ? 'flex'  : (lastChurches.length ? 'flex' : 'none');
+      // En desktop podríamos mostrar ambos. Por ahora: list siempre visible si hay datos
+      if (view === 'map' && mapInstance) {
+        setTimeout(() => mapInstance.invalidateSize(), 100);
+      }
+      toggleEl.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.view === view));
+    }
+    toggleEl.querySelectorAll('button').forEach(b => {
+      b.onclick = () => { view = b.dataset.view; applyView(); };
+    });
 
     async function doSearch() {
       const r = parseInt(radiusSel.value, 10) || 3000;
@@ -237,9 +318,24 @@ out center body;`;
         .map(c => ({ ...c, dist: distance(userLoc.lat, userLoc.lon, c.lat, c.lon) }))
         .sort((a, b) => a.dist - b.dist);
 
+      lastChurches = churches;
+
       statusEl.innerHTML = `<p style="margin:0"><strong>${churches.length} iglesia${churches.length===1?'':'s'} cristiana${churches.length===1?'':'s'}</strong> en ${r/1000} km de tu ubicación.</p>
         <button class="pv-igl-btn-loc" data-loc>🔄 Actualizar</button>`;
       statusEl.querySelector('[data-loc]').onclick = doSearch;
+
+      // Inicializar mapa + markers (esperar a que Leaflet esté cargado)
+      const setupMap = () => {
+        if (initMap(userLoc.lat, userLoc.lon)) {
+          plotMarkers(churches);
+          toggleEl.style.display = 'flex';
+          applyView();
+        } else {
+          // Leaflet aún no cargó — reintentar
+          setTimeout(setupMap, 250);
+        }
+      };
+      setupMap();
 
       listEl.innerHTML = churches.map(c => {
         const distStr = c.dist < 1 ? `${Math.round(c.dist * 1000)} m` : `${c.dist.toFixed(1)} km`;
