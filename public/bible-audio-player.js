@@ -99,6 +99,15 @@
       }));
     } catch {}
   }
+
+  function updateResumeBanner(card, book, chapter, time) {
+    const banner = card.querySelector('.pv-ba-resume');
+    if (!banner || !book || !chapter) return;
+    const mins = Math.floor((time || 0) / 60);
+    const secs = Math.floor((time || 0) % 60);
+    banner.style.display = 'block';
+    banner.innerHTML = `Última escucha: <strong>${book} ${chapter}</strong> · ${mins}:${String(secs).padStart(2, '0')} min`;
+  }
   function getAutoAdvance() {
     return localStorage.getItem(AUTOADVANCE_KEY) !== '0';
   }
@@ -285,6 +294,7 @@
     }
 
     status.textContent = `${book.name} ${chapter} — listo`;
+    updateResumeBanner(card, book.name, chapter, opts.resumeTime || 0);
 
     if (opts.autoplay !== false) {
       audio.play().catch(() => {
@@ -303,12 +313,14 @@
       if (now - lastSave > 5000 && currentBook && currentChapter) {
         lastSave = now;
         saveProgress(currentBook, currentChapter, audio.currentTime);
+        updateResumeBanner(card, currentBook, currentChapter, audio.currentTime);
       }
     });
 
     audio.addEventListener('pause', () => {
       if (currentBook && currentChapter) {
         saveProgress(currentBook, currentChapter, audio.currentTime);
+        updateResumeBanner(card, currentBook, currentChapter, audio.currentTime);
       }
     });
 
