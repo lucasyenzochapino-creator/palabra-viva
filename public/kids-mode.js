@@ -121,42 +121,85 @@
     `;document.head.appendChild(st);
   }
 
-  function stopAll(){try{currentAudio?.pause();currentAudio=null;if('speechSynthesis'in window)speechSynthesis.cancel()}catch{} speechStop=true;}
+  function stopAll(){
+    try{currentAudio?.pause();currentAudio=null;}catch{}
+    try{if('speechSynthesis' in window){speechSynthesis.cancel();}}catch{}
+    speechStop=true;
+  }
 
-  // TTS mejorado: voz seleccionada, pacing natural, frases enteras
+  // TTS robusto con workarounds para bugs conocidos de Chrome/Android/iOS
   async function tts(text,btn){
-    stopAll();speechStop=false;
+    // 1) Verificar soporte
+    if(!('speechSynthesis' in window)){
+      alert('Tu navegador no soporta lectura en voz alta. Probá en Chrome o Safari actualizado.');
+      return;
+    }
+    // 2) Cancelar lo anterior + esperar a que limpie (bug Chrome: speak()
+    //    inmediatamente después de cancel() a veces se ignora)
+    speechStop=true;
+    try{speechSynthesis.cancel();}catch{}
+    await new Promise(r=>setTimeout(r,250));
+
+    // 3) Cargar voces (puede tardar en algunos browsers)
+    btn.textContent='⏳ Cargando voz…';
+    btn.disabled=true;
     await loadVoices();
-    // Cortar por frases naturales pero no demasiado cortas (suena fragmentado)
+    btn.disabled=false;
+
+    // 4) Frases (agrupadas de a 2 para fluidez)
     const sentences=text.match(/[^.!?]+[.!?]+|[^.!?]+$/g)||[text];
-    // Agrupar de a 2 frases para que la voz fluya más natural
     const parts=[];
     for(let j=0;j<sentences.length;j+=2){parts.push(sentences.slice(j,j+2).join(' ').trim());}
     let i=0;
+
+    speechStop=false;
     btn.textContent='⏸ Detener audio';
     btn.dataset.playing='1';
+
     const voice=pickBestSpanishVoice();
+    const voiceName=voice?.name||'voz del sistema';
     const isHighQuality=voice && /neural|wavenet|natural|network|enhanced|premium/i.test((voice.name||'')+(voice.voiceURI||''));
 
+    // 5) Workaround para bug de Chrome donde speech se detiene después de ~15s:
+    //    pausar/reanudar periódicamente. NO afecta el audio audible.
+    const keepAliveTimer = setInterval(()=>{
+      if(speechStop){clearInterval(keepAliveTimer);return;}
+      try{speechSynthesis.pause();speechSynthesis.resume();}catch{}
+    },10000);
+
+    const cleanup=()=>{
+      clearInterval(keepAliveTimer);
+      btn.textContent=parts.length?'🔊 Leer de nuevo':'🔊 Escuchar historia';
+      btn.dataset.playing='';
+    };
+
     const next=()=>{
-      if(speechStop||i>=parts.length){
-        btn.textContent='🔊 Escuchar historia';
-        btn.dataset.playing='';
-        return;
-      }
+      if(speechStop||i>=parts.length){cleanup();return;}
       const u=new SpeechSynthesisUtterance(parts[i++]);
       u.lang=voice?.lang||'es-419';
-      // Voces neurales suenan natural a velocidad normal (.95-1.0)
-      // Voces robóticas necesitan ir más lento para entenderse
-      u.rate=isHighQuality?0.95:0.85;
-      // Pitch más alto solo si la voz es muy plana
-      u.pitch=isHighQuality?1.0:1.1;
+      u.rate=isHighQuality?0.95:0.88;
+      u.pitch=isHighQuality?1.0:1.08;
+      u.volume=1;
       if(voice) u.voice=voice;
-      u.onend=()=>setTimeout(next,180); // pausa corta entre frases
-      u.onerror=()=>setTimeout(next,180);
-      try{speechSynthesis.speak(u);}catch{next();}
+      u.onend=()=>{ if(!speechStop) setTimeout(next,200); };
+      u.onerror=(ev)=>{
+        console.warn('TTS error en frase',i-1,ev?.error||ev);
+        if(!speechStop) setTimeout(next,200);
+      };
+      try{
+        speechSynthesis.speak(u);
+      }catch(err){
+        console.warn('TTS speak() falló:',err);
+        cleanup();
+        alert('No se pudo iniciar la voz. Probá tocar de nuevo o cambiar de voz en el selector.');
+      }
     };
-    next();
+
+    // Pequeño delay antes de la primera frase para que el botón se actualice
+    setTimeout(next,100);
+
+    // Log para debugging
+    console.log('[Niños TTS] usando voz:', voiceName, voice?.lang, '— calidad:', isHighQuality?'alta':'básica');
   }
 
   // UI: mini selector de voz dentro del detail panel

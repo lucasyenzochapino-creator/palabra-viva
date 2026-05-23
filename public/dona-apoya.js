@@ -1,7 +1,7 @@
 (() => {
   // ── Palabra Viva — Card de donación (sutil, al fondo) ─────────────────────
   const CAFECITO_URL    = 'https://cafecito.app/palabraviva';
-  const MERCADOPAGO_URL = 'https://link.mercadopago.com.ar/palabraviva';
+  const MERCADOPAGO_URL = 'https://link.mercadopago.com.ar/palabravivamm';
 
   const $ = (s, r = document) => r.querySelector(s);
 
@@ -10,6 +10,12 @@
     const st = document.createElement('style');
     st.id = 'pv-dona-style';
     st.textContent = `
+      /* Modal de donación */
+      .pv-dona-modal{position:fixed;inset:0;z-index:9600;background:rgba(0,0,0,.7);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;padding:18px}
+      .pv-dona-modal-card{background:var(--card,#171722);color:var(--text,#f8fafc);border:1px solid var(--line,#333447);border-radius:24px;padding:24px 22px;max-width:440px;width:100%;box-shadow:0 24px 60px rgba(0,0,0,.5);position:relative}
+      .pv-dona-modal-close{position:absolute;top:14px;right:14px;background:var(--card2,#202031);border:1px solid var(--line,#333447);color:var(--text,#f8fafc);border-radius:50%;width:36px;height:36px;font-size:16px;cursor:pointer;line-height:1}
+      .pv-dona-modal-btn{display:flex;align-items:center;justify-content:center;gap:8px;padding:14px 18px;border-radius:999px;text-decoration:none;font-weight:900;font-size:16px;min-height:52px;border:0;cursor:pointer}
+      .pv-dona-modal-btn:active{transform:scale(.98)}
       /* Wrapper al fondo del .app */
       .pv-dona-wrap{
         margin-top:28px;
@@ -87,8 +93,8 @@
     wrap.innerHTML = `
       <p class="pv-dona-hint">❤️ Esta app es gratuita. Si querés apoyarla o invitar a alguien:</p>
       <div class="pv-dona-btns">
-        <a class="pv-dona-btn" href="${CAFECITO_URL}" target="_blank" rel="noopener noreferrer">☕ Cafecito</a>
-        <a class="pv-dona-btn" href="${MERCADOPAGO_URL}" target="_blank" rel="noopener noreferrer">💳 Mercado Pago</a>
+        <button class="pv-dona-btn" data-act="dona-1vez">💝 Donar una vez</button>
+        <button class="pv-dona-btn" data-act="dona-mes">🔁 Donar todos los meses</button>
         <button class="pv-dona-btn" data-share>📤 Invitar amigo</button>
       </div>
       <button class="pv-dona-toggle">⭐ Funciones premium que vienen ▾</button>
@@ -103,6 +109,37 @@
         </ul>
       </div>
     `;
+
+    // Modal explicativo para elegir método de donación
+    function openDonationModal(monthly) {
+      const m = document.createElement('div');
+      m.className = 'pv-dona-modal';
+      m.innerHTML = `
+        <div class="pv-dona-modal-card">
+          <button class="pv-dona-modal-close" data-close>✕</button>
+          <div style="font-size:48px;text-align:center;line-height:1">${monthly ? '🔁' : '💝'}</div>
+          <h2 style="margin:6px 0;text-align:center;font-size:24px">${monthly ? 'Donar todos los meses' : 'Donar una vez'}</h2>
+          ${monthly
+            ? `<p style="margin:0 0 4px">Para que tu donación se repita cada mes:</p>
+               <ol style="margin:0 0 10px;padding-left:22px;font-size:15px;line-height:1.55">
+                 <li>Tocá el botón <strong>Mercado Pago</strong> de abajo.</li>
+                 <li>Ingresá el monto que quieras donar.</li>
+                 <li>Después de pagar, andá a <strong>Tu cuenta de Mercado Pago → Pagos programados / suscripciones</strong> y activá la repetición mensual.</li>
+                 <li>Cafecito también permite suscripción mensual — elegí "Apoyo recurrente" al donar.</li>
+               </ol>`
+            : `<p style="margin:0 0 10px;font-size:15px">Elegí el método que prefieras. Tu donación llega completa al sostenimiento de Palabra Viva.</p>`}
+          <div style="display:flex;flex-direction:column;gap:10px;margin-top:8px">
+            <a href="${CAFECITO_URL}" target="_blank" rel="noopener noreferrer" class="pv-dona-modal-btn" style="background:linear-gradient(135deg,#7c4a1e,#b45309);color:white">☕ Cafecito ${monthly ? '(con opción mensual)' : ''}</a>
+            <a href="${MERCADOPAGO_URL}" target="_blank" rel="noopener noreferrer" class="pv-dona-modal-btn" style="background:linear-gradient(135deg,#00b3e3,#0a83cf);color:white">💳 Mercado Pago</a>
+          </div>
+          <p style="font-size:12px;color:var(--muted,#a08060);text-align:center;margin:10px 0 0">Gracias por sostener este proyecto 🙏</p>
+        </div>`;
+      m.addEventListener('click', e => { if (e.target === m || e.target.dataset.close !== undefined) m.remove(); });
+      document.body.appendChild(m);
+    }
+
+    wrap.querySelector('[data-act="dona-1vez"]').addEventListener('click', () => openDonationModal(false));
+    wrap.querySelector('[data-act="dona-mes"]').addEventListener('click', () => openDonationModal(true));
 
     wrap.querySelector('.pv-dona-toggle').addEventListener('click', () => {
       const panel = wrap.querySelector('.pv-dona-premium');
