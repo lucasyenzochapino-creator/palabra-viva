@@ -54,9 +54,11 @@
       '.pv-voice-panel',
       '.pv-audio-box',
       '.pv-audio-settings',
-      '.pv-bap-panel',   // Panel Biblia en Audio
-      '.pv-adm-panel',   // Panel Admin
-      '.pv-auth-modal'   // Modal de login/registro
+      '.pv-bap-panel',    // Panel Biblia en Audio
+      '.pv-adm-panel',    // Panel Admin
+      '.pv-auth-modal',   // Modal de login/registro
+      '.pv-kids-panel',   // Panel Niños
+      '.pv-kids-detail'   // Detalle historia niños
     ];
     const panels = selectors.flatMap(sel => Array.from(document.querySelectorAll(sel)));
     if (!panels.length) return false;
