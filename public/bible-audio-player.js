@@ -203,11 +203,16 @@
     } catch {}
   }
 
+  // Devuelve el contenedor de UI activo (panel o card en pestaña Biblia)
+  function getUIContainer() {
+    return document.querySelector('.pv-bap-panel') || document.querySelector('.pv-ba-card') || null;
+  }
+
   function goNextChapter() {
     if (!currentBook || !currentChapter) return;
     const b = findBookByName(currentBook);
     if (!b) return;
-    const card = document.querySelector('.pv-ba-card');
+    const card = getUIContainer();
     if (currentChapter < b.chapters) {
       loadChapter(card, currentBook, currentChapter + 1, { autoplay: true });
     } else {
@@ -218,7 +223,7 @@
 
   function goPrevChapter() {
     if (!currentBook || !currentChapter) return;
-    const card = document.querySelector('.pv-ba-card');
+    const card = getUIContainer();
     if (currentChapter > 1) {
       loadChapter(card, currentBook, currentChapter - 1, { autoplay: true });
     } else {
@@ -435,6 +440,19 @@
         color:var(--text,#f5deb3);border-radius:50%;
         width:32px;height:32px;cursor:pointer;font-size:14px;
       }
+
+      /* ── Panel fullscreen (como la radio) ── */
+      .pv-bap-panel{position:fixed;inset:0;z-index:9000;background:var(--bg,#1a0e05);color:var(--text,#f5deb3);overflow-y:auto;padding:14px 14px calc(200px + env(safe-area-inset-bottom))}
+      .pv-bap-p-inner{max-width:720px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+      .pv-bap-p-head{position:sticky;top:0;z-index:2;backdrop-filter:blur(14px);background:linear-gradient(to bottom,var(--bg,#1a0e05) 70%,transparent);padding:10px 0 14px;display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+      .pv-bap-p-head h1{font-size:clamp(22px,6vw,30px);margin:2px 0 4px;line-height:1.05}
+      .pv-bap-p-head p{font-size:13px;color:var(--muted,#a08060);margin:0}
+      .pv-bap-close-btn{border:1px solid var(--line,rgba(200,150,80,.25));background:var(--card2,rgba(255,220,150,.08));color:var(--text,#f5deb3);border-radius:999px;padding:9px 14px;font-weight:900;white-space:nowrap;cursor:pointer;flex-shrink:0}
+      .pv-bap-p-selrow{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+      .pv-bap-p-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+      .pv-bap-p-btn{border:1px solid var(--line,rgba(200,150,80,.25));background:var(--card2,rgba(255,220,150,.08));color:var(--text,#f5deb3);border-radius:999px;padding:11px;font-weight:900;min-height:44px;cursor:pointer;font-size:14px}
+      .pv-bap-p-btn.primary{border:0;background:linear-gradient(135deg,var(--brand,#9a3412),var(--brand2,#f97316));color:#fff;grid-column:1/-1}
+      @media(max-width:420px){.pv-bap-p-selrow,.pv-bap-p-actions{grid-template-columns:1fr}}
     `;
     document.head.appendChild(style);
   }
@@ -598,6 +616,100 @@
     }
   }
 
+  // ── Panel fullscreen (abre desde home, cierra sin parar el audio) ─────────
+  function openBapPanel() {
+    // Toggle: si ya está abierto, cerrarlo
+    const existing = document.querySelector('.pv-bap-panel');
+    if (existing) { closePanelKeepAudio(existing); return; }
+
+    const panel = document.createElement('div');
+    panel.className = 'pv-bap-panel';
+
+    let bookOpts = '';
+    BOOKS.forEach(b => { bookOpts += `<option value="${b.name}">${b.name}</option>`; });
+
+    panel.innerHTML = `
+      <div class="pv-bap-p-inner">
+        <div class="pv-bap-p-head">
+          <div>
+            <h1>🎧 Biblia en Audio</h1>
+            <p>Reina Valera 1909 · Voz humana · Android Auto · CarPlay</p>
+          </div>
+          <button class="pv-bap-close-btn" data-close>Cerrar ✕</button>
+        </div>
+        <div class="pv-bap-p-selrow">
+          <select class="pv-ba-select pv-ba-book" aria-label="Libro">${bookOpts}</select>
+          <select class="pv-ba-select pv-ba-chap" aria-label="Capítulo"></select>
+        </div>
+        <div class="pv-ba-audio-slot" style="margin-top:10px"></div>
+        <p class="pv-ba-status"></p>
+        <div class="pv-bap-p-actions">
+          <button class="pv-bap-p-btn" data-act="prev">⏮ Cap. anterior</button>
+          <button class="pv-bap-p-btn" data-act="next">Cap. siguiente ⏭</button>
+          <button class="pv-bap-p-btn primary" data-act="resume">▶ Reanudar donde quedé</button>
+          <button class="pv-bap-p-btn primary" data-act="start" style="background:linear-gradient(135deg,#4a2810,#7c4a1e)">⛪ Desde Génesis 1</button>
+        </div>
+        <div class="pv-ba-toggle">
+          <label for="pv-bap-auto-p">Auto-avanzar al próximo capítulo</label>
+          <input id="pv-bap-auto-p" type="checkbox" />
+        </div>
+        <div class="pv-ba-resume" style="display:none"></div>
+      </div>`;
+
+    // Cerrar sin parar audio
+    panel.querySelector('[data-close]').onclick = () => closePanelKeepAudio(panel);
+
+    // Poner el elemento <audio> visible en el slot
+    panel.querySelector('.pv-ba-audio-slot').appendChild(AUD);
+    AUD.style.display = 'block';
+
+    const autoInput = panel.querySelector('#pv-bap-auto-p');
+    autoInput.checked = getAutoAdvance();
+    autoInput.onchange = () => setAutoAdvance(autoInput.checked);
+
+    const bookSel = panel.querySelector('.pv-ba-book');
+    const chapSel = panel.querySelector('.pv-ba-chap');
+
+    const fillChaps = (bookName) => {
+      const b = findBookByName(bookName); if (!b) return;
+      let o = ''; for (let i = 1; i <= b.chapters; i++) o += `<option value="${i}">Capítulo ${i}</option>`;
+      chapSel.innerHTML = o;
+    };
+
+    // Restaurar posición actual o cargar selección de la pestaña Biblia
+    if (currentBook) {
+      bookSel.value = currentBook; fillChaps(currentBook); chapSel.value = String(currentChapter);
+      updateResumeBanner(panel, currentBook, currentChapter, AUD.currentTime);
+    } else {
+      fillChaps(bookSel.value);
+      const sel = getCurrentBibleSelection();
+      if (sel) { bookSel.value = sel.book; fillChaps(sel.book); chapSel.value = String(sel.chapter); }
+      const progress = loadProgress();
+      if (progress?.book && progress?.chapter) updateResumeBanner(panel, progress.book, progress.chapter, progress.time||0);
+    }
+
+    bookSel.onchange = () => { fillChaps(bookSel.value); loadChapter(panel, bookSel.value, 1, { autoplay: false }); };
+    chapSel.onchange = () => { const ch = parseInt(chapSel.value, 10); if (ch) loadChapter(panel, bookSel.value, ch, { autoplay: false }); };
+
+    panel.querySelector('[data-act="prev"]').onclick    = goPrevChapter;
+    panel.querySelector('[data-act="next"]').onclick    = goNextChapter;
+    panel.querySelector('[data-act="resume"]').onclick  = () => {
+      const p = loadProgress();
+      if (p?.book && p?.chapter) loadChapter(panel, p.book, p.chapter, { autoplay: true, resumeTime: p.time||0 });
+      else loadChapter(panel, 'Génesis', 1, { autoplay: true });
+    };
+    panel.querySelector('[data-act="start"]').onclick   = () => loadChapter(panel, 'Génesis', 1, { autoplay: true });
+
+    document.body.appendChild(panel);
+  }
+
+  function closePanelKeepAudio(panel) {
+    if (!AUD.paused && currentBook) saveProgress(currentBook, currentChapter, AUD.currentTime);
+    if (panel.contains(AUD)) { document.body.appendChild(AUD); AUD.style.display = 'none'; }
+    panel.remove();
+    if (currentBook && currentChapter) refreshMiniPlayer();
+  }
+
   function boot() {
     injectStyles();
     removeOldInvasiveElements();
@@ -614,15 +726,11 @@
   }
 
   window.PalabraVivaAudioBible = {
-    openInBibleTab: () => {
-      const navs     = document.querySelectorAll('.bottom .nav');
-      const bibleNav = Array.from(navs).find(n => (n.textContent||'').includes('Biblia'));
-      if (bibleNav) bibleNav.click();
-      setTimeout(boot, 100);
-    },
-    stop:  stopBapAudio,
-    next:  goNextChapter,
-    prev:  goPrevChapter,
+    open:         openBapPanel,
+    openInBibleTab: openBapPanel,   // ahora abre el panel en lugar de navegar a la pestaña
+    stop:         stopBapAudio,
+    next:         goNextChapter,
+    prev:         goPrevChapter,
     isPlaying:    () => !!currentBook && !AUD.paused,
     togglePlay:   () => { if (!currentBook) return; AUD.paused ? AUD.play().catch(()=>{}) : AUD.pause(); },
     getCurrentInfo: () => currentBook ? `${currentBook} ${currentChapter}` : ''
