@@ -8,6 +8,7 @@
 
   const ITEMS = [
     { emoji: '📜', label: 'Línea del tiempo bíblica', cb: () => window.PVTimeline?.open?.() },
+    { emoji: '📚', label: 'Versiones de la Biblia',   cb: () => window.PVVersiones?.open?.() },
     { emoji: '⛪', label: 'Iglesias cristianas cerca', cb: () => window.PVIglesias?.open?.() },
     { emoji: '📅', label: 'Calendario cristiano',     cb: () => window.PVCalendario?.open?.() },
     { emoji: '📖', label: 'Personajes bíblicos',      cb: () => window.PVPersonajes?.open?.() },

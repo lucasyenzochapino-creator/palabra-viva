@@ -267,33 +267,46 @@
         </div>
         <div class="big-emoji">${story.emoji}</div>
         <h1>${story.title}</h1>
-        <div class="pv-kids-now-playing" style="background:#fff;border:2px dashed #d1b083;border-radius:14px;padding:10px 12px;text-align:center;font-size:13px;color:#7c4a1e;font-weight:700">
-          🎧 Esta narración: <strong>${story.title}</strong>${aud.length ? ' · voz humana' : ' · voz del celular'}
+
+        ${aud.length ? `
+        <div class="pv-kids-human-audio" style="background:linear-gradient(135deg,#fef3c7,#fde68a);border:2px solid #b45309;border-radius:18px;padding:14px;display:flex;flex-direction:column;gap:10px">
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="font-size:32px;line-height:1">🎙️</span>
+            <div style="flex:1">
+              <div style="font-weight:900;color:#92400e;font-size:15px;line-height:1.2">Voz humana narrada</div>
+              <div style="font-size:12px;color:#7c4a1e;line-height:1.3">Oceano Multimedia — narración real, no robótica</div>
+            </div>
+          </div>
+          <audio class="pv-kids-player" controls preload="metadata" src="${aud[0]}" style="width:100%"></audio>
+          <div class="pv-kids-audio-status" style="font-size:12px;color:#7c4a1e;text-align:center;min-height:16px"></div>
         </div>
-        ${aud.length
-          ? '<div class="pv-kids-audio-note">🎧 Esta historia tiene voz narrada. Si no carga, tocá <strong>🔊 Leer en voz alta</strong>.</div>'
-          : '<div class="pv-kids-audio-note">🔊 Esta historia se lee con la voz del celular. Elegí la mejor voz disponible abajo.</div>'}
+        ` : `
+        <div class="pv-kids-audio-note" style="background:#fff;border:1px dashed #d1b083;border-radius:14px;padding:12px;color:#7c4a1e">
+          🔊 Esta historia se lee con la voz de tu celular. Elegí la mejor voz disponible abajo.
+        </div>
         ${buildVoiceSelector()}
+        `}
+
         <div class="verse-box"><span class="label">${story.ref}</span><em>“${story.verse}”</em></div>
         <div class="story-text">${story.text}</div>
         <div class="questions"><span class="label">Para pensar juntos</span><ol>${story.q.map(x=>`<li>${x}</li>`).join('')}</ol></div>
         <div class="pray-box"><span class="label">Oración</span><p>${story.pray}</p></div>
-        ${aud.length
-          ? `<audio class="pv-kids-player" controls preload="none" src="${aud[0]}"></audio>
-             <div class="pv-kids-actions">
-               <button class="pv-kids-btn audio" data-tts>🔊 Leer en voz alta</button>
-               <button class="pv-kids-btn audio" data-share>📤 Compartir</button>
-               ${hasPrevStory ? '<button class="pv-kids-btn ghost" data-prev-story>⏮ Historia anterior</button>' : ''}
-               ${hasNextStory ? '<button class="pv-kids-btn audio" data-next-story>Siguiente historia ⏭</button>' : ''}
-               <button class="pv-kids-btn primary full" data-read>⭐ Marcar como leída</button>
-             </div>`
-          : `<div class="pv-kids-actions">
-               <button class="pv-kids-btn audio full" data-tts>🔊 Escuchar historia</button>
-               <button class="pv-kids-btn audio" data-share>📤 Compartir</button>
-               ${hasPrevStory ? '<button class="pv-kids-btn ghost" data-prev-story>⏮ Historia anterior</button>' : ''}
-               ${hasNextStory ? '<button class="pv-kids-btn audio" data-next-story>Siguiente historia ⏭</button>' : ''}
-               <button class="pv-kids-btn primary full" data-read>⭐ Marcar como leída</button>
-             </div>`}
+
+        <div class="pv-kids-actions">
+          ${aud.length ? '' : `<button class="pv-kids-btn audio full" data-tts>🔊 Escuchar con voz del celular</button>`}
+          <button class="pv-kids-btn audio" data-share>📤 Compartir</button>
+          <button class="pv-kids-btn primary" data-read>⭐ Marcar como leída</button>
+          ${hasPrevStory ? '<button class="pv-kids-btn ghost" data-prev-story>⏮ Anterior</button>' : ''}
+          ${hasNextStory ? '<button class="pv-kids-btn audio" data-next-story>Siguiente ⏭</button>' : ''}
+        </div>
+
+        ${aud.length ? `
+        <details style="background:transparent;border:1px solid #d1b083;border-radius:12px;padding:10px 14px;margin-top:8px">
+          <summary style="cursor:pointer;font-size:13px;color:#7c4a1e;font-weight:700">¿No carga el audio narrado? Probá leer con la voz del celular</summary>
+          ${buildVoiceSelector()}
+          <button class="pv-kids-btn audio full" data-tts style="margin-top:8px">🔊 Leer en voz alta</button>
+        </details>
+        ` : ''}
       </div>`;
 
     document.body.appendChild(detail);
@@ -340,18 +353,32 @@
       } catch (e) { /* user canceled */ }
     });
 
-    // Audio player
+    // Audio player con status visible
     const player = detail.querySelector('.pv-kids-player');
+    const statusEl = detail.querySelector('.pv-kids-audio-status');
     if (player) {
       currentAudio = player;
-      player.onerror = () => {
-        const errDiv = detail.querySelector('.pv-kids-audio-note');
-        if (errDiv) {
-          errDiv.innerHTML = '⚠️ El audio narrado no se pudo cargar. Usá el botón <strong>🔊 Escuchar historia</strong> para la lectura automática.';
-          errDiv.style.background = '#fef2f2';
-          errDiv.style.color = '#991b1b';
+      const setStatus = (txt) => { if (statusEl) statusEl.textContent = txt; };
+      player.addEventListener('loadstart',   () => setStatus('⏳ Cargando audio…'));
+      player.addEventListener('loadedmetadata', () => {
+        const dur = Math.round(player.duration || 0);
+        const m = Math.floor(dur / 60), s = dur % 60;
+        setStatus(`📻 Duración: ${m}:${String(s).padStart(2,'0')} — tocá ▶`);
+      });
+      player.addEventListener('playing',     () => setStatus('🔴 Reproduciendo voz humana real'));
+      player.addEventListener('pause',       () => setStatus('⏸ Pausado'));
+      player.addEventListener('ended',       () => setStatus('✓ Terminó la narración'));
+      player.addEventListener('waiting',     () => setStatus('⏳ Buffering…'));
+      player.addEventListener('error', () => {
+        setStatus('⚠️ No se pudo cargar el audio narrado.');
+        const note = detail.querySelector('.pv-kids-human-audio');
+        if (note) {
+          note.style.background = 'linear-gradient(135deg,#fef2f2,#fee2e2)';
+          note.style.borderColor = '#dc2626';
+          note.querySelector('div div div:first-child').innerHTML = '⚠️ No se pudo cargar el audio';
+          note.querySelector('div div div:last-child').innerHTML = 'Probá la opción "Leer con voz del celular" más abajo';
         }
-      };
+      });
     }
 
     // TTS
@@ -419,7 +446,9 @@
       const story = STORIES.find(s => s.title === title);
       if (story) openDetail(story, opts || {});
     },
-    stories: () => STORIES.slice()
+    stories: () => STORIES.slice(),
+    audioFor: (title) => (AUDIO_MAP[title] || []).slice(),
+    findStory: (title) => STORIES.find(s => s.title === title) || null
   };
   function boot(){css();document.querySelectorAll('.pv-kids-fab,.pv-kids-fab-old').forEach(e=>e.remove());addHome();addQuick()}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();window.addEventListener('load',boot);setInterval(boot,2500);

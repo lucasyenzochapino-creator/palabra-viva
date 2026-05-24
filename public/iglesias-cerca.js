@@ -150,8 +150,48 @@
     });
   }
 
+  // Caché localStorage para evitar Overpass innecesario (24h)
+  const CACHE_KEY = 'pv-iglesias-cache';
+  const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+
+  function cacheKey(lat, lon, radiusM) {
+    // Redondear a 0.01° (~1km) para reusar caché si el usuario se mueve poco
+    const la = Math.round(lat * 100) / 100;
+    const lo = Math.round(lon * 100) / 100;
+    return `${la},${lo},${radiusM}`;
+  }
+  function loadCache() {
+    try { return JSON.parse(localStorage.getItem(CACHE_KEY) || '{}'); }
+    catch { return {}; }
+  }
+  function saveCache(data) {
+    try { localStorage.setItem(CACHE_KEY, JSON.stringify(data)); } catch {}
+  }
+  function getCached(lat, lon, radiusM) {
+    const all = loadCache();
+    const entry = all[cacheKey(lat, lon, radiusM)];
+    if (!entry) return null;
+    if (Date.now() - entry.ts > CACHE_TTL_MS) return null;
+    return entry.churches;
+  }
+  function setCached(lat, lon, radiusM, churches) {
+    const all = loadCache();
+    all[cacheKey(lat, lon, radiusM)] = { ts: Date.now(), churches };
+    // Limpiar caché muy vieja
+    for (const k of Object.keys(all)) {
+      if (Date.now() - all[k].ts > CACHE_TTL_MS) delete all[k];
+    }
+    saveCache(all);
+  }
+
   // ── Overpass API: buscar iglesias en radio ────────────────────────────────
   async function fetchChurches(lat, lon, radiusM, onProgress) {
+    // 1) Intentar caché primero (24h)
+    const cached = getCached(lat, lon, radiusM);
+    if (cached) {
+      if (onProgress) onProgress('Mostrando resultados guardados (24h)…');
+      return cached;
+    }
     // Query Overpass: places of worship cristianas en radio.
     // Por defecto OSM no siempre tiene 'religion=christian' — algunas iglesias
     // tienen denomination=baptist sin religion. Hacemos una query más amplia.
@@ -179,7 +219,7 @@ out center body;`;
         clearTimeout(timeoutId);
         if (!res.ok) continue;
         const data = await res.json();
-        return (data.elements || []).map(el => ({
+        const churches = (data.elements || []).map(el => ({
           id: el.id,
           lat: el.lat || el.center?.lat,
           lon: el.lon || el.center?.lon,
@@ -202,6 +242,9 @@ out center body;`;
         })
         // Deduplicar por id
         .filter((c, idx, arr) => arr.findIndex(x => x.id === c.id) === idx);
+        // Guardar en caché para próxima búsqueda
+        setCached(lat, lon, radiusM, churches);
+        return churches;
       } catch (e) {
         clearTimeout(timeoutId);
         if (e.name === 'AbortError') console.warn(`Overpass ${url} timeout`);

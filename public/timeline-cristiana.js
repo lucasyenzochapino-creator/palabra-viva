@@ -157,14 +157,18 @@
         const realIdx = EVENTS.indexOf(ev);
         const era = ERA_LABELS[ev.era] || ERA_LABELS.pre;
         const canPlay = ev.linkTo && (window.PalabraVivaNinos);
-        return `<article class="pv-tl-item" style="--era-color:${era.color}">
+        const audioUrls = canPlay ? (window.PalabraVivaNinos.audioFor?.(ev.linkTo) || []) : [];
+        const hasAudio = audioUrls.length > 0;
+        return `<article class="pv-tl-item" style="--era-color:${era.color}" data-idx="${realIdx}">
           <div class="pv-tl-dot" aria-hidden="true">${ev.emoji}</div>
           <p class="pv-tl-year">${ev.year}</p>
           <h3 class="pv-tl-title">${ev.title}</h3>
           <p class="pv-tl-body">${ev.kid}</p>
           <p class="pv-tl-ref">📖 ${ev.ref}</p>
+          ${hasAudio ? `<div class="pv-tl-audio-slot" data-audio="${audioUrls[0].replace(/"/g,'&quot;')}"></div>` : ''}
           <div class="pv-tl-cta">
-            ${canPlay ? `<button data-link="${ev.linkTo.replace(/"/g, '&quot;')}" class="read">📖 Leer con audio</button>` : ''}
+            ${hasAudio ? `<button data-play-audio="${realIdx}" style="background:linear-gradient(135deg,#b45309,#7c4a1e)">🎧 Escuchar voz humana</button>` : ''}
+            ${canPlay ? `<button data-link="${ev.linkTo.replace(/"/g, '&quot;')}" class="read">📖 Leer historia completa</button>` : ''}
             <button data-share-ev="${realIdx}" style="background:linear-gradient(135deg,#3b82f6,#8b5cf6)">📤 Compartir</button>
           </div>
         </article>`;
@@ -178,6 +182,46 @@
           if (window.PalabraVivaNinos?.openStory) {
             window.PalabraVivaNinos.openStory(title, { fromTimeline: true });
           }
+        });
+      });
+
+      // 🎧 Reproducir audio inline en el hito
+      line.querySelectorAll('[data-play-audio]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const card = btn.closest('.pv-tl-item');
+          const slot = card?.querySelector('.pv-tl-audio-slot');
+          if (!slot) return;
+          // Si ya está el player, toggle play/pause
+          const existing = slot.querySelector('audio');
+          if (existing) {
+            existing.paused ? existing.play() : existing.pause();
+            return;
+          }
+          // Pausar cualquier otro audio en el timeline
+          line.querySelectorAll('audio').forEach(a => { try { a.pause(); } catch {} });
+          // Crear nuevo player
+          const url = slot.dataset.audio;
+          slot.innerHTML = `
+            <div style="background:linear-gradient(135deg,#fef3c7,#fde68a);border:1px solid #b45309;border-radius:14px;padding:10px;margin:8px 0">
+              <div style="font-size:11px;font-weight:900;color:#92400e;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">🎙️ Voz humana — Oceano Multimedia</div>
+              <audio controls preload="metadata" style="width:100%" autoplay></audio>
+              <div class="pv-tl-status" style="font-size:11px;color:#7c4a1e;text-align:center;margin-top:4px">⏳ Cargando…</div>
+            </div>
+          `;
+          const audio = slot.querySelector('audio');
+          const status = slot.querySelector('.pv-tl-status');
+          audio.src = url;
+          audio.addEventListener('loadedmetadata', () => {
+            const d = Math.round(audio.duration || 0);
+            status.textContent = `Duración: ${Math.floor(d/60)}:${String(d%60).padStart(2,'0')}`;
+          });
+          audio.addEventListener('playing', () => status.textContent = '🔴 Reproduciendo');
+          audio.addEventListener('pause',   () => status.textContent = '⏸ Pausado');
+          audio.addEventListener('ended',   () => status.textContent = '✓ Terminó');
+          audio.addEventListener('error',   () => status.textContent = '⚠️ No se pudo cargar');
+          btn.textContent = '⏸ Pausar audio';
+          audio.addEventListener('pause', () => { btn.textContent = '▶ Reanudar audio'; });
+          audio.addEventListener('playing', () => { btn.textContent = '⏸ Pausar audio'; });
         });
       });
 
