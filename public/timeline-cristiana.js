@@ -153,7 +153,8 @@
     function render() {
       const line = panel.querySelector('#pv-tl-line');
       const list = activeEra === 'all' ? EVENTS : EVENTS.filter(e => e.era === activeEra);
-      line.innerHTML = list.map(ev => {
+      line.innerHTML = list.map((ev) => {
+        const realIdx = EVENTS.indexOf(ev);
         const era = ERA_LABELS[ev.era] || ERA_LABELS.pre;
         const canPlay = ev.linkTo && (window.PalabraVivaNinos);
         return `<article class="pv-tl-item" style="--era-color:${era.color}">
@@ -162,24 +163,35 @@
           <h3 class="pv-tl-title">${ev.title}</h3>
           <p class="pv-tl-body">${ev.kid}</p>
           <p class="pv-tl-ref">📖 ${ev.ref}</p>
-          ${canPlay ? `<div class="pv-tl-cta"><button data-link="${ev.linkTo.replace(/"/g, '&quot;')}" class="read">📖 Leer historia completa</button></div>` : ''}
+          <div class="pv-tl-cta">
+            ${canPlay ? `<button data-link="${ev.linkTo.replace(/"/g, '&quot;')}" class="read">📖 Leer con audio</button>` : ''}
+            <button data-share-ev="${realIdx}" style="background:linear-gradient(135deg,#3b82f6,#8b5cf6)">📤 Compartir</button>
+          </div>
         </article>`;
       }).join('');
 
-      // Botones de "leer historia": abren el modo Niños con esa historia
+      // Botones de "leer historia": abren la historia DIRECTAMENTE sin cerrar
+      // el timeline. Al cerrar la historia se vuelve al timeline (no a home).
       line.querySelectorAll('[data-link]').forEach(btn => {
         btn.addEventListener('click', () => {
           const title = btn.dataset.link;
-          closePanel(false);
-          // Abrir modo niños y mostrar la historia
-          if (window.PalabraVivaNinos?.open) {
-            window.PalabraVivaNinos.open();
-            // Esperar a que el panel se monte y luego abrir esa historia específica
-            setTimeout(() => {
-              const card = Array.from(document.querySelectorAll('.pv-kids-card')).find(c => c.dataset.title === title);
-              card?.click();
-            }, 300);
+          if (window.PalabraVivaNinos?.openStory) {
+            window.PalabraVivaNinos.openStory(title, { fromTimeline: true });
           }
+        });
+      });
+
+      // Botones compartir hito
+      line.querySelectorAll('[data-share-ev]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const i = parseInt(btn.dataset.shareEv, 10);
+          const ev = EVENTS[i];
+          if (!ev) return;
+          const text = `${ev.emoji} ${ev.title} (${ev.year})\n\n${ev.kid}\n\n📖 ${ev.ref}\n\n✝️ Palabra Viva — Línea del tiempo bíblica\n${location.origin}/`;
+          try {
+            if (navigator.share) await navigator.share({ title: ev.title, text, url: location.origin + '/' });
+            else if (navigator.clipboard) { await navigator.clipboard.writeText(text); alert('📋 Copiado.'); }
+          } catch {}
         });
       });
     }

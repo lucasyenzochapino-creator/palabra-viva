@@ -243,47 +243,163 @@
     return `<div style="background:#fff;border-radius:14px;padding:10px 12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="font-size:13px;font-weight:900;color:#7c4a1e">🎙️ Voz:</span><select class="pv-kids-voice-sel" style="flex:1;min-width:160px;border:1px solid #d1b083;background:#fff;color:#27190c;border-radius:10px;padding:7px 10px;font-size:13px;font-weight:600"><option value="">Mejor disponible (auto)</option>${opts}</select></div>`;
   }
 
-  function openDetail(story){
-    stopAll();document.querySelector('.pv-kids-detail')?.remove();
-    history.pushState({pvKidsDetail:true},'',location.href.split('#')[0]+'#kids-detail');
-    detail=document.createElement('section');detail.className='pv-kids-detail';const aud=AUDIO_MAP[story.title]||[];
-    detail.innerHTML=`<div class="pv-kids-detail-inner"><div class="pv-kids-detail-head"><button class="pv-kids-btn ghost" data-back>← Volver</button><button class="pv-kids-btn ghost" data-close>Cerrar</button></div><div class="big-emoji">${story.emoji}</div><h1>${story.title}</h1>${aud.length?'<div class="pv-kids-audio-note">🎧 Esta historia tiene voz narrada. Si no carga, tocá <strong>🔊 Leer en voz alta</strong>.</div>':'<div class="pv-kids-audio-note">🔊 Esta historia se lee con la voz del celular. Elegí la mejor voz disponible abajo.</div>'}${buildVoiceSelector()}<div class="verse-box"><span class="label">${story.ref}</span><em>“${story.verse}”</em></div><div class="story-text">${story.text}</div><div class="questions"><span class="label">Para pensar juntos</span><ol>${story.q.map(x=>`<li>${x}</li>`).join('')}</ol></div><div class="pray-box"><span class="label">Oración</span><p>${story.pray}</p></div>${aud.length?`<audio class="pv-kids-player" controls preload="none" src="${aud[0]}"></audio><div class="pv-kids-actions"><button class="pv-kids-btn audio" data-next-audio>🎧 Siguiente parte</button><button class="pv-kids-btn audio" data-tts>🔊 Leer en voz alta</button><button class="pv-kids-btn primary full" data-read>⭐ Marcar como leída</button></div>`:`<div class="pv-kids-actions"><button class="pv-kids-btn audio full" data-tts>🔊 Escuchar historia</button><button class="pv-kids-btn primary full" data-read>⭐ Marcar como leída</button></div>`}</div>`;
+  function openDetail(story, opts){
+    opts = opts || {};
+    const fromTimeline = !!opts.fromTimeline;
+    stopAll();
+    document.querySelector('.pv-kids-detail')?.remove();
+    history.pushState({pvKidsDetail:true,fromTimeline}, '', location.href.split('#')[0] + '#kids-detail');
+    detail = document.createElement('section');
+    detail.className = 'pv-kids-detail';
+    const aud = AUDIO_MAP[story.title] || [];
+    const escape = s => (s||'').replace(/"/g, '&quot;');
+
+    // Botón "siguiente historia" disponible si vinimos del timeline
+    const idx = STORIES.findIndex(s => s.title === story.title);
+    const hasNextStory = idx >= 0 && idx < STORIES.length - 1;
+    const hasPrevStory = idx > 0;
+
+    detail.innerHTML = `
+      <div class="pv-kids-detail-inner">
+        <div class="pv-kids-detail-head">
+          <button class="pv-kids-btn ghost" data-back>← Volver</button>
+          <button class="pv-kids-btn ghost" data-close>Cerrar</button>
+        </div>
+        <div class="big-emoji">${story.emoji}</div>
+        <h1>${story.title}</h1>
+        <div class="pv-kids-now-playing" style="background:#fff;border:2px dashed #d1b083;border-radius:14px;padding:10px 12px;text-align:center;font-size:13px;color:#7c4a1e;font-weight:700">
+          🎧 Esta narración: <strong>${story.title}</strong>${aud.length ? ' · voz humana' : ' · voz del celular'}
+        </div>
+        ${aud.length
+          ? '<div class="pv-kids-audio-note">🎧 Esta historia tiene voz narrada. Si no carga, tocá <strong>🔊 Leer en voz alta</strong>.</div>'
+          : '<div class="pv-kids-audio-note">🔊 Esta historia se lee con la voz del celular. Elegí la mejor voz disponible abajo.</div>'}
+        ${buildVoiceSelector()}
+        <div class="verse-box"><span class="label">${story.ref}</span><em>“${story.verse}”</em></div>
+        <div class="story-text">${story.text}</div>
+        <div class="questions"><span class="label">Para pensar juntos</span><ol>${story.q.map(x=>`<li>${x}</li>`).join('')}</ol></div>
+        <div class="pray-box"><span class="label">Oración</span><p>${story.pray}</p></div>
+        ${aud.length
+          ? `<audio class="pv-kids-player" controls preload="none" src="${aud[0]}"></audio>
+             <div class="pv-kids-actions">
+               <button class="pv-kids-btn audio" data-tts>🔊 Leer en voz alta</button>
+               <button class="pv-kids-btn audio" data-share>📤 Compartir</button>
+               ${hasPrevStory ? '<button class="pv-kids-btn ghost" data-prev-story>⏮ Historia anterior</button>' : ''}
+               ${hasNextStory ? '<button class="pv-kids-btn audio" data-next-story>Siguiente historia ⏭</button>' : ''}
+               <button class="pv-kids-btn primary full" data-read>⭐ Marcar como leída</button>
+             </div>`
+          : `<div class="pv-kids-actions">
+               <button class="pv-kids-btn audio full" data-tts>🔊 Escuchar historia</button>
+               <button class="pv-kids-btn audio" data-share>📤 Compartir</button>
+               ${hasPrevStory ? '<button class="pv-kids-btn ghost" data-prev-story>⏮ Historia anterior</button>' : ''}
+               ${hasNextStory ? '<button class="pv-kids-btn audio" data-next-story>Siguiente historia ⏭</button>' : ''}
+               <button class="pv-kids-btn primary full" data-read>⭐ Marcar como leída</button>
+             </div>`}
+      </div>`;
+
     document.body.appendChild(detail);
-    detail.querySelector('[data-back]').onclick=()=>closeDetail(true);detail.querySelector('[data-close]').onclick=()=>{closeDetail(false);closePanel(false)};
-    detail.querySelector('[data-read]').onclick=e=>{mark(story);e.target.textContent='✓ Leída';e.target.style.background='#16a34a'};
-    if(isRead(story)){const b=detail.querySelector('[data-read]');b.textContent='✓ Leída';b.style.background='#16a34a'}
-    const player=detail.querySelector('.pv-kids-player');if(player){
-      currentAudio=player;
-      let ai=0;
-      player.onerror=()=>{
-        const errDiv=detail.querySelector('.pv-kids-audio-note');
-        if(errDiv){errDiv.innerHTML='⚠️ El audio narrado no se pudo cargar. Usá el botón <strong>🔊 Escuchar historia</strong> para la lectura automática.';errDiv.style.background='#fef2f2';errDiv.style.color='#991b1b';}
-        // Reemplazar botón de audio por TTS
-        const nextBtn=detail.querySelector('[data-next-audio]');
-        if(nextBtn){nextBtn.textContent='🔊 Leer en voz alta';nextBtn.onclick=()=>tts(`${story.title}. ${story.verse}. ${story.text}. Para pensar. ${story.q.join('. ')}. Oración. ${story.pray}`,nextBtn);}
-      };
-      detail.querySelector('[data-next-audio]').onclick=()=>{ai=(ai+1)%aud.length;player.src=aud[ai];player.play().catch(()=>{})};
+
+    detail.querySelector('[data-back]').onclick = () => closeDetail(true);
+    detail.querySelector('[data-close]').onclick = () => { closeDetail(false); closePanel(false); };
+    detail.querySelector('[data-read]').onclick = (e) => {
+      mark(story);
+      e.target.textContent = '✓ Leída';
+      e.target.style.background = '#16a34a';
+    };
+    if (isRead(story)) {
+      const b = detail.querySelector('[data-read]');
+      b.textContent = '✓ Leída';
+      b.style.background = '#16a34a';
     }
-    const tb=detail.querySelector('[data-tts]');if(tb)tb.onclick=()=>{if(tb.dataset.playing){stopAll();tb.textContent='🔊 Leer en voz alta';tb.dataset.playing='';}else tts(`${story.title}. ${story.verse}. ${story.text}. Para pensar juntos: ${story.q.join('. ')} Oración: ${story.pray}`,tb)};
-    // Selector de voz: guardar preferencia
-    const vs=detail.querySelector('.pv-kids-voice-sel');
-    if(vs){vs.onchange=()=>{try{localStorage.setItem('pv-kids-voice',vs.value||'');}catch{} stopAll();if(tb)tb.textContent='🔊 Leer en voz alta';};}
-    // Pre-cargar voces para que el selector se llene
-    loadVoices().then(()=>{
-      const newVs=detail.querySelector('.pv-kids-voice-sel');
-      if(newVs && newVs.options.length<=1){
-        // Re-render del selector si recién se cargaron voces
-        const wrap=newVs.parentElement;
-        if(wrap){wrap.outerHTML=buildVoiceSelector();
-          const newSel=detail.querySelector('.pv-kids-voice-sel');
-          if(newSel)newSel.onchange=()=>{try{localStorage.setItem('pv-kids-voice',newSel.value||'');}catch{} stopAll();};
+
+    // Siguiente / anterior historia
+    detail.querySelector('[data-next-story]')?.addEventListener('click', () => {
+      if (idx >= 0 && idx < STORIES.length - 1) openDetail(STORIES[idx + 1], { fromTimeline });
+    });
+    detail.querySelector('[data-prev-story]')?.addEventListener('click', () => {
+      if (idx > 0) openDetail(STORIES[idx - 1], { fromTimeline });
+    });
+
+    // Compartir
+    detail.querySelector('[data-share]')?.addEventListener('click', async () => {
+      const text = `📖 ${story.title}\n\n${story.ref}: “${story.verse}”\n\n${story.text}\n\n🙏 ${story.pray}\n\n✝️ Palabra Viva — ${location.origin}/`;
+      const audioUrl = aud[0] || '';
+      const shareData = {
+        title: 'Palabra Viva — ' + story.title,
+        text: text + (audioUrl ? `\n\n🎧 Audio: ${audioUrl}` : ''),
+        url: location.origin + '/'
+      };
+      try {
+        if (navigator.share && navigator.canShare?.(shareData)) {
+          await navigator.share(shareData);
+        } else if (navigator.clipboard) {
+          await navigator.clipboard.writeText(shareData.text);
+          alert('📋 Copiado al portapapeles. Pegalo donde quieras compartirlo.');
+        } else {
+          prompt('Copiá este texto para compartir:', shareData.text);
+        }
+      } catch (e) { /* user canceled */ }
+    });
+
+    // Audio player
+    const player = detail.querySelector('.pv-kids-player');
+    if (player) {
+      currentAudio = player;
+      player.onerror = () => {
+        const errDiv = detail.querySelector('.pv-kids-audio-note');
+        if (errDiv) {
+          errDiv.innerHTML = '⚠️ El audio narrado no se pudo cargar. Usá el botón <strong>🔊 Escuchar historia</strong> para la lectura automática.';
+          errDiv.style.background = '#fef2f2';
+          errDiv.style.color = '#991b1b';
+        }
+      };
+    }
+
+    // TTS
+    const tb = detail.querySelector('[data-tts]');
+    if (tb) tb.onclick = () => {
+      if (tb.dataset.playing) {
+        stopAll();
+        tb.textContent = '🔊 Leer en voz alta';
+        tb.dataset.playing = '';
+      } else {
+        tts(`${story.title}. ${story.verse}. ${story.text}. Para pensar juntos: ${story.q.join('. ')} Oración: ${story.pray}`, tb);
+      }
+    };
+
+    // Selector de voz
+    const vs = detail.querySelector('.pv-kids-voice-sel');
+    if (vs) vs.onchange = () => {
+      try { localStorage.setItem('pv-kids-voice', vs.value || ''); } catch {}
+      stopAll();
+      if (tb) tb.textContent = '🔊 Leer en voz alta';
+    };
+
+    loadVoices().then(() => {
+      const newVs = detail.querySelector('.pv-kids-voice-sel');
+      if (newVs && newVs.options.length <= 1) {
+        const wrap = newVs.parentElement;
+        if (wrap) {
+          wrap.outerHTML = buildVoiceSelector();
+          const newSel = detail.querySelector('.pv-kids-voice-sel');
+          if (newSel) newSel.onchange = () => { try { localStorage.setItem('pv-kids-voice', newSel.value||''); } catch {} stopAll(); };
         }
       }
     });
-    window.addEventListener('popstate',onPop,{once:true});
+
+    window.addEventListener('popstate', onPop, { once: true });
   }
-  function onPop(){closeDetail(false)}
-  function closeDetail(useHistory){stopAll();document.querySelector('.pv-kids-detail')?.remove();detail=null;if(useHistory&&location.hash==='#kids-detail'){window._pvPanelClosing=true;history.back();}}
+
+  function onPop() { closeDetail(false); }
+
+  function closeDetail(useHistory) {
+    stopAll();
+    document.querySelector('.pv-kids-detail')?.remove();
+    detail = null;
+    if (useHistory && location.hash === '#kids-detail') {
+      window._pvPanelClosing = true;
+      history.back();
+    }
+  }
 
   function openPanel(){
     stopAll();css();document.querySelector('.pv-kids-panel')?.remove();let cat='todas';history.pushState({pvKids:true},'',location.href.split('#')[0]+'#kids');
@@ -296,7 +412,15 @@
   function closePanel(useHistory){stopAll();document.querySelector('.pv-kids-panel')?.remove();panel=null;if(useHistory&&location.hash==='#kids'){window._pvPanelClosing=true;history.back();}}
   function addHome(){const title=document.querySelector('h1')?.textContent||'';if(!title.includes('Una palabra para hoy')||document.querySelector('.pv-kids-home'))return;const anchor=document.querySelector('.pv-ba-card')||document.querySelector('.pv-path-card')||document.querySelector('.hero');if(!anchor)return;const t=today(),n=STORIES.filter(isRead).length;const card=document.createElement('section');card.className='card pv-kids-home';card.innerHTML=`<p class="ref">Para los más chicos</p><h3>👶 Biblia para chicos</h3><p class="soft">${STORIES.length} historias con preguntas, oración y audio. Hoy: <strong>${t.title}</strong> ${t.emoji}</p><p class="soft" style="font-size:13px">📖 ${n} de ${STORIES.length} leídas</p><div class="row wrap"><button class="btn">Abrir historias</button></div>`;card.querySelector('button').onclick=openPanel;anchor.insertAdjacentElement('afterend',card)}
   function addQuick(){const q=document.querySelector('.quick');if(!q||document.querySelector('.pv-kids-quick'))return;const b=document.createElement('button');b.className='pv-kids-quick';b.textContent='👶 Niños';b.onclick=openPanel;q.insertBefore(b,q.firstChild)}
-  window.PalabraVivaNinos={open:openPanel};
+  // API pública
+  window.PalabraVivaNinos = {
+    open: openPanel,
+    openStory: (title, opts) => {
+      const story = STORIES.find(s => s.title === title);
+      if (story) openDetail(story, opts || {});
+    },
+    stories: () => STORIES.slice()
+  };
   function boot(){css();document.querySelectorAll('.pv-kids-fab,.pv-kids-fab-old').forEach(e=>e.remove());addHome();addQuick()}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();window.addEventListener('load',boot);setInterval(boot,2500);
 })();

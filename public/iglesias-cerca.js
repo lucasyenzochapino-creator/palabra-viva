@@ -84,22 +84,32 @@
   }
 
   // ── Overpass API: buscar iglesias en radio ────────────────────────────────
-  async function fetchChurches(lat, lon, radiusM) {
-    // Query Overpass: places of worship cristianas (no católicas) en radio
-    const query = `[out:json][timeout:25];
+  async function fetchChurches(lat, lon, radiusM, onProgress) {
+    // Query Overpass: places of worship cristianas en radio.
+    // Por defecto OSM no siempre tiene 'religion=christian' — algunas iglesias
+    // tienen denomination=baptist sin religion. Hacemos una query más amplia.
+    const query = `[out:json][timeout:30];
 (
   node["amenity"="place_of_worship"]["religion"="christian"](around:${radiusM},${lat},${lon});
   way["amenity"="place_of_worship"]["religion"="christian"](around:${radiusM},${lat},${lon});
+  node["amenity"="place_of_worship"]["denomination"~"^(evangelical|pentecostal|baptist|methodist|lutheran|presbyterian|anglican|adventist|protestant|christian)$"](around:${radiusM},${lat},${lon});
+  way["amenity"="place_of_worship"]["denomination"~"^(evangelical|pentecostal|baptist|methodist|lutheran|presbyterian|anglican|adventist|protestant|christian)$"](around:${radiusM},${lat},${lon});
 );
 out center body;`;
 
-    for (const url of OVERPASS_URLS) {
+    for (let i = 0; i < OVERPASS_URLS.length; i++) {
+      const url = OVERPASS_URLS[i];
+      if (onProgress) onProgress(`Probando servidor ${i+1} de ${OVERPASS_URLS.length}…`);
+      const ctrl = new AbortController();
+      const timeoutId = setTimeout(() => ctrl.abort(), 35000); // 35s
       try {
         const res = await fetch(url, {
           method: 'POST',
           headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
-          body: query
+          body: query,
+          signal: ctrl.signal
         });
+        clearTimeout(timeoutId);
         if (!res.ok) continue;
         const data = await res.json();
         return (data.elements || []).map(el => ({
@@ -119,14 +129,19 @@ out center body;`;
           opening_hours: el.tags?.opening_hours || ''
         }))
         .filter(c => c.lat && c.lon)
-        // Excluir denominaciones que no son evangélicas / cristianas no-romanas
         .filter(c => {
           const d = (c.denomination || '').toLowerCase();
           return !EXCLUDED_DENOMS.some(ex => d.includes(ex));
-        });
-      } catch { continue; }
+        })
+        // Deduplicar por id
+        .filter((c, idx, arr) => arr.findIndex(x => x.id === c.id) === idx);
+      } catch (e) {
+        clearTimeout(timeoutId);
+        if (e.name === 'AbortError') console.warn(`Overpass ${url} timeout`);
+        continue;
+      }
     }
-    throw new Error('No pudimos conectar con el servidor de mapas. Probá en unos minutos.');
+    throw new Error('Los 3 servidores de mapas están lentos o caídos ahora. Probá en unos minutos.');
   }
 
   // Calcular distancia en km (Haversine)
@@ -280,36 +295,55 @@ out center body;`;
       b.onclick = () => { view = b.dataset.view; applyView(); };
     });
 
-    async function doSearch() {
-      const r = parseInt(radiusSel.value, 10) || 3000;
+    async function doSearch(autoRadius) {
+      let r = parseInt(radiusSel.value, 10) || 3000;
+      if (autoRadius) r = autoRadius;
+
       if (!userLoc) {
-        statusEl.innerHTML = `<p style="margin:0">⏳ Detectando tu ubicación…</p>`;
+        statusEl.innerHTML = `<p style="margin:0">⏳ Detectando tu ubicación…</p>
+          <p style="margin:6px 0 0;font-size:12px;color:var(--muted,#c8c5d8)">Si no aparece el pedido de permiso, revisá el ícono de candado 🔒 al lado de la URL.</p>`;
         try {
           userLoc = await getLocation();
         } catch (e) {
           statusEl.innerHTML = `<div class="pv-igl-error">❌ ${e.message}</div>
             <button class="pv-igl-btn-loc" data-loc>📍 Intentar de nuevo</button>`;
-          statusEl.querySelector('[data-loc]').onclick = doSearch;
+          statusEl.querySelector('[data-loc]').onclick = () => doSearch();
           return;
         }
       }
-      statusEl.innerHTML = `<p style="margin:0">📍 Tu ubicación detectada. Buscando iglesias en ${r/1000} km…</p>`;
+      statusEl.innerHTML = `<p style="margin:0">📍 Ubicación detectada. <strong>Buscando iglesias en ${r/1000} km</strong>…</p>
+        <p style="margin:6px 0 0;font-size:12px;color:var(--muted,#c8c5d8)" id="pv-igl-progress">Conectando con OpenStreetMap…</p>`;
+
+      const progressEl = panel.querySelector('#pv-igl-progress');
 
       let churches;
       try {
-        churches = await fetchChurches(userLoc.lat, userLoc.lon, r);
+        churches = await fetchChurches(userLoc.lat, userLoc.lon, r, (msg) => {
+          if (progressEl) progressEl.textContent = msg;
+        });
       } catch (e) {
         statusEl.innerHTML = `<div class="pv-igl-error">❌ ${e.message}</div>
-          <button class="pv-igl-btn-loc" data-loc>Reintentar</button>`;
-        statusEl.querySelector('[data-loc]').onclick = doSearch;
+          <button class="pv-igl-btn-loc" data-loc>🔄 Reintentar</button>`;
+        statusEl.querySelector('[data-loc]').onclick = () => doSearch();
         return;
       }
 
       if (!churches.length) {
+        // Auto-expand: si no hay con radio actual, probar el siguiente más grande
+        const nextRadius = { 1000: 3000, 3000: 5000, 5000: 10000, 10000: 20000, 20000: null }[r];
+        if (nextRadius && !autoRadius) {
+          statusEl.innerHTML = `<p style="margin:0">⏳ No encontramos en ${r/1000} km. Probando ${nextRadius/1000} km…</p>`;
+          radiusSel.value = nextRadius;
+          return doSearch(nextRadius);
+        }
         statusEl.innerHTML = `<p style="margin:0">📍 Ubicación detectada</p>
           <button class="pv-igl-btn-loc" data-loc>📍 Buscar de nuevo</button>`;
-        statusEl.querySelector('[data-loc]').onclick = doSearch;
-        listEl.innerHTML = `<div class="pv-igl-empty">No encontramos iglesias cristianas en ${r/1000} km. Probá un radio más grande.</div>`;
+        statusEl.querySelector('[data-loc]').onclick = () => doSearch();
+        listEl.innerHTML = `<div class="pv-igl-empty">😕 No encontramos iglesias cristianas evangélicas en ${r/1000} km de tu ubicación según OpenStreetMap.<br><br>
+          <small>Esto puede deberse a que las iglesias de tu zona no están registradas todavía en el mapa abierto. Probá:<br>
+          • Aumentar el radio a 20 km<br>
+          • Buscar manualmente en <a href="https://www.google.com/maps/search/iglesia+cristiana+cerca" target="_blank" rel="noopener noreferrer" style="color:var(--brand,#f59e0b)">Google Maps</a></small>
+        </div>`;
         return;
       }
 
@@ -359,7 +393,7 @@ out center body;`;
       }).join('');
     }
 
-    statusEl.querySelector('[data-loc]').onclick = doSearch;
+    statusEl.querySelector('[data-loc]').onclick = () => doSearch();
     radiusSel.onchange = () => { if (userLoc) doSearch(); };
 
     document.body.appendChild(panel);
