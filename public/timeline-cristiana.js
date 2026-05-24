@@ -178,22 +178,32 @@
         </article>`;
       }).join('');
 
-      // Botones de "leer historia": abren la historia DIRECTAMENTE sin cerrar
-      // el timeline. Al cerrar la historia se vuelve al timeline (no a home).
+      // Botones de "leer historia completa": abren el panel EXPANDIDO con
+      // narrativa larga, contexto histórico, versículos clave, significado
+      // y aplicación. Si no hay historia completa, fallback al kids panel.
       line.querySelectorAll('[data-link]').forEach(btn => {
         btn.addEventListener('click', () => {
           const title = btn.dataset.link;
-          console.log('[Timeline] Abrir historia:', title, '— API disponible:', !!window.PalabraVivaNinos?.openStory);
-          if (window.PalabraVivaNinos?.openStory) {
+          // 1) Buscar el EVENTO del timeline para usar SU título (que mapea
+          //    al objeto STORIES en historia-completa.js)
+          const ev = EVENTS.find(e => e.linkTo === title);
+          const timelineTitle = ev?.title || title;
+          console.log('[Timeline] Abrir historia:', timelineTitle);
+
+          if (window.PVHistoriaCompleta?.open && window.PVHistoriaCompleta.hasStory(timelineTitle)) {
+            window.PVHistoriaCompleta.open(timelineTitle, { fromTimeline: true });
+          } else if (window.PalabraVivaNinos?.openStory) {
+            // Fallback al panel para niños
             window.PalabraVivaNinos.openStory(title, { fromTimeline: true });
           } else {
-            // Si el módulo de niños no cargó, esperar y reintentar 1 vez
             btn.textContent = '⏳ Cargando…';
             setTimeout(() => {
-              if (window.PalabraVivaNinos?.openStory) {
+              if (window.PVHistoriaCompleta?.open && window.PVHistoriaCompleta.hasStory(timelineTitle)) {
+                window.PVHistoriaCompleta.open(timelineTitle, { fromTimeline: true });
+              } else if (window.PalabraVivaNinos?.openStory) {
                 window.PalabraVivaNinos.openStory(title, { fromTimeline: true });
               } else {
-                alert('No se pudo cargar el módulo de historias. Recargá la página (Ctrl+Shift+R).');
+                alert('No se pudo cargar el módulo. Recargá (Ctrl+Shift+R).');
               }
               btn.textContent = '📖 Leer historia completa';
             }, 800);
