@@ -91,6 +91,28 @@
     }
   }
 
+  // Auto-suscribe si el usuario YA dio permiso pero todavía no se guardó la
+  // suscripción en el server. Llamado al volver a Home/Ajustes con permiso ok.
+  let _autoSubscribing = false;
+  async function autoSubscribe(card) {
+    if (_autoSubscribing) return;
+    _autoSubscribing = true;
+    try {
+      const settings = loadSettings();
+      const t = settings.time || '08:00';
+      const [hh, mm] = t.split(':').map(n => parseInt(n, 10));
+      console.log('[Recordatorio] Auto-suscribiendo (permiso ya concedido)…');
+      const ok = await subscribeToPush(hh, mm);
+      if (ok) {
+        saveSettings({ ...settings, enabled: true, time: t });
+        scheduleNextNotification();
+        if (card) renderCardContent(card);
+      }
+    } finally {
+      _autoSubscribing = false;
+    }
+  }
+
   // ── Diagnóstico paso a paso (visible al usuario) ──────────────────────────
   async function runDiagnostic(outputEl) {
     const log = (line, kind) => {
@@ -387,13 +409,20 @@
     return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
   }
 
+  function isHomeTab() {
+    return (document.querySelector('h1')?.textContent || '').includes('palabra para hoy');
+  }
+
   function renderInAjustes() {
-    if (!isAjustesTab()) {
+    const isAjustes = isAjustesTab();
+    const isHome = isHomeTab();
+
+    // Solo mostrar la card en Ajustes O en Home. En otras pestañas, removerla.
+    if (!isAjustes && !isHome) {
       document.querySelector('.pv-rem-card')?.remove();
       return;
     }
-    // Si ya existe, refrescar contenido (no re-crear) — para que cambios
-    // de estado (permiso, suscripción) se reflejen al volver a Ajustes
+
     let card = document.querySelector('.pv-rem-card');
     if (!card) {
       injectStyles();
@@ -401,7 +430,17 @@
       if (!stack) return;
       card = document.createElement('section');
       card.className = 'card pv-rem-card';
-      stack.appendChild(card);
+      // En home: insertar después del hero (no al final)
+      if (isHome) {
+        const anchor = document.querySelector('.pv-tl-home') || document.querySelector('.pv-ba-card') || document.querySelector('.hero');
+        if (anchor) {
+          anchor.insertAdjacentElement('afterend', card);
+        } else {
+          stack.appendChild(card);
+        }
+      } else {
+        stack.appendChild(card);
+      }
     }
     renderCardContent(card);
   }
@@ -456,40 +495,41 @@
           </div>
         </div>`;
     }
-    // 4. Permiso default → mostrar BIG botón "Permitir notificaciones"
+    // 4. Permiso default → UN SOLO botón que pide permiso + suscribe + activa
     else if (perm === 'default') {
       stepsHtml = `
-        <div class="pv-rem-step">
-          <div class="pv-rem-step-content">
-            <span class="pv-rem-status-icon">1️⃣</span>
-            <div>
-              <h4>Paso 1: dar permiso</h4>
-              <p>Tocá el botón. Tu navegador va a preguntar si querés recibir notificaciones de esta app. Decí <strong>Permitir</strong>.</p>
-            </div>
-          </div>
-          <button class="pv-rem-cta" id="pv-rem-request">🔔 Permitir notificaciones</button>
-        </div>`;
-    }
-    // 5. Permiso granted → mostrar configuración
-    else if (perm === 'granted') {
-      const subscribed = !!localStorage.getItem(SUB_SAVED_KEY);
-      stepsHtml = `
-        <div class="pv-rem-step ok">
-          <div class="pv-rem-step-content">
-            <span class="pv-rem-status-icon">✅</span>
-            <div>
-              <h4>Permiso concedido</h4>
-              <p>Ya podemos enviarte el versículo del día.${subscribed ? ' La suscripción está activa en el servidor.' : ''}</p>
-            </div>
-          </div>
-        </div>
         <div class="pv-rem-time-row">
           <label for="pv-rem-time">⏰ Hora del envío</label>
           <input type="time" id="pv-rem-time" value="${time}">
         </div>
-        <button class="pv-rem-cta" id="pv-rem-activate">${enabled && subscribed ? '✓ Recordatorio activado — actualizar hora' : '🔔 Activar recordatorio diario'}</button>
-        ${enabled && subscribed ? '<button class="pv-rem-cta secondary" id="pv-rem-disable">⏸ Desactivar recordatorio</button>' : ''}
+        <button class="pv-rem-cta" id="pv-rem-oneshot">🔔 Activar versículo diario</button>
+        <p style="font-size:12px;color:var(--muted);margin:8px 0 0;text-align:center">
+          Una vez activado queda <strong>siempre encendido</strong>. Si querés apagarlo, vení acá y tocá Desactivar.
+        </p>`;
+    }
+    // 5. Permiso granted → mostrar estado activo + opciones
+    else if (perm === 'granted') {
+      const subscribed = !!localStorage.getItem(SUB_SAVED_KEY);
+      // Si todavía no se suscribió pero ya tenemos permiso → auto-suscribir
+      if (!subscribed && !enabled) {
+        setTimeout(() => autoSubscribe(card), 200);
+      }
+      stepsHtml = `
+        <div class="pv-rem-step ok">
+          <div class="pv-rem-step-content">
+            <span class="pv-rem-status-icon">✓</span>
+            <div>
+              <h4>Versículo diario activado</h4>
+              <p>Recibirás el versículo del día a las <strong>${time}</strong> aunque la app esté cerrada.${subscribed ? '' : ' <em>Conectando con servidor…</em>'}</p>
+            </div>
+          </div>
+        </div>
+        <div class="pv-rem-time-row">
+          <label for="pv-rem-time">⏰ Cambiar hora</label>
+          <input type="time" id="pv-rem-time" value="${time}">
+        </div>
         <button class="pv-rem-cta secondary" id="pv-rem-test">📩 Probar notificación ahora</button>
+        <button class="pv-rem-cta secondary" id="pv-rem-disable" style="background:rgba(154,58,58,.10);color:var(--danger);border-color:rgba(154,58,58,.4)">⏸ Desactivar versículo diario</button>
       `;
     }
 
@@ -504,62 +544,72 @@
     `;
 
     // ── Handlers ─────────────────────────────────────────────────────────
-    const reqBtn = card.querySelector('#pv-rem-request');
-    if (reqBtn) {
-      reqBtn.onclick = async () => {
-        console.log('[Recordatorio] Solicitando permiso de notificaciones…');
-        reqBtn.disabled = true;
-        reqBtn.textContent = '⏳ Esperando respuesta…';
+    // Botón ONE-SHOT (permiso + suscripción + activación en un solo tap)
+    const oneShotBtn = card.querySelector('#pv-rem-oneshot');
+    if (oneShotBtn) {
+      oneShotBtn.onclick = async () => {
+        console.log('[Recordatorio] Activación en un tap…');
+        oneShotBtn.disabled = true;
+        oneShotBtn.textContent = '⏳ Pidiendo permiso…';
         try {
-          let perm;
-          // requestPermission con callback Y promise (compat doble)
+          let permResult;
           if (Notification.requestPermission.length) {
-            perm = await new Promise(resolve => {
+            permResult = await new Promise(resolve => {
               const r = Notification.requestPermission(resolve);
               if (r && typeof r.then === 'function') r.then(resolve);
             });
           } else {
-            perm = await Notification.requestPermission();
+            permResult = await Notification.requestPermission();
           }
-          console.log('[Recordatorio] Permiso:', perm);
-          // Re-render con el nuevo estado
-          renderCardContent(card);
+          console.log('[Recordatorio] Permiso:', permResult);
+          if (permResult !== 'granted') {
+            oneShotBtn.disabled = false;
+            oneShotBtn.textContent = '🔔 Activar versículo diario';
+            renderCardContent(card);
+            return;
+          }
+          // Permiso OK → suscribir inmediatamente
+          oneShotBtn.textContent = '⏳ Conectando con servidor…';
+          const timeInpNow = card.querySelector('#pv-rem-time');
+          const t = timeInpNow?.value || '08:00';
+          const [hh, mm] = t.split(':').map(n => parseInt(n, 10));
+          const ok = await subscribeToPush(hh, mm);
+          saveSettings({ enabled: true, time: t });
+          scheduleNextNotification();
+          if (ok) {
+            oneShotBtn.textContent = '✓ ¡Activado!';
+          } else {
+            oneShotBtn.textContent = '⚠️ Activado solo localmente';
+          }
+          setTimeout(() => renderCardContent(card), 1000);
         } catch (e) {
-          console.error('[Recordatorio] Error pidiendo permiso:', e);
-          reqBtn.disabled = false;
-          reqBtn.textContent = '🔔 Permitir notificaciones';
-          alert('Error al pedir permiso: ' + (e.message || e));
+          console.error('[Recordatorio] Error activación:', e);
+          oneShotBtn.disabled = false;
+          oneShotBtn.textContent = '🔔 Activar versículo diario';
+          alert('Error: ' + (e.message || e));
         }
       };
     }
 
     const timeInp = card.querySelector('#pv-rem-time');
-
-    const activateBtn = card.querySelector('#pv-rem-activate');
-    if (activateBtn) {
-      activateBtn.onclick = async () => {
-        const t = timeInp?.value || '08:00';
-        const [hh, mm] = t.split(':').map(n => parseInt(n, 10));
-        activateBtn.disabled = true;
-        activateBtn.textContent = '⏳ Activando…';
-        console.log('[Recordatorio] Activando con hora', hh + ':' + mm);
-        const ok = await subscribeToPush(hh, mm);
-        saveSettings({ enabled: true, time: t });
-        scheduleNextNotification();
-        if (ok) {
-          activateBtn.textContent = '✓ Activado';
-          alert('🎉 ¡Listo! Vas a recibir el versículo del día a las ' + t + '. Podés cerrar la app — llegará igual.');
-        } else {
-          activateBtn.textContent = '⚠️ Activado solo localmente';
-          alert('La activación local funciona, pero no pudimos guardar la suscripción en el servidor. El recordatorio llegará solo si la app está abierta.');
+    // Cambio de hora cuando ya está activo → re-suscribe automáticamente
+    if (timeInp) {
+      timeInp.onchange = async () => {
+        const t = timeInp.value || '08:00';
+        const settings = loadSettings();
+        saveSettings({ ...settings, time: t });
+        if (Notification.permission === 'granted') {
+          const [hh, mm] = t.split(':').map(n => parseInt(n, 10));
+          await subscribeToPush(hh, mm);
         }
-        setTimeout(() => renderCardContent(card), 1500);
+        scheduleNextNotification();
       };
     }
 
     const disableBtn = card.querySelector('#pv-rem-disable');
     if (disableBtn) {
       disableBtn.onclick = async () => {
+        if (!confirm('¿Apagar el versículo diario? Podés volver a activarlo en cualquier momento.')) return;
         disableBtn.disabled = true;
         disableBtn.textContent = '⏳ Desactivando…';
         await unsubscribeFromPush();

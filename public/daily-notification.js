@@ -1,4 +1,11 @@
 (() => {
+  // ⚠️ MÓDULO LEGACY DESHABILITADO
+  // Reemplazado por daily-reminders.js que usa Web Push real (servidor envía
+  // aunque la app esté cerrada). Este archivo solo limpia el card viejo si
+  // todavía está en el DOM.
+  document.querySelectorAll('.pv-notif-card').forEach(c => c.remove());
+  return;
+  // eslint-disable-next-line no-unreachable
   const ENABLED_KEY = 'pv-daily-notif-enabled';
   const HOUR_KEY = 'pv-daily-notif-hour';
   const LAST_DATE_KEY = 'pv-daily-notif-last';
