@@ -16,7 +16,8 @@
     { emoji: '📻', label: 'Radios cristianas',        cb: () => window.PalabraVivaCanales?.openDial?.() },
     { emoji: '🎧', label: 'Biblia en audio',          cb: () => window.PalabraVivaAudioBible?.openInBibleTab?.() },
     { emoji: '💌', label: 'Enviar sugerencia',        cb: () => window.PVFeedback?.open?.() },
-    { emoji: '📤', label: 'Invitar a un amigo',       cb: () => window.PVAuth?.shareInviteLink?.() }
+    { emoji: '📤', label: 'Invitar a un amigo',       cb: () => window.PVAuth?.shareInviteLink?.() },
+    { emoji: '📱', label: 'Mis dispositivos',         cb: () => window.PVDispositivos?.open?.() }
   ];
 
   function injectStyles() {

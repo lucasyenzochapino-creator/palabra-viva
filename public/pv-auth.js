@@ -75,7 +75,30 @@
     }
   }
 
-  function signOut() {
+  async function signOut() {
+    // Antes de limpiar sesión, desactivar push de ESTE dispositivo en el server
+    // (sino seguiría recibiendo notificaciones de la cuenta que cerró sesión)
+    try {
+      if ('serviceWorker' in navigator && 'PushManager' in window) {
+        const reg = await navigator.serviceWorker.ready;
+        const sub = await reg.pushManager.getSubscription();
+        if (sub) {
+          // Marcar como inactivo en server
+          const token = getToken();
+          if (token) {
+            await fetch(`${SUPA_URL}/rest/v1/push_subscriptions?endpoint=eq.${encodeURIComponent(sub.endpoint)}`, {
+              method: 'PATCH',
+              headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+              body: JSON.stringify({ active: false })
+            }).catch(() => {});
+          }
+          // También desuscribirse del browser
+          await sub.unsubscribe().catch(() => {});
+        }
+      }
+    } catch (e) { console.warn('[Auth] No se pudo limpiar push al cerrar sesión:', e); }
+    try { localStorage.removeItem('pv-push-sub-saved'); } catch {}
+
     localStorage.removeItem(SESSION_KEY);
     document.dispatchEvent(new CustomEvent('pv-auth-change', { detail: null }));
     updateUI();
