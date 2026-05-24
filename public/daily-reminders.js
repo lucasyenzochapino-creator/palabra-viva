@@ -61,6 +61,34 @@
     return `${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`;
   }
 
+  // ── Programar setTimeout exacto para la próxima hora objetivo ────────────
+  let _scheduledTimer = null;
+  function scheduleNextNotification() {
+    if (_scheduledTimer) { clearTimeout(_scheduledTimer); _scheduledTimer = null; }
+    const s = loadSettings();
+    if (!s.enabled || !s.time) return;
+    if (!('Notification' in window) || Notification.permission !== 'granted') return;
+
+    const last = localStorage.getItem(LAST_SENT_KEY);
+    if (last === todayStr()) return; // ya se mandó hoy → próximo agendado mañana boot
+
+    const [hh, mm] = s.time.split(':').map(n => parseInt(n, 10));
+    const now = new Date();
+    const target = new Date();
+    target.setHours(hh, mm, 0, 0);
+
+    let delay = target - now;
+    if (delay < 0) {
+      // Ya pasó hoy → disparar ahora
+      checkAndNotify();
+      return;
+    }
+    // Setear timeout exacto. Si el delay es > 24h dividirlo, pero como
+    // estamos contando dentro del MISMO día, no debería pasar de 24h.
+    _scheduledTimer = setTimeout(() => { _scheduledTimer = null; checkAndNotify(); }, Math.min(delay, 6*60*60*1000));
+    console.log('[Recordatorio] Próxima notificación en', Math.round(delay/60000), 'min');
+  }
+
   // ── Verificar si toca enviar y disparar ───────────────────────────────────
   async function checkAndNotify() {
     const s = loadSettings();
@@ -261,14 +289,19 @@
   function boot() {
     renderInAjustes();
     checkAndNotify();
+    scheduleNextNotification(); // setTimeout exacto a la hora objetivo
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
   else boot();
   window.addEventListener('load', boot);
   setInterval(boot, 3000);
-  // Verificar cada 60s mientras la app esté abierta
+  // Verificar cada 60s mientras la app esté abierta (fallback al timer exacto)
   setInterval(checkAndNotify, 60000);
+  // Re-agendar al volver al primer plano (ej. usuario vuelve después de mediodía)
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) { checkAndNotify(); scheduleNextNotification(); }
+  });
 
-  window.PVReminders = { check: checkAndNotify };
+  window.PVReminders = { check: checkAndNotify, scheduleNext: scheduleNextNotification };
 })();

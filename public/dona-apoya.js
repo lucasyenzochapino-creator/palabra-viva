@@ -2,6 +2,10 @@
   // ── Palabra Viva — Card de donación (sutil, al fondo) ─────────────────────
   const CAFECITO_URL    = 'https://cafecito.app/palabravivamm';
   const MERCADOPAGO_URL = 'https://link.mercadopago.com.ar/palabravivamm';
+  // CBU/Alias para transferencia directa (0% comisión)
+  // CONFIGURAR: cambiá ALIAS por tu alias real (ej: palabra.viva.mp)
+  const ALIAS = 'palabra.viva.mp';
+  const CBU   = 'Pedir por mail';
 
   const $ = (s, r = document) => r.querySelector(s);
 
@@ -129,11 +133,40 @@
                </ol>`
             : `<p style="margin:0 0 10px;font-size:15px">Elegí el método que prefieras. Tu donación llega completa al sostenimiento de Palabra Viva.</p>`}
           <div style="display:flex;flex-direction:column;gap:10px;margin-top:8px">
-            <a href="${CAFECITO_URL}" target="_blank" rel="noopener noreferrer" class="pv-dona-modal-btn" style="background:linear-gradient(135deg,#7c4a1e,#b45309);color:white">☕ Cafecito ${monthly ? '(con opción mensual)' : ''}</a>
-            <a href="${MERCADOPAGO_URL}" target="_blank" rel="noopener noreferrer" class="pv-dona-modal-btn" style="background:linear-gradient(135deg,#00b3e3,#0a83cf);color:white">💳 Mercado Pago</a>
+            <!-- ⭐ TRANSFERENCIA: 0% comisión, llega 100% -->
+            <button class="pv-dona-modal-btn" data-show-alias style="background:linear-gradient(135deg,#3c5c3a,#5a7a4a);color:white;border:0;cursor:pointer;font:inherit">
+              💸 Transferencia bancaria <span style="font-size:11px;background:rgba(255,255,255,.25);padding:2px 6px;border-radius:6px;margin-left:6px">0% comisión</span>
+            </button>
+            <a href="${CAFECITO_URL}" target="_blank" rel="noopener noreferrer" class="pv-dona-modal-btn" style="background:linear-gradient(135deg,#7c4a1e,#b45309);color:white">☕ Cafecito ${monthly ? '(con opción mensual)' : ''} <span style="font-size:11px;background:rgba(255,255,255,.25);padding:2px 6px;border-radius:6px;margin-left:6px">~7% comisión</span></a>
+            <a href="${MERCADOPAGO_URL}" target="_blank" rel="noopener noreferrer" class="pv-dona-modal-btn" style="background:linear-gradient(135deg,#00b3e3,#0a83cf);color:white">💳 Mercado Pago <span style="font-size:11px;background:rgba(255,255,255,.25);padding:2px 6px;border-radius:6px;margin-left:6px">~6% comisión</span></a>
+          </div>
+          <div class="pv-dona-alias-box" style="display:none;background:var(--card2);border:1px dashed var(--brand,#7c4a1e);border-radius:14px;padding:14px;margin-top:10px">
+            <p style="font-size:13px;color:var(--muted);margin:0 0 8px;font-weight:600">📨 Datos para transferir (llega 100% sin comisiones)</p>
+            <div style="background:var(--card);border-radius:10px;padding:10px 12px;margin-bottom:8px">
+              <p style="font-size:11px;color:var(--muted);margin:0 0 2px;letter-spacing:.08em;text-transform:uppercase">Alias</p>
+              <p style="font-size:18px;font-weight:700;margin:0;font-family:monospace;letter-spacing:.04em">${ALIAS}</p>
+            </div>
+            <button class="pv-dona-modal-btn" data-copy-alias style="background:var(--brand,#7c4a1e);color:white;border:0;cursor:pointer;font:inherit;width:100%">📋 Copiar alias</button>
+            <p style="font-size:12px;color:var(--muted);margin:10px 0 0;line-height:1.4">Para CBU completo o más info, escribinos a <strong>palabravivamm@gmail.com</strong>. Llegamos sin descuentos.</p>
           </div>
           <p style="font-size:12px;color:var(--muted,#a08060);text-align:center;margin:10px 0 0">Gracias por sostener este proyecto 🙏</p>
         </div>`;
+      // Handler para mostrar/ocultar alias
+      m.querySelector('[data-show-alias]')?.addEventListener('click', () => {
+        const box = m.querySelector('.pv-dona-alias-box');
+        box.style.display = box.style.display === 'none' ? 'block' : 'none';
+      });
+      // Copiar alias
+      m.querySelector('[data-copy-alias]')?.addEventListener('click', async (ev) => {
+        ev.preventDefault();
+        try {
+          await navigator.clipboard.writeText(ALIAS);
+          ev.target.textContent = '✓ Copiado al portapapeles';
+          setTimeout(() => { ev.target.textContent = '📋 Copiar alias'; }, 2000);
+        } catch {
+          prompt('Copiá este alias:', ALIAS);
+        }
+      });
       m.addEventListener('click', e => { if (e.target === m || e.target.dataset.close !== undefined) m.remove(); });
       document.body.appendChild(m);
     }

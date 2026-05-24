@@ -56,6 +56,58 @@
   const BLOCKED = ['catolic','católic','catholic','radio maria','radio maría','vatican','vaticano','guadalupe','fatima','fátima','virgen','santuario','cope ','mariana','arquidiocesis','diocesis','parroquia','sagrado corazon','inmaculada','pontificia','eucaristia'];
   const SPANISH_CC = ['AR','MX','ES','CO','PE','CL','VE','UY','PY','BO','EC','CU','DO','GT','HN','NI','CR','PA','SV','PR','US'];
   const FAVS_KEY='pv-radio-favs', CUSTOM_KEY='pv-radio-custom', HIDDEN_KEY='pv-radio-hidden';
+  const CHANNEL_CUSTOM_KEY='pv-yt-custom', CHANNEL_HIDDEN_KEY='pv-yt-hidden';
+
+  // ── Parsear URL de YouTube en formato embed ────────────────────────────────
+  // Soporta: youtube.com/watch?v=XXX, youtu.be/XXX, /channel/UCxxx, /@usuario,
+  // /playlist?list=PLxxx, /live, etc.
+  function parseYouTubeEmbed(url) {
+    if (!url || typeof url !== 'string') return null;
+    const u = url.trim();
+    try {
+      const parsed = new URL(u.startsWith('http') ? u : 'https://' + u);
+      const host = parsed.hostname.replace(/^www\./, '');
+      if (!/youtube\.com|youtu\.be/.test(host)) return null;
+
+      // Caso 1: youtu.be/VIDEO_ID
+      if (host === 'youtu.be') {
+        const id = parsed.pathname.replace(/^\//, '').split(/[/?]/)[0];
+        if (id) return { kind:'video', id, embed:`https://www.youtube-nocookie.com/embed/${id}` };
+      }
+
+      // Caso 2: /watch?v=VIDEO_ID
+      const v = parsed.searchParams.get('v');
+      if (v) return { kind:'video', id:v, embed:`https://www.youtube-nocookie.com/embed/${v}` };
+
+      // Caso 3: /playlist?list=PLAYLIST_ID
+      const list = parsed.searchParams.get('list');
+      if (list) return { kind:'playlist', id:list, embed:`https://www.youtube-nocookie.com/embed/videoseries?list=${list}` };
+
+      // Caso 4: /channel/UCxxxxx (live stream)
+      const chanMatch = parsed.pathname.match(/\/channel\/(UC[^/?]+)/);
+      if (chanMatch) {
+        return { kind:'channel', id:chanMatch[1], embed:`https://www.youtube-nocookie.com/embed/live_stream?channel=${chanMatch[1]}` };
+      }
+
+      // Caso 5: /@handle (no embed directo — abrir en pestaña externa)
+      const handleMatch = parsed.pathname.match(/^\/@([^/?]+)/);
+      if (handleMatch) {
+        return { kind:'handle', id:handleMatch[1], embed:null, channel:`https://www.youtube.com/@${handleMatch[1]}` };
+      }
+
+      // Caso 6: /c/customName o /user/userName (no embed directo)
+      const cMatch = parsed.pathname.match(/^\/(?:c|user)\/([^/?]+)/);
+      if (cMatch) {
+        return { kind:'handle', id:cMatch[1], embed:null, channel:parsed.toString() };
+      }
+
+      // Caso 7: /embed/VIDEO_ID (ya viene como embed)
+      const embedMatch = parsed.pathname.match(/^\/embed\/(.+)/);
+      if (embedMatch) return { kind:'video', id:embedMatch[1], embed:u };
+
+      return null;
+    } catch { return null; }
+  }
 
   const $ = (s,r=document)=>r.querySelector(s);
   const norm = t=>(t||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').trim();
@@ -545,14 +597,66 @@
       return;
     }
 
-    // Canales YouTube
-    const items=CHANNELS.filter(c=>!q||norm(c.name+' '+c.note).includes(norm(q)));
-    listEl.innerHTML=items.map((c,i)=>`<article class="cr-card">
-      <p class="cr-label">${c.type}</p><h3>${c.name}</h3><p class="cr-note">${c.note}</p>
-      ${c.embed?`<button class="cr-btn primary" data-e="${i}">Ver aquí</button>`:''}
-      <a class="cr-btn ghost" href="${c.channel}" target="_blank" rel="noopener" style="display:block;text-align:center;text-decoration:none;margin-top:8px">Abrir en YouTube</a>
+    // Canales YouTube — mezcla hardcoded + custom del usuario
+    const customCh = lsGet(CHANNEL_CUSTOM_KEY, []);
+    const hidden = lsGet(CHANNEL_HIDDEN_KEY, []);
+    const allChannels = [...customCh, ...CHANNELS]
+      .filter(c => !hidden.includes(c.name + '|' + (c.channel || c.embed || '')));
+    const items = allChannels.filter(c => !q || norm(c.name + ' ' + c.note).includes(norm(q)));
+    listEl.innerHTML = items.map((c, i) => `<article class="cr-card">
+      <p class="cr-label">${c.type}${c.custom ? ' · agregado por vos' : ''}</p>
+      <h3>${c.name}</h3>
+      <p class="cr-note">${c.note}</p>
+      ${c.embed ? `<button class="cr-btn primary" data-e="${i}">▶ Ver aquí</button>` : ''}
+      ${c.channel ? `<a class="cr-btn ghost" href="${c.channel}" target="_blank" rel="noopener" style="display:block;text-align:center;text-decoration:none;margin-top:8px">Abrir en YouTube</a>` : ''}
+      ${c.custom ? `<button class="cr-btn ghost" data-del-ch="${i}" style="margin-top:6px;background:rgba(194,90,90,.10);border-color:rgba(194,90,90,.3);color:#c25a5a">🗑 Quitar este canal</button>` : ''}
     </article>`).join('');
-    listEl.querySelectorAll('[data-e]').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();openYT(items[+b.dataset.e])}));
+    listEl.querySelectorAll('[data-e]').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); openYT(items[+b.dataset.e]); }));
+    listEl.querySelectorAll('[data-del-ch]').forEach(b => b.addEventListener('click', e => {
+      e.stopPropagation();
+      const c = items[+b.dataset.delCh];
+      if (!confirm(`¿Quitar "${c.name}" de tus canales?`)) return;
+      const cust = lsGet(CHANNEL_CUSTOM_KEY, []);
+      const idx = cust.findIndex(x => x.name === c.name && x.channel === c.channel);
+      if (idx >= 0) { cust.splice(idx, 1); lsSet(CHANNEL_CUSTOM_KEY, cust); renderList(); }
+    }));
+    listEl.appendChild(addChannelForm(renderList));
+  }
+
+  // ── Formulario "Agregar canal YouTube" ─────────────────────────────────────
+  function addChannelForm(refresh) {
+    const d = document.createElement('div');
+    d.className = 'cr-form';
+    d.innerHTML = `<p class="cr-label">➕ Agregar canal de YouTube</p>
+      <input data-cn placeholder="Nombre del canal" autocomplete="off">
+      <input data-cu placeholder="URL del canal o video (youtube.com/...)" autocomplete="off" type="url">
+      <input data-cd placeholder="Descripción corta (opcional)" autocomplete="off">
+      <button class="cr-btn primary">Guardar canal</button>
+      <p style="font-size:11px;color:var(--muted);margin:6px 0 0;line-height:1.4">Funciona con URLs de YouTube. Los videos individuales y las listas de reproducción se ven adentro de la app. Los canales con <strong>@usuario</strong> se abren en la app de YouTube.</p>`;
+    d.querySelector('button').onclick = e => {
+      e.stopPropagation();
+      const name = d.querySelector('[data-cn]').value.trim();
+      const url = d.querySelector('[data-cu]').value.trim();
+      const note = d.querySelector('[data-cd]').value.trim() || 'Agregado por vos';
+      if (!name) return alert('Falta el nombre.');
+      if (!url || !/youtube\.com|youtu\.be/.test(url)) return alert('La URL debe ser de YouTube (youtube.com o youtu.be).');
+      const parsed = parseYouTubeEmbed(url);
+      if (!parsed) return alert('No pudimos entender esa URL. Probá copiando el link directo de un video o canal.');
+      const ch = {
+        name,
+        type: parsed.kind === 'video' ? 'Video' : parsed.kind === 'playlist' ? 'Lista' : parsed.kind === 'channel' ? 'Canal en vivo' : 'Canal',
+        note,
+        embed: parsed.embed,
+        channel: parsed.channel || url,
+        custom: true
+      };
+      const cust = lsGet(CHANNEL_CUSTOM_KEY, []);
+      cust.push(ch);
+      lsSet(CHANNEL_CUSTOM_KEY, cust);
+      d.querySelectorAll('input').forEach(i => i.value = '');
+      refresh();
+    };
+    return d;
   }
 
   // ── Panel principal ────────────────────────────────────────────────────────
