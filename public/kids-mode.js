@@ -413,15 +413,24 @@
       }
     });
 
-    window.addEventListener('popstate', onPop, { once: true });
+    window.addEventListener('popstate', onPop);
   }
 
-  function onPop() { closeDetail(false); }
+  // popstate solo cierra el detail si REALMENTE saliste de #kids-detail
+  // (no si abriste una sub-pantalla y volviste)
+  function onPop() {
+    if (location.hash === '#kids-detail') return; // sigo en detail
+    window.removeEventListener('popstate', onPop);
+    stopAll();
+    document.querySelector('.pv-kids-detail')?.remove();
+    detail = null;
+  }
 
   function closeDetail(useHistory) {
     stopAll();
     document.querySelector('.pv-kids-detail')?.remove();
     detail = null;
+    window.removeEventListener('popstate', onPop);
     if (useHistory && location.hash === '#kids-detail') {
       window._pvPanelClosing = true;
       history.back();
@@ -434,9 +443,28 @@
     const grid=panel.querySelector('.pv-kids-grid'),cats=panel.querySelector('.pv-kids-cats'),cnt=panel.querySelector('.pv-kids-count'),td=today();panel.querySelector('.pv-kids-today h2').textContent=`${td.emoji} ${td.title}`;panel.querySelector('.pv-kids-today .btn').onclick=()=>openDetail(td);
     cats.innerHTML=CATS.map(c=>`<button class="pv-kids-cat ${c[0]===cat?'active':''}" data-cat="${c[0]}">${c[1]} ${c[2]}</button>`).join('');
     function render(){cats.querySelectorAll('.pv-kids-cat').forEach(b=>b.classList.toggle('active',b.dataset.cat===cat));const items=cat==='todas'?STORIES:STORIES.filter(s=>s.c===cat);grid.innerHTML=items.map(s=>`<article class="pv-kids-card ${isRead(s)?'read':''}" data-title="${s.title}">${AUDIO_MAP[s.title]?'<span class="pv-kids-badge">🎧 VOZ</span>':''}${isRead(s)?'<span class="pv-kids-star">⭐</span>':''}<div class="emoji">${s.emoji}</div><h3>${s.title}</h3><div class="ref">${s.ref}</div><p>${s.text.slice(0,95)}…</p></article>`).join('');grid.querySelectorAll('.pv-kids-card').forEach(card=>card.onclick=()=>openDetail(STORIES.find(s=>s.title===card.dataset.title)));cnt.textContent=STORIES.filter(isRead).length;}
-    cats.querySelectorAll('.pv-kids-cat').forEach(b=>b.onclick=()=>{cat=b.dataset.cat;render()});panel.querySelector('.pv-kids-close').onclick=()=>closePanel(true);panel.querySelector('.pv-kids-reset').onclick=()=>{if(confirm('¿Borrar el progreso de lectura de los niños?')){save({});render()}};render();window.addEventListener('popstate',()=>closePanel(false),{once:true});
+    cats.querySelectorAll('.pv-kids-cat').forEach(b=>b.onclick=()=>{cat=b.dataset.cat;render()});
+    panel.querySelector('.pv-kids-close').onclick=()=>closePanel(true);
+    panel.querySelector('.pv-kids-reset').onclick=()=>{if(confirm('¿Borrar el progreso de lectura de los niños?')){save({});render()}};
+    render();
+    // popstate solo cierra el panel si REALMENTE saliste de #kids
+    // (al abrir detail se push #kids-detail; al volver de detail vuelve a #kids
+    //  → entonces NO debemos cerrar el panel, solo el detail)
+    function onPanelPop() {
+      if (location.hash === '#kids') return; // sigo en panel
+      window.removeEventListener('popstate', onPanelPop);
+      stopAll();
+      document.querySelector('.pv-kids-panel')?.remove();
+      panel = null;
+    }
+    window.addEventListener('popstate', onPanelPop);
   }
-  function closePanel(useHistory){stopAll();document.querySelector('.pv-kids-panel')?.remove();panel=null;if(useHistory&&location.hash==='#kids'){window._pvPanelClosing=true;history.back();}}
+  function closePanel(useHistory){
+    stopAll();
+    document.querySelector('.pv-kids-panel')?.remove();
+    panel=null;
+    if(useHistory&&location.hash==='#kids'){window._pvPanelClosing=true;history.back();}
+  }
   function addHome(){const title=document.querySelector('h1')?.textContent||'';if(!title.includes('Una palabra para hoy')||document.querySelector('.pv-kids-home'))return;const anchor=document.querySelector('.pv-ba-card')||document.querySelector('.pv-path-card')||document.querySelector('.hero');if(!anchor)return;const t=today(),n=STORIES.filter(isRead).length;const card=document.createElement('section');card.className='card pv-kids-home';card.innerHTML=`<p class="ref">Para los más chicos</p><h3>Biblia para chicos</h3><p class="soft">${STORIES.length} historias con preguntas, oración y audio. Hoy: <strong>${t.title}</strong> ${t.emoji}</p><p class="soft" style="font-size:13px">📖 ${n} de ${STORIES.length} leídas</p><div class="row wrap"><button class="btn">Abrir historias</button></div>`;window.PVImages?.applyHero?.(card,'child_reading');card.querySelector('button').onclick=openPanel;anchor.insertAdjacentElement('afterend',card)}
   function addQuick(){const q=document.querySelector('.quick');if(!q||document.querySelector('.pv-kids-quick'))return;const b=document.createElement('button');b.className='pv-kids-quick';b.textContent='👶 Niños';b.onclick=openPanel;q.insertBefore(b,q.firstChild)}
   // API pública
