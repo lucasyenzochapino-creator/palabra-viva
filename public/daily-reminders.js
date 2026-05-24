@@ -91,6 +91,135 @@
     }
   }
 
+  // ── Diagnóstico paso a paso (visible al usuario) ──────────────────────────
+  async function runDiagnostic(outputEl) {
+    const log = (line, kind) => {
+      const div = document.createElement('div');
+      div.style.cssText = 'padding:8px 12px;margin-bottom:6px;border-radius:8px;font-family:monospace;font-size:13px;line-height:1.4';
+      if (kind === 'ok')    div.style.cssText += ';background:rgba(90,111,72,.12);color:var(--good);border-left:3px solid var(--good)';
+      if (kind === 'err')   div.style.cssText += ';background:rgba(154,58,58,.12);color:var(--danger);border-left:3px solid var(--danger)';
+      if (kind === 'warn')  div.style.cssText += ';background:rgba(164,119,49,.12);color:var(--accent);border-left:3px solid var(--accent)';
+      div.textContent = line;
+      outputEl.appendChild(div);
+    };
+    outputEl.innerHTML = '<div style="font-weight:600;margin-bottom:10px">🔍 Diagnóstico del sistema de notificaciones</div>';
+
+    // 1) Soporte del browser
+    if (!('Notification' in window))    return log('❌ 1. Tu navegador NO soporta la API de Notificaciones.', 'err');
+    if (!('serviceWorker' in navigator)) return log('❌ 1. Tu navegador NO soporta Service Workers.', 'err');
+    if (!('PushManager' in window))      return log('❌ 1. Tu navegador NO soporta PushManager.', 'err');
+    log('✓ 1. Browser soporta Notification + ServiceWorker + PushManager', 'ok');
+
+    // 2) iOS sin PWA
+    if (isIOS() && !isPWA()) {
+      return log('❌ 2. iPhone detectado SIN app instalada. Las notificaciones solo funcionan con la app agregada a pantalla de inicio (iOS 16.4+).', 'err');
+    }
+    log('✓ 2. Plataforma: ' + (isIOS() ? 'iOS' : /Android/.test(navigator.userAgent) ? 'Android' : 'Desktop') + (isPWA() ? ' (PWA instalada)' : ''), 'ok');
+
+    // 3) Permission
+    log('• 3. Estado del permiso: ' + Notification.permission, Notification.permission === 'granted' ? 'ok' : Notification.permission === 'denied' ? 'err' : 'warn');
+    if (Notification.permission === 'denied') {
+      return log('   → Para arreglar: tocá el ícono 🔒 al lado de la URL → permisos → permitir notificaciones → recargar.', 'err');
+    }
+    if (Notification.permission === 'default') {
+      log('   → Pidiendo permiso ahora…', 'warn');
+      try {
+        const perm = await Notification.requestPermission();
+        log('   → Respuesta del usuario: ' + perm, perm === 'granted' ? 'ok' : 'err');
+        if (perm !== 'granted') return;
+      } catch (e) {
+        return log('   ❌ Error al pedir permiso: ' + (e.message || e), 'err');
+      }
+    }
+
+    // 4) Service worker
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      log('✓ 4. Service Worker activo: ' + (reg.active ? 'sí' : 'no') + ' — scope: ' + reg.scope, reg.active ? 'ok' : 'warn');
+    } catch (e) {
+      return log('❌ 4. Service Worker no listo: ' + (e.message || e), 'err');
+    }
+
+    // 5) Push Manager subscribe
+    let sub;
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      sub = await reg.pushManager.getSubscription();
+      if (sub) {
+        log('✓ 5. Ya existe una suscripción local. Endpoint: ' + sub.endpoint.slice(0, 60) + '…', 'ok');
+      } else {
+        log('• 5. No hay suscripción todavía. Creando una con VAPID public key…', 'warn');
+        sub = await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC)
+        });
+        log('✓ 5. Suscripción creada. Endpoint: ' + sub.endpoint.slice(0, 60) + '…', 'ok');
+      }
+    } catch (e) {
+      return log('❌ 5. PushManager.subscribe() falló: ' + (e.name || '') + ' — ' + (e.message || e), 'err');
+    }
+
+    // 6) Extraer keys
+    const subData = sub.toJSON();
+    const endpoint = subData.endpoint;
+    const p256dh = subData.keys?.p256dh;
+    const auth_key = subData.keys?.auth;
+    if (!endpoint || !p256dh || !auth_key) {
+      return log('❌ 6. Subscription incompleta. endpoint=' + !!endpoint + ' p256dh=' + !!p256dh + ' auth=' + !!auth_key, 'err');
+    }
+    log('✓ 6. Keys completas (endpoint, p256dh, auth)', 'ok');
+
+    // 7) POST a la RPC
+    log('• 7. Guardando en el servidor via RPC upsert_push_subscription…', 'warn');
+    try {
+      const token = window.PVAuth?.getToken?.();
+      const headers = {
+        'apikey': SUPA_KEY,
+        'Authorization': 'Bearer ' + (token || SUPA_KEY),
+        'Content-Type': 'application/json'
+      };
+      const settings = loadSettings();
+      const [hh, mm] = (settings.time || '08:00').split(':').map(n => parseInt(n, 10));
+      const body = {
+        p_endpoint: endpoint,
+        p_p256dh: p256dh,
+        p_auth_key: auth_key,
+        p_hour: hh,
+        p_minute: mm,
+        p_timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/Argentina/Buenos_Aires',
+        p_user_agent: navigator.userAgent.slice(0, 200)
+      };
+      const res = await fetch(`${SUPA_URL}/rest/v1/rpc/upsert_push_subscription`, {
+        method: 'POST', headers, body: JSON.stringify(body)
+      });
+      const txt = await res.text();
+      if (res.ok) {
+        log('✓ 7. Servidor guardó la suscripción. ID: ' + txt.replace(/"/g, ''), 'ok');
+        try { localStorage.setItem(SUB_SAVED_KEY, endpoint); } catch {}
+      } else {
+        return log('❌ 7. RPC respondió ' + res.status + ': ' + txt.slice(0, 200), 'err');
+      }
+    } catch (e) {
+      return log('❌ 7. Error de red al guardar: ' + (e.message || e), 'err');
+    }
+
+    // 8) Probar mostrando una notificación local
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      await reg.showNotification('🔍 Diagnóstico OK', {
+        body: 'Si ves esto, las notificaciones funcionan. Ahora esperá a tu hora elegida.',
+        icon: '/icon-192.png',
+        tag: 'pv-diag'
+      });
+      log('✓ 8. Notificación de prueba enviada exitosamente.', 'ok');
+    } catch (e) {
+      log('⚠️ 8. No se pudo mostrar la notificación de prueba: ' + (e.message || e), 'warn');
+    }
+
+    // 9) Conclusión
+    log('🎉 TODO OK. Tu suscripción está activa en el servidor. Vas a recibir el versículo del día a la hora elegida — incluso si la app está cerrada.', 'ok');
+  }
+
   // Cancelar suscripción
   async function unsubscribeFromPush() {
     try {
@@ -368,6 +497,10 @@
       <h3>🔔 Versículo diario</h3>
       <p class="soft">Recibí un versículo cada día a la hora que elijas, incluso si la app está cerrada (push verdadero con servidor).</p>
       ${stepsHtml}
+      <div style="margin-top:14px;padding-top:14px;border-top:1px dashed var(--line)">
+        <button class="pv-rem-cta secondary" id="pv-rem-diag" style="font-size:13px;min-height:42px;padding:9px 14px">🔍 Diagnosticar (si no llegan)</button>
+        <div id="pv-rem-diag-out" style="margin-top:10px"></div>
+      </div>
     `;
 
     // ── Handlers ─────────────────────────────────────────────────────────
@@ -432,6 +565,18 @@
         await unsubscribeFromPush();
         saveSettings({ enabled: false, time: timeInp?.value || '08:00' });
         setTimeout(() => renderCardContent(card), 500);
+      };
+    }
+
+    const diagBtn = card.querySelector('#pv-rem-diag');
+    const diagOut = card.querySelector('#pv-rem-diag-out');
+    if (diagBtn && diagOut) {
+      diagBtn.onclick = async () => {
+        diagBtn.disabled = true;
+        diagBtn.textContent = '⏳ Diagnosticando…';
+        await runDiagnostic(diagOut);
+        diagBtn.disabled = false;
+        diagBtn.textContent = '🔍 Diagnosticar de nuevo';
       };
     }
 
