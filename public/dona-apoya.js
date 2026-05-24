@@ -2,10 +2,16 @@
   // ── Palabra Viva — Card de donación (sutil, al fondo) ─────────────────────
   const CAFECITO_URL    = 'https://cafecito.app/palabravivamm';
   const MERCADOPAGO_URL = 'https://link.mercadopago.com.ar/palabravivamm';
-  // CBU/Alias para transferencia directa (0% comisión)
-  // CONFIGURAR: cambiá ALIAS por tu alias real (ej: palabra.viva.mp)
-  const ALIAS = 'palabra.viva.mp';
-  const CBU   = 'Pedir por mail';
+  // CVU/CBU para transferencia directa (0% comisión)
+  const CVU   = '0000003100001074062433';
+  const ALIAS = 'palabra.viva.mm'; // El alias se asocia al CVU desde la app del banco
+  // Montos sugeridos para donación mensual fija (en ARS)
+  const MONTHLY_TIERS = [
+    { amount: 500,   label: 'Apoyo',      desc: 'Una ayuda simbólica mensual' },
+    { amount: 1000,  label: 'Sostén',     desc: 'Ayudás a mantener la app online' },
+    { amount: 3000,  label: 'Constructor', desc: 'Permitís nuevas funciones cada mes' },
+    { amount: 5000,  label: 'Padrino',    desc: 'Sostenés el proyecto a largo plazo' }
+  ];
 
   const $ = (s, r = document) => r.querySelector(s);
 
@@ -122,15 +128,28 @@
         <div class="pv-dona-modal-card">
           <button class="pv-dona-modal-close" data-close>✕</button>
           <div style="font-size:48px;text-align:center;line-height:1">${monthly ? '🔁' : '💝'}</div>
-          <h2 style="margin:6px 0;text-align:center;font-size:24px">${monthly ? 'Donar todos los meses' : 'Donar una vez'}</h2>
+          <h2 style="margin:6px 0;text-align:center;font-size:24px">${monthly ? 'Donación mensual fija' : 'Donar una vez'}</h2>
           ${monthly
-            ? `<p style="margin:0 0 4px">Para que tu donación se repita cada mes:</p>
-               <ol style="margin:0 0 10px;padding-left:22px;font-size:15px;line-height:1.55">
-                 <li>Tocá el botón <strong>Mercado Pago</strong> de abajo.</li>
-                 <li>Ingresá el monto que quieras donar.</li>
-                 <li>Después de pagar, andá a <strong>Tu cuenta de Mercado Pago → Pagos programados / suscripciones</strong> y activá la repetición mensual.</li>
-                 <li>Cafecito también permite suscripción mensual — elegí "Apoyo recurrente" al donar.</li>
-               </ol>`
+            ? `<p style="margin:0 0 10px;font-size:14px;color:var(--muted)">Elegí un monto y se descontará cada mes. Lo podés cancelar en cualquier momento desde tu app de pagos.</p>
+               <div class="pv-dona-tiers" style="display:flex;flex-direction:column;gap:8px;margin:8px 0 14px">
+                 ${MONTHLY_TIERS.map(t => `<button data-tier="${t.amount}" class="pv-dona-tier" style="display:flex;align-items:center;justify-content:space-between;gap:10px;border:1px solid var(--line);background:var(--card2);color:var(--text);border-radius:14px;padding:12px 14px;cursor:pointer;font:inherit;text-align:left">
+                   <div>
+                     <div style="font-weight:700;font-size:15px">${t.label}</div>
+                     <div style="font-size:12px;color:var(--muted)">${t.desc}</div>
+                   </div>
+                   <div style="font-weight:900;font-size:20px;color:var(--brand);font-family:var(--font-serif);white-space:nowrap">$${t.amount.toLocaleString('es-AR')}</div>
+                 </button>`).join('')}
+                 <button data-tier="custom" class="pv-dona-tier" style="border:1px dashed var(--line);background:transparent;color:var(--muted);border-radius:14px;padding:11px;cursor:pointer;font:inherit;font-size:13px">+ Otro monto a definir</button>
+               </div>
+               <div class="pv-dona-monthly-info" style="display:none;background:rgba(164,119,49,.08);border:1px solid var(--accent);border-radius:14px;padding:12px;margin-bottom:10px;font-size:13px;line-height:1.5">
+                 <strong>Cómo activar el cobro mensual:</strong>
+                 <ol style="margin:6px 0 0;padding-left:20px">
+                   <li>Tocá <strong>Mercado Pago</strong> abajo.</li>
+                   <li>Ingresá el monto elegido.</li>
+                   <li>Pagá la primera vez. Después, desde la app de Mercado Pago → <strong>Pagos programados</strong>, activá la repetición.</li>
+                   <li>O elegí <strong>Cafecito</strong> y marcá la opción "Apoyo recurrente".</li>
+                 </ol>
+               </div>`
             : `<p style="margin:0 0 10px;font-size:15px">Elegí el método que prefieras. Tu donación llega completa al sostenimiento de Palabra Viva.</p>`}
           <div style="display:flex;flex-direction:column;gap:10px;margin-top:8px">
             <!-- ⭐ TRANSFERENCIA: 0% comisión, llega 100% -->
@@ -141,13 +160,18 @@
             <a href="${MERCADOPAGO_URL}" target="_blank" rel="noopener noreferrer" class="pv-dona-modal-btn" style="background:linear-gradient(135deg,#00b3e3,#0a83cf);color:white">💳 Mercado Pago <span style="font-size:11px;background:rgba(255,255,255,.25);padding:2px 6px;border-radius:6px;margin-left:6px">~6% comisión</span></a>
           </div>
           <div class="pv-dona-alias-box" style="display:none;background:var(--card2);border:1px dashed var(--brand,#7c4a1e);border-radius:14px;padding:14px;margin-top:10px">
-            <p style="font-size:13px;color:var(--muted);margin:0 0 8px;font-weight:600">📨 Datos para transferir (llega 100% sin comisiones)</p>
+            <p style="font-size:13px;color:var(--muted);margin:0 0 8px;font-weight:600">📨 Transferí desde tu banco / Mercado Pago / Ualá (sin comisiones)</p>
             <div style="background:var(--card);border-radius:10px;padding:10px 12px;margin-bottom:8px">
               <p style="font-size:11px;color:var(--muted);margin:0 0 2px;letter-spacing:.08em;text-transform:uppercase">Alias</p>
               <p style="font-size:18px;font-weight:700;margin:0;font-family:monospace;letter-spacing:.04em">${ALIAS}</p>
             </div>
-            <button class="pv-dona-modal-btn" data-copy-alias style="background:var(--brand,#7c4a1e);color:white;border:0;cursor:pointer;font:inherit;width:100%">📋 Copiar alias</button>
-            <p style="font-size:12px;color:var(--muted);margin:10px 0 0;line-height:1.4">Para CBU completo o más info, escribinos a <strong>palabravivamm@gmail.com</strong>. Llegamos sin descuentos.</p>
+            <button class="pv-dona-modal-btn" data-copy-alias style="background:var(--brand,#7c4a1e);color:white;border:0;cursor:pointer;font:inherit;width:100%;margin-bottom:8px">📋 Copiar alias</button>
+            <div style="background:var(--card);border-radius:10px;padding:10px 12px;margin-bottom:8px">
+              <p style="font-size:11px;color:var(--muted);margin:0 0 2px;letter-spacing:.08em;text-transform:uppercase">CVU</p>
+              <p style="font-size:14px;font-weight:700;margin:0;font-family:monospace;letter-spacing:.02em;word-break:break-all">${CVU}</p>
+            </div>
+            <button class="pv-dona-modal-btn" data-copy-cvu style="background:var(--brand,#7c4a1e);color:white;border:0;cursor:pointer;font:inherit;width:100%">📋 Copiar CVU</button>
+            <p style="font-size:12px;color:var(--muted);margin:10px 0 0;line-height:1.4">Llega 100% sin descuentos. Confirmaciones por <strong>palabravivamm@gmail.com</strong>.</p>
           </div>
           <p style="font-size:12px;color:var(--muted,#a08060);text-align:center;margin:10px 0 0">Gracias por sostener este proyecto 🙏</p>
         </div>`;
@@ -166,6 +190,34 @@
         } catch {
           prompt('Copiá este alias:', ALIAS);
         }
+      });
+      // Copiar CVU
+      m.querySelector('[data-copy-cvu]')?.addEventListener('click', async (ev) => {
+        ev.preventDefault();
+        try {
+          await navigator.clipboard.writeText(CVU);
+          ev.target.textContent = '✓ CVU copiado';
+          setTimeout(() => { ev.target.textContent = '📋 Copiar CVU'; }, 2000);
+        } catch {
+          prompt('Copiá este CVU:', CVU);
+        }
+      });
+      // Tiers de donación mensual
+      m.querySelectorAll('[data-tier]').forEach(btn => {
+        btn.addEventListener('click', (ev) => {
+          ev.preventDefault();
+          const v = btn.dataset.tier;
+          // Resaltar el seleccionado
+          m.querySelectorAll('[data-tier]').forEach(b => {
+            b.style.background = 'var(--card2)';
+            b.style.borderColor = 'var(--line)';
+          });
+          btn.style.background = 'rgba(107,31,31,.12)';
+          btn.style.borderColor = 'var(--brand)';
+          // Mostrar info de activación
+          const info = m.querySelector('.pv-dona-monthly-info');
+          if (info) info.style.display = 'block';
+        });
       });
       m.addEventListener('click', e => { if (e.target === m || e.target.dataset.close !== undefined) m.remove(); });
       document.body.appendChild(m);

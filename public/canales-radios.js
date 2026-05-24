@@ -454,6 +454,10 @@
     const r=items[dialIdx];
     const playing=current&&rid(current.station)===rid(r)&&!AUD.paused;
     const pct=items.length===1?50:(dialIdx/(items.length-1))*100;
+    // Extraer frecuencia REAL del nombre (ej: "Cristo Rey 105.1" → "105.1 FM")
+    // o usar país/tipo como subtítulo si no hay frecuencia
+    const freqMatch = (r.name||'').match(/(\d{2,3}\.?\d?)\s*(FM|AM|MHz|KHz)?/i);
+    const freqLabel = freqMatch ? `${freqMatch[1]} ${(freqMatch[2]||'FM').toUpperCase()}` : (r.type ? r.type.split('·').slice(0,2).join(' · ') : 'STREAMING');
     return`<div class="cr-dial-box">
       <div class="cr-dial-brand">━━ PALABRA VIVA RADIO ━━</div>
       <div class="cr-dial-search-wrap">
@@ -461,12 +465,12 @@
         <div id="cr-dial-sug"></div>
       </div>
       <div class="cr-dial-screen">
-        <div class="cr-dial-freq">${(88+dialIdx*(20/Math.max(1,items.length-1))).toFixed(1)} MHz</div>
+        <div class="cr-dial-freq">${freqLabel}</div>
         <div class="cr-dial-name" id="cr-dn">${r.name}</div>
         <div class="cr-dial-status" id="cr-ds">${playing?'🔴 EN VIVO':'SINTONIZADA'}</div>
       </div>
       <div class="cr-dial-track"><div class="cr-dial-needle" id="cr-needle" style="left:${pct}%"></div></div>
-      <div class="cr-dial-marks"><span>88</span><span>92</span><span>96</span><span>100</span><span>104</span><span>108</span></div>
+      <div class="cr-dial-marks"><span>${dialIdx+1}</span><span>·</span><span>·</span><span>·</span><span>·</span><span>${items.length}</span></div>
       <div class="cr-dial-count" id="cr-dc">${dialIdx+1} de ${items.length} estaciones</div>
       <div class="cr-dial-ctrl">
         <button class="cr-dial-knob" data-prev>◀</button>
@@ -492,6 +496,12 @@
     const nd=document.getElementById('cr-needle');if(nd)nd.style.left=`${items.length===1?50:(dialIdx/(items.length-1))*100}%`;
     const dc=document.getElementById('cr-dc');if(dc)dc.textContent=`${dialIdx+1} de ${items.length} estaciones`;
     const pb=panel?.querySelector('[data-play]');if(pb){const pl=current&&rid(current.station)===rid(items[dialIdx])&&!AUD.paused;pb.textContent=pl?'⏸ DETENER':'▶ ESCUCHAR';}
+    // Actualizar freq label desde el nombre real
+    const fq=panel?.querySelector('.cr-dial-freq');
+    if(fq){
+      const m=(r.name||'').match(/(\d{2,3}\.?\d?)\s*(FM|AM|MHz|KHz)?/i);
+      fq.textContent=m?`${m[1]} ${(m[2]||'FM').toUpperCase()}`:(r.type?r.type.split('·').slice(0,2).join(' · '):'STREAMING');
+    }
   }
 
   function bindDial(listEl,items){
