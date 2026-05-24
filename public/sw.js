@@ -1,5 +1,5 @@
-const VERSION    = 'palabra-viva-v8';
-const RUNTIME    = 'palabra-viva-runtime-v8';
+const VERSION    = 'palabra-viva-v9';
+const RUNTIME    = 'palabra-viva-runtime-v9';
 const APP_SHELL  = [
   '/',
   '/manifest.webmanifest',
@@ -123,5 +123,45 @@ self.addEventListener('notificationclick', (event) => {
       }
       return self.clients.openWindow(url);
     })
+  );
+});
+
+// ── Web Push: recibir push del server y mostrar notificación ──────────────
+self.addEventListener('push', (event) => {
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch {
+    data = { title: 'Palabra Viva', body: event.data?.text() || '' };
+  }
+  const title = data.title || '📖 Palabra Viva';
+  const options = {
+    body: data.body || '',
+    icon: data.icon || '/icon-192.png',
+    badge: data.badge || '/icon-192.png',
+    tag: data.tag || 'pv-push',
+    data: { url: data.url || '/' },
+    requireInteraction: false,
+    vibrate: [200, 100, 200]
+  };
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+// Re-subscribe si el browser invalida la suscripción
+self.addEventListener('pushsubscriptionchange', (event) => {
+  event.waitUntil(
+    (async () => {
+      try {
+        if (event.oldSubscription) {
+          // Try to renew with same key
+          const newSub = await self.registration.pushManager.subscribe(event.oldSubscription.options);
+          // Sería ideal notificar al server con el nuevo endpoint, pero por
+          // ahora dejamos que el cliente vuelva a suscribirse al abrir la app.
+          console.log('[SW] Push subscription renewed', newSub.endpoint);
+        }
+      } catch (e) {
+        console.warn('[SW] pushsubscriptionchange failed', e);
+      }
+    })()
   );
 });

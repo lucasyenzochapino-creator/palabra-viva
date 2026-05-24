@@ -2,9 +2,9 @@
   // ── Palabra Viva — Card de donación (sutil, al fondo) ─────────────────────
   const CAFECITO_URL    = 'https://cafecito.app/palabravivamm';
   const MERCADOPAGO_URL = 'https://link.mercadopago.com.ar/palabravivamm';
-  // CVU/CBU para transferencia directa (0% comisión)
+  // CVU y Alias para transferencia directa (0% comisión)
   const CVU   = '0000003100001074062433';
-  const ALIAS = 'palabra.viva.mm'; // El alias se asocia al CVU desde la app del banco
+  const ALIAS = 'marie.2025.mp';
   // Montos sugeridos para donación mensual fija (en ARS)
   const MONTHLY_TIERS = [
     { amount: 500,   label: 'Apoyo',      desc: 'Una ayuda simbólica mensual' },
@@ -185,7 +185,7 @@
         ev.preventDefault();
         try {
           await navigator.clipboard.writeText(ALIAS);
-          ev.target.textContent = '✓ Copiado al portapapeles';
+          ev.target.textContent = '✓ Alias copiado';
           setTimeout(() => { ev.target.textContent = '📋 Copiar alias'; }, 2000);
         } catch {
           prompt('Copiá este alias:', ALIAS);

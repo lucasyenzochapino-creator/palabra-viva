@@ -8,6 +8,99 @@
 
   const SETTINGS_KEY = 'pv-reminder-settings';
   const LAST_SENT_KEY = 'pv-reminder-last';
+  const SUB_SAVED_KEY = 'pv-push-sub-saved';
+
+  // Web Push — VAPID public key (la privada vive en el servidor)
+  const VAPID_PUBLIC = 'BHYBE7lSF9SrZbFFb87HLAbOo6PuD0xL1neYscC-1ELjZ7RCjtU_U_Rv015hoG3qbVjw0rn_akqhlOxDQP_C8pI';
+  const SUPA_URL = 'https://fuxojzmwyyecefxczfrn.supabase.co';
+  const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ1eG9qem13eXllY2VmeGN6ZnJuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTU4MDAsImV4cCI6MjA5NTAzMTgwMH0.M4telJzC3kt7fNN86kvuqpL5-vVmCjdzE-hTDy6Igak';
+
+  // Convertir base64url a Uint8Array (necesario para applicationServerKey)
+  function urlBase64ToUint8Array(b64) {
+    const padding = '='.repeat((4 - b64.length % 4) % 4);
+    const base64 = (b64 + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const raw = atob(base64);
+    const out = new Uint8Array(raw.length);
+    for (let i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
+    return out;
+  }
+
+  // ArrayBuffer → base64url
+  function arrayBufferToBase64Url(buf) {
+    const bytes = new Uint8Array(buf);
+    let bin = '';
+    for (let i = 0; i < bytes.byteLength; i++) bin += String.fromCharCode(bytes[i]);
+    return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  }
+
+  // Suscribir el browser a Web Push y guardar en Supabase
+  async function subscribeToPush(hour, minute) {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+      console.warn('[Push] Browser no soporta Web Push');
+      return false;
+    }
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      let sub = await reg.pushManager.getSubscription();
+      if (!sub) {
+        sub = await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC)
+        });
+      }
+      const subData = sub.toJSON();
+      const endpoint = subData.endpoint;
+      const p256dh = subData.keys?.p256dh;
+      const auth_key = subData.keys?.auth;
+      if (!endpoint || !p256dh || !auth_key) {
+        console.warn('[Push] Subscription incompleta', subData);
+        return false;
+      }
+
+      // Guardar/actualizar en Supabase via upsert
+      const token = window.PVAuth?.getToken?.();
+      const headers = {
+        'apikey': SUPA_KEY,
+        'Authorization': 'Bearer ' + (token || SUPA_KEY),
+        'Content-Type': 'application/json',
+        'Prefer': 'resolution=merge-duplicates,return=minimal'
+      };
+      const body = {
+        user_id: window.PVAuth?.getUser?.()?.id || null,
+        endpoint,
+        p256dh,
+        auth_key,
+        hour: hour || 8,
+        minute: minute || 0,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/Argentina/Buenos_Aires',
+        active: true,
+        user_agent: navigator.userAgent.slice(0, 200)
+      };
+      const res = await fetch(`${SUPA_URL}/rest/v1/push_subscriptions?on_conflict=endpoint`, {
+        method: 'POST', headers, body: JSON.stringify(body)
+      });
+      if (res.ok) {
+        try { localStorage.setItem(SUB_SAVED_KEY, endpoint); } catch {}
+        console.log('[Push] Suscripción guardada en servidor');
+        return true;
+      }
+      console.warn('[Push] Server save failed', res.status, await res.text().catch(()=>''));
+      return false;
+    } catch (e) {
+      console.error('[Push] Error subscribing:', e);
+      return false;
+    }
+  }
+
+  // Cancelar suscripción
+  async function unsubscribeFromPush() {
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      const sub = await reg.pushManager.getSubscription();
+      if (sub) await sub.unsubscribe();
+      try { localStorage.removeItem(SUB_SAVED_KEY); } catch {}
+    } catch (e) { console.warn('[Push] unsubscribe error', e); }
+  }
 
   // Versículos rotativos (mismo bloque que el hero por hora)
   const VERSES = [
@@ -243,14 +336,31 @@
       saveSettings({ ...loadSettings(), enabled: on, time: timeInp.value });
       toggle.classList.toggle('on', on);
       toggle.setAttribute('aria-checked', on);
-      refreshStatus();
+      // Suscripción Web Push (push verdadero — funciona aunque app esté cerrada)
+      if (on) {
+        const [hh, mm] = (timeInp.value || '08:00').split(':').map(n => parseInt(n, 10));
+        const ok = await subscribeToPush(hh, mm);
+        if (ok) status.innerHTML = '✅ <strong>Activo con Push real</strong> — recibirás la notificación a las <strong>' + timeInp.value + '</strong> aunque la app esté cerrada.';
+      } else {
+        await unsubscribeFromPush();
+      }
+      // Re-render del status según permisos finales
+      setTimeout(refreshStatus, 200);
+      scheduleNextNotification();
     }
 
     toggle.onclick = () => setEnabled(!toggle.classList.contains('on'));
     toggle.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle.click(); } };
-    timeInp.onchange = () => {
+    timeInp.onchange = async () => {
       saveSettings({ ...loadSettings(), time: timeInp.value });
+      // Si está activo, re-suscribir con la nueva hora para que el server sepa
+      const s = loadSettings();
+      if (s.enabled && Notification.permission === 'granted') {
+        const [hh, mm] = (timeInp.value || '08:00').split(':').map(n => parseInt(n, 10));
+        await subscribeToPush(hh, mm);
+      }
       refreshStatus();
+      scheduleNextNotification();
     };
 
     testBtn.onclick = async () => {
