@@ -10,12 +10,12 @@
     <meta http-equiv="Content-Security-Policy" content="
       default-src 'self';
       script-src  'self' 'unsafe-inline' https://unpkg.com;
-      style-src   'self' 'unsafe-inline' https://unpkg.com;
+      style-src   'self' 'unsafe-inline' https://unpkg.com https://fonts.googleapis.com;
       img-src     'self' data: blob: https:;
+      font-src    'self' data: https://fonts.gstatic.com;
       media-src   'self' blob: https://archive.org https://*.archive.org https://*.zeno.fm https://stream.zeno.fm https://*.radioca.st https://*.radiomast.io https://*.305stream.com https://*.livestreamcdn.net https://*.streamingecuador.net https://*.novotempo.com https://*.radio.co https://*.unoredcdn.net https://*.streams.radio;
       connect-src 'self' https://archive.org https://*.archive.org https://fuxojzmwyyecefxczfrn.supabase.co wss://fuxojzmwyyecefxczfrn.supabase.co https://overpass-api.de https://overpass.kumi.systems https://overpass.openstreetmap.fr https://de1.api.radio-browser.info https://de2.api.radio-browser.info https://nl1.api.radio-browser.info https://*.tile.openstreetmap.org https://tile.openstreetmap.org;
       frame-src   https://www.youtube.com https://youtube.com;
-      font-src    'self' data:;
       object-src  'none';
       base-uri    'self';
       form-action 'self';
@@ -40,6 +40,11 @@
     <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
     <link rel="shortcut icon" href="/favicon-32.png" />
+    <!-- Tipografías: Cormorant Garamond para títulos + Inter para UI -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Inter:wght@400;500;600;700&display=swap" />
+
     <!-- Leaflet (mapas) — solo se carga; usado por iglesias-cerca.js -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="anonymous" />
     <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin="anonymous"></script>
@@ -59,7 +64,7 @@
     <script src="/bible-audio-player.js?v=bap-v5"></script>
     <script src="/kids-mode.js?v=kids-v11"></script>
     <script src="/timeline-cristiana.js?v=tl-v2"></script>
-    <script src="/iglesias-cerca.js?v=igl-v3"></script>
+    <script src="/iglesias-cerca.js?v=igl-v4"></script>
     <script src="/calendario-cristiano.js?v=cal-v1"></script>
     <script src="/personajes-biblicos.js?v=pers-v1"></script>
     <script src="/menu-mas.js?v=mas-v1"></script>
@@ -73,8 +78,8 @@
     <script src="/onboarding.js?v=onb-v2" defer></script>
     <script src="/pv-auth.js?v=auth-v7"></script>
     <script src="/pv-sync.js?v=sync-v1" defer></script>
-    <script src="/pv-feedback.js?v=fb-v1" defer></script>
+    <script src="/pv-feedback.js?v=fb-v2" defer></script>
     <script src="/dona-apoya.js?v=dona-v4"></script>
-    <script src="/pv-admin.js?v=admin-v2"></script>
+    <script src="/pv-admin.js?v=admin-v3"></script>
   </body>
 </html>

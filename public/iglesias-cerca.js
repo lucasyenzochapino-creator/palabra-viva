@@ -13,6 +13,54 @@
     'https://overpass.openstreetmap.fr/api/interpreter'
   ];
 
+  const SUPA_URL = 'https://fuxojzmwyyecefxczfrn.supabase.co';
+  const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ1eG9qem13eXllY2VmeGN6ZnJuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTU4MDAsImV4cCI6MjA5NTAzMTgwMH0.M4telJzC3kt7fNN86kvuqpL5-vVmCjdzE-hTDy6Igak';
+
+  // Buscar iglesias aprobadas por la comunidad cerca del usuario
+  async function fetchCommunityChurches(lat, lon, radiusKm) {
+    try {
+      const url = `${SUPA_URL}/rest/v1/community_churches?status=eq.approved&select=*`;
+      const res = await fetch(url, { headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY } });
+      if (!res.ok) return [];
+      const rows = await res.json();
+      return (rows || []).filter(c => {
+        const d = distance(lat, lon, parseFloat(c.lat), parseFloat(c.lon));
+        return d <= radiusKm;
+      }).map(c => ({
+        id: 'community-' + c.id,
+        lat: parseFloat(c.lat),
+        lon: parseFloat(c.lon),
+        name: c.name,
+        denomination: c.denomination || '',
+        addr: c.address || '',
+        phone: c.phone || '',
+        website: c.website || '',
+        opening_hours: '',
+        community: true
+      }));
+    } catch { return []; }
+  }
+
+  // Submit nueva iglesia
+  async function submitChurch(payload) {
+    const token = window.PVAuth?.getToken?.() || SUPA_KEY;
+    const res = await fetch(`${SUPA_URL}/rest/v1/community_churches`, {
+      method: 'POST',
+      headers: {
+        'apikey': SUPA_KEY,
+        'Authorization': 'Bearer ' + token,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=minimal'
+      },
+      body: JSON.stringify({ ...payload, status: 'pending' })
+    });
+    if (!res.ok) {
+      const txt = await res.text().catch(() => '');
+      throw new Error('HTTP ' + res.status + ': ' + txt.slice(0, 200));
+    }
+    return true;
+  }
+
   // Denominaciones EXCLUIDAS (la app es evangélica/cristiana)
   const EXCLUDED_DENOMS = ['catholic', 'roman_catholic', 'orthodox', 'eastern_orthodox', 'mormon', 'jehovahs_witness', 'latter_day_saints'];
 
@@ -57,6 +105,25 @@
       .pv-igl-toggle{display:flex;gap:6px;background:var(--card2,#202031);border:1px solid var(--line,#333447);border-radius:14px;padding:4px;width:fit-content;margin:0 auto}
       .pv-igl-toggle button{border:0;background:transparent;color:var(--muted,#c8c5d8);border-radius:10px;padding:7px 14px;font-weight:900;font-size:13px;cursor:pointer}
       .pv-igl-toggle button.on{background:linear-gradient(135deg,#7c4a1e,#b45309);color:#fff}
+      .pv-igl-add{background:linear-gradient(135deg,var(--brand,#6b1f1f),var(--brand2,#8a5a2b));color:#fbf3df;border:0;border-radius:14px;padding:13px 18px;font-weight:600;font-size:15px;cursor:pointer;width:100%;display:flex;align-items:center;justify-content:center;gap:8px;min-height:48px;margin-top:6px}
+      .pv-igl-comm-badge{display:inline-block;background:rgba(164,119,49,.18);color:var(--brand,#6b1f1f);font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;text-transform:uppercase;letter-spacing:.06em;margin-left:6px}
+      /* Add church modal */
+      .pv-add-modal{position:fixed;inset:0;z-index:9750;background:rgba(0,0,0,.8);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;padding:18px}
+      .pv-add-card{background:var(--card,#fff);color:var(--text,#000);border:1px solid var(--line,#ccc);border-radius:20px;padding:22px;max-width:480px;width:100%;display:flex;flex-direction:column;gap:12px;box-shadow:0 24px 60px rgba(0,0,0,.5);max-height:90vh;overflow-y:auto}
+      .pv-add-card h2{margin:0;font-size:22px}
+      .pv-add-card label{font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.16em;display:block;margin:6px 0 4px}
+      .pv-add-card input,.pv-add-card select,.pv-add-card textarea{width:100%;border:1px solid var(--line);background:var(--card2);color:var(--text);border-radius:10px;padding:11px 14px;font:inherit;font-size:15px;outline:none;box-sizing:border-box}
+      .pv-add-card textarea{font-family:var(--font-serif);resize:vertical;min-height:80px}
+      .pv-add-card input:focus,.pv-add-card select:focus,.pv-add-card textarea:focus{border-color:var(--brand)}
+      .pv-add-card .actions{display:flex;gap:10px;margin-top:12px}
+      .pv-add-card .actions button{flex:1;border:0;border-radius:999px;padding:12px;font-weight:600;cursor:pointer;min-height:46px;font-size:15px}
+      .pv-add-card .actions .save{background:var(--brand);color:#fbf3df}
+      .pv-add-card .actions .cancel{background:var(--card2);color:var(--text);border:1px solid var(--line)}
+      .pv-add-loc-row{display:flex;gap:8px;align-items:center}
+      .pv-add-loc-row button{background:var(--card2);border:1px solid var(--line);color:var(--text);border-radius:10px;padding:9px 12px;font-size:13px;cursor:pointer;font-weight:600;flex-shrink:0}
+      .pv-add-msg{font-size:13px;padding:8px 12px;border-radius:10px;display:none}
+      .pv-add-msg.ok{display:block;background:rgba(90,111,72,.15);color:var(--good)}
+      .pv-add-msg.err{display:block;background:rgba(154,58,58,.10);color:var(--danger)}
     `;
     document.head.appendChild(st);
   }
@@ -212,6 +279,8 @@ out center body;`;
         </div>
         <div class="pv-igl-map" id="pv-igl-map" style="display:none" aria-label="Mapa de iglesias"></div>
         <div class="pv-igl-list" id="pv-igl-list"></div>
+        <button class="pv-igl-add" id="pv-igl-add">＋ Agregar iglesia que conozcas</button>
+        <p style="font-size:12px;color:var(--muted,#c8c5d8);text-align:center;margin:4px 0 0">Si conocés una iglesia cristiana que no aparece, agregala para ayudar a otros.</p>
       </div>`;
 
     function closePanel(useHistory = true) {
@@ -318,9 +387,12 @@ out center body;`;
 
       let churches;
       try {
-        churches = await fetchChurches(userLoc.lat, userLoc.lon, r, (msg) => {
-          if (progressEl) progressEl.textContent = msg;
-        });
+        // Buscamos en paralelo: OSM + community
+        const [osm, comm] = await Promise.all([
+          fetchChurches(userLoc.lat, userLoc.lon, r, (msg) => { if (progressEl) progressEl.textContent = msg; }),
+          fetchCommunityChurches(userLoc.lat, userLoc.lon, r / 1000)
+        ]);
+        churches = [...comm, ...osm];
       } catch (e) {
         statusEl.innerHTML = `<div class="pv-igl-error">❌ ${e.message}</div>
           <button class="pv-igl-btn-loc" data-loc>🔄 Reintentar</button>`;
@@ -377,7 +449,7 @@ out center body;`;
         const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${c.lat},${c.lon}`;
         const osmUrl  = `https://www.openstreetmap.org/?mlat=${c.lat}&mlon=${c.lon}&zoom=17`;
         return `<article class="pv-igl-card">
-          <span class="denom">${escape(denomPretty(c.denomination))} · ${distStr}</span>
+          <span class="denom">${escape(denomPretty(c.denomination))} · ${distStr}${c.community ? '<span class="pv-igl-comm-badge">Comunidad</span>' : ''}</span>
           <h3>${escape(c.name)}</h3>
           ${c.addr ? `<p class="addr">📍 ${escape(c.addr)}</p>` : ''}
           <div class="meta">
@@ -395,6 +467,9 @@ out center body;`;
 
     statusEl.querySelector('[data-loc]').onclick = () => doSearch();
     radiusSel.onchange = () => { if (userLoc) doSearch(); };
+
+    // Botón Agregar Iglesia
+    panel.querySelector('#pv-igl-add').onclick = () => openAddChurch(userLoc, () => doSearch());
 
     document.body.appendChild(panel);
     window.addEventListener('popstate', onPop, { once: true });
@@ -428,5 +503,133 @@ out center body;`;
   window.addEventListener('load', boot);
   setInterval(boot, 2500);
 
-  window.PVIglesias = { open: openPanel };
+  // ── Modal: Agregar Iglesia ────────────────────────────────────────────────
+  async function openAddChurch(userLoc, onSaved) {
+    if (document.querySelector('.pv-add-modal')) return;
+
+    let lat = userLoc?.lat || null;
+    let lon = userLoc?.lon || null;
+
+    const modal = document.createElement('div');
+    modal.className = 'pv-add-modal';
+    modal.setAttribute('role', 'dialog');
+    modal.setAttribute('aria-modal', 'true');
+    modal.setAttribute('aria-label', 'Agregar iglesia');
+
+    const user = window.PVAuth?.getUser?.();
+    const defaultEmail = user?.email || '';
+
+    modal.innerHTML = `
+      <div class="pv-add-card">
+        <h2>＋ Agregar iglesia</h2>
+        <p style="margin:0;font-size:14px;color:var(--muted)">Si conocés una iglesia cristiana evangélica que no aparezca, dejanos los datos. Nuestro equipo la revisa y la publica para que la encuentren los demás 🙏</p>
+        <div class="pv-add-msg" id="pv-add-msg"></div>
+
+        <label for="ich-name">Nombre de la iglesia *</label>
+        <input id="ich-name" type="text" placeholder="Ej: Iglesia Evangélica Casa de Oración" required maxlength="200" />
+
+        <label for="ich-denom">Denominación</label>
+        <select id="ich-denom">
+          <option value="">— Elegir —</option>
+          <option value="evangelical">Evangélica (general)</option>
+          <option value="pentecostal">Pentecostal</option>
+          <option value="baptist">Bautista</option>
+          <option value="methodist">Metodista</option>
+          <option value="lutheran">Luterana</option>
+          <option value="presbyterian">Presbiteriana</option>
+          <option value="anglican">Anglicana</option>
+          <option value="adventist">Adventista</option>
+          <option value="christian">Cristiana sin denominación</option>
+          <option value="protestant">Protestante</option>
+        </select>
+
+        <label for="ich-addr">Dirección</label>
+        <input id="ich-addr" type="text" placeholder="Calle, número, ciudad" maxlength="200" />
+
+        <label>Ubicación (lat, lon) *</label>
+        <div class="pv-add-loc-row">
+          <input id="ich-lat" type="number" step="0.000001" placeholder="-34.6037" value="${lat ?? ''}" style="flex:1" />
+          <input id="ich-lon" type="number" step="0.000001" placeholder="-58.3816" value="${lon ?? ''}" style="flex:1" />
+          <button type="button" id="ich-here">📍 Acá</button>
+        </div>
+        <p style="font-size:11px;color:var(--muted);margin:2px 0 0">Tocá "📍 Acá" si estás físicamente en la iglesia. O buscá en Google Maps clic-derecho → copiar coordenadas.</p>
+
+        <label for="ich-phone">Teléfono <span style="text-transform:none;letter-spacing:0;font-weight:400">(opcional)</span></label>
+        <input id="ich-phone" type="tel" placeholder="+54 11 ..." maxlength="50" />
+
+        <label for="ich-web">Sitio web o redes <span style="text-transform:none;letter-spacing:0;font-weight:400">(opcional)</span></label>
+        <input id="ich-web" type="url" placeholder="https://..." maxlength="200" />
+
+        <label for="ich-notes">Notas <span style="text-transform:none;letter-spacing:0;font-weight:400">(opcional)</span></label>
+        <textarea id="ich-notes" placeholder="Horarios de culto, pastor, lo que quieras compartir..." maxlength="500"></textarea>
+
+        <label for="ich-email">Tu email <span style="text-transform:none;letter-spacing:0;font-weight:400">(opcional, para avisarte cuando se publique)</span></label>
+        <input id="ich-email" type="email" placeholder="tu@correo.com" value="${defaultEmail.replace(/"/g,'&quot;')}" maxlength="120" />
+
+        <div class="actions">
+          <button class="cancel" data-cancel>Cancelar</button>
+          <button class="save" data-save>Enviar para revisión</button>
+        </div>
+      </div>
+    `;
+
+    function close() { modal.remove(); }
+    modal.addEventListener('click', e => { if (e.target === modal) close(); });
+    modal.querySelector('[data-cancel]').onclick = close;
+
+    modal.querySelector('#ich-here').onclick = async () => {
+      try {
+        const loc = await getLocation();
+        modal.querySelector('#ich-lat').value = loc.lat.toFixed(6);
+        modal.querySelector('#ich-lon').value = loc.lon.toFixed(6);
+      } catch (e) {
+        showAddMsg(modal, e.message, 'err');
+      }
+    };
+
+    modal.querySelector('[data-save]').onclick = async () => {
+      const saveBtn = modal.querySelector('[data-save]');
+      const name = modal.querySelector('#ich-name').value.trim();
+      const denomination = modal.querySelector('#ich-denom').value;
+      const address = modal.querySelector('#ich-addr').value.trim();
+      const latV = parseFloat(modal.querySelector('#ich-lat').value);
+      const lonV = parseFloat(modal.querySelector('#ich-lon').value);
+      const phone = modal.querySelector('#ich-phone').value.trim();
+      const website = modal.querySelector('#ich-web').value.trim();
+      const notes = modal.querySelector('#ich-notes').value.trim();
+      const submitter_email = modal.querySelector('#ich-email').value.trim();
+
+      if (!name || name.length < 2) return showAddMsg(modal, 'Falta el nombre de la iglesia.', 'err');
+      if (isNaN(latV) || latV < -90 || latV > 90)   return showAddMsg(modal, 'La latitud no es válida.', 'err');
+      if (isNaN(lonV) || lonV < -180 || lonV > 180) return showAddMsg(modal, 'La longitud no es válida.', 'err');
+
+      saveBtn.disabled = true; saveBtn.textContent = '⏳ Enviando…';
+      try {
+        await submitChurch({
+          user_id: window.PVAuth?.getUser?.()?.id || null,
+          name, denomination: denomination || null,
+          lat: latV, lon: lonV,
+          address: address || null, phone: phone || null, website: website || null,
+          notes: notes || null, submitter_email: submitter_email || null
+        });
+        showAddMsg(modal, '✅ ¡Gracias! Tu iglesia llegó a moderación. La aprobamos en las próximas horas y aparece para todos.', 'ok');
+        saveBtn.textContent = '✓ Enviada';
+        setTimeout(() => { close(); onSaved?.(); }, 2200);
+      } catch (e) {
+        saveBtn.disabled = false; saveBtn.textContent = 'Enviar para revisión';
+        showAddMsg(modal, '❌ No pudimos enviar: ' + e.message, 'err');
+      }
+    };
+
+    document.body.appendChild(modal);
+    setTimeout(() => modal.querySelector('#ich-name')?.focus(), 80);
+  }
+
+  function showAddMsg(modal, text, kind) {
+    const el = modal.querySelector('#pv-add-msg');
+    el.textContent = text;
+    el.className = 'pv-add-msg ' + kind;
+  }
+
+  window.PVIglesias = { open: openPanel, openAdd: openAddChurch };
 })();

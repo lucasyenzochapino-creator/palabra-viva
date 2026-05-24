@@ -93,6 +93,10 @@
           <h2>💌 Sugerencias</h2>
           <div class="pv-adm-spin">⏳ Cargando…</div>
         </div>
+        <div class="pv-adm-section" id="pv-adm-churches">
+          <h2>⛪ Iglesias propuestas</h2>
+          <div class="pv-adm-spin">⏳ Cargando…</div>
+        </div>
       </div>`;
 
     document.body.appendChild(panel);
@@ -283,6 +287,72 @@
           else { btn.textContent = '❌'; btn.disabled = false; }
         });
       });
+    }
+
+    // ── Iglesias propuestas por la comunidad ──
+    const { ok: chOk, data: chData } = await supa('/rest/v1/community_churches?select=*&order=created_at.desc&limit=200');
+    const churches = chOk && Array.isArray(chData) ? chData : [];
+    if (!panel) return;
+    const chEl = $('#pv-adm-churches', panel);
+    if (!churches.length) {
+      chEl.innerHTML = '<h2>⛪ Iglesias propuestas</h2><div class="pv-adm-empty">Todavía no hay iglesias propuestas por usuarios.</div>';
+    } else {
+      const escapeHtml = s => (s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+      const pending = churches.filter(c => c.status === 'pending').length;
+      chEl.innerHTML = `<h2>⛪ Iglesias propuestas <span style="font-size:13px;color:var(--muted,#c8c5d8);font-weight:400">(${churches.length}${pending ? ` · ${pending} pendientes` : ''})</span></h2>
+        <div style="display:flex;flex-direction:column;gap:10px">
+        ${churches.map(c => {
+          const dt = c.created_at ? new Date(c.created_at).toLocaleString('es-AR') : '';
+          const borderColor = c.status === 'pending' ? 'rgba(245,158,11,.5)'
+            : c.status === 'approved' ? 'rgba(34,197,94,.5)'
+            : 'rgba(251,113,133,.5)';
+          const statusBadge = c.status === 'pending' ? '<span class="pv-adm-badge admin" style="font-size:10px">PENDIENTE</span>'
+            : c.status === 'approved' ? '<span class="pv-adm-badge premium" style="font-size:10px">PUBLICADA</span>'
+            : '<span class="pv-adm-badge" style="background:#7f1d1d;color:#fff;font-size:10px">RECHAZADA</span>';
+          return `<article style="background:var(--card2,#202031);border:1px solid ${borderColor};border-radius:16px;padding:12px 14px">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:6px">
+              <h4 style="margin:0;font-size:15px">${escapeHtml(c.name)}</h4>
+              ${statusBadge}
+            </div>
+            <div style="font-size:13px;color:var(--muted,#c8c5d8);margin:0 0 6px">${escapeHtml(c.denomination || 'Cristiana')} · ${escapeHtml(c.address || 'sin dirección')}</div>
+            <div style="font-size:12px;color:var(--muted,#c8c5d8);display:flex;gap:8px;flex-wrap:wrap">
+              ${c.phone ? `📞 ${escapeHtml(c.phone)}` : ''}
+              ${c.website ? `<a href="${escapeHtml(c.website)}" target="_blank" rel="noopener noreferrer" style="color:var(--brand,#f59e0b)">🌐 sitio</a>` : ''}
+              <a href="https://www.openstreetmap.org/?mlat=${c.lat}&mlon=${c.lon}&zoom=17" target="_blank" rel="noopener noreferrer" style="color:var(--brand,#f59e0b)">📍 ver mapa</a>
+            </div>
+            ${c.notes ? `<p style="margin:6px 0 0;font-size:13px;color:var(--text);white-space:pre-wrap">${escapeHtml(c.notes)}</p>` : ''}
+            ${c.submitter_email ? `<p style="margin:6px 0 0;font-size:11px;color:var(--muted,#c8c5d8)">Propuesta por <a href="mailto:${escapeHtml(c.submitter_email)}" style="color:var(--brand,#f59e0b)">${escapeHtml(c.submitter_email)}</a> · ${dt}</p>` : `<p style="margin:6px 0 0;font-size:11px;color:var(--muted,#c8c5d8)">${dt}</p>`}
+            <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
+              ${c.status !== 'approved' ? `<button data-ch-app="${c.id}" style="background:rgba(34,197,94,.18);color:#86efac;border:1px solid rgba(34,197,94,.5);border-radius:999px;padding:5px 12px;font-size:12px;cursor:pointer;font-weight:700">✓ Aprobar</button>` : ''}
+              ${c.status !== 'rejected' ? `<button data-ch-rej="${c.id}" style="background:rgba(251,113,133,.10);color:#fda4af;border:1px solid rgba(251,113,133,.4);border-radius:999px;padding:5px 12px;font-size:12px;cursor:pointer;font-weight:700">✗ Rechazar</button>` : ''}
+              <button data-ch-del="${c.id}" style="background:transparent;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:5px 10px;font-size:12px;cursor:pointer">🗑</button>
+            </div>
+          </article>`;
+        }).join('')}
+        </div>`;
+
+      chEl.querySelectorAll('[data-ch-app]').forEach(btn => btn.addEventListener('click', async () => {
+        btn.disabled = true; btn.textContent = '⏳';
+        const { ok } = await supa(`/rest/v1/community_churches?id=eq.${btn.dataset.chApp}`, {
+          method: 'PATCH', body: JSON.stringify({ status: 'approved' }), headers: { 'Prefer': 'return=minimal' }
+        });
+        if (ok) setTimeout(loadData, 500); else { btn.textContent = '❌'; btn.disabled = false; }
+      }));
+      chEl.querySelectorAll('[data-ch-rej]').forEach(btn => btn.addEventListener('click', async () => {
+        btn.disabled = true; btn.textContent = '⏳';
+        const { ok } = await supa(`/rest/v1/community_churches?id=eq.${btn.dataset.chRej}`, {
+          method: 'PATCH', body: JSON.stringify({ status: 'rejected' }), headers: { 'Prefer': 'return=minimal' }
+        });
+        if (ok) setTimeout(loadData, 500); else { btn.textContent = '❌'; btn.disabled = false; }
+      }));
+      chEl.querySelectorAll('[data-ch-del]').forEach(btn => btn.addEventListener('click', async () => {
+        if (!confirm('¿Borrar esta propuesta de iglesia?')) return;
+        btn.disabled = true; btn.textContent = '⏳';
+        const { ok } = await supa(`/rest/v1/community_churches?id=eq.${btn.dataset.chDel}`, {
+          method: 'DELETE', headers: { 'Prefer': 'return=minimal' }
+        });
+        if (ok) setTimeout(loadData, 500); else { btn.textContent = '❌'; btn.disabled = false; }
+      }));
     }
   }
 

@@ -105,8 +105,9 @@
       btn.disabled = true;
       btn.textContent = '⏳ Enviando…';
 
-      // 1) Guardar en Supabase (no bloquea el flujo si falla)
+      // 1) Guardar en Supabase (siempre intenta, no bloquea si falla)
       let savedOk = false;
+      let supabaseError = '';
       try {
         const token = window.PVAuth?.getToken?.();
         const headers = {
@@ -115,6 +116,7 @@
           'Prefer': 'return=minimal'
         };
         if (token) headers['Authorization'] = 'Bearer ' + token;
+        else        headers['Authorization'] = 'Bearer ' + SUPA_KEY; // anon
         const res = await fetch(`${SUPA_URL}/rest/v1/suggestions`, {
           method: 'POST',
           headers,
@@ -127,43 +129,46 @@
           })
         });
         savedOk = res.ok;
-        if (!savedOk) console.warn('Supabase suggestion save failed:', res.status, await res.text().catch(()=>'?'));
+        if (!savedOk) {
+          const txt = await res.text().catch(() => '?');
+          supabaseError = `HTTP ${res.status}: ${txt.slice(0,200)}`;
+          console.warn('[Feedback] Supabase falló:', supabaseError);
+        }
       } catch (e) {
-        console.warn('No se pudo guardar sugerencia en Supabase:', e);
+        supabaseError = e.message || String(e);
+        console.warn('[Feedback] error red:', e);
       }
 
-      // 2) Abrir cliente de mail con la sugerencia pre-llenada
+      // 2) ABRIR SIEMPRE el cliente de mail con la sugerencia pre-llenada
+      //    Este es el camino principal — Supabase es solo backup para el admin.
       const subject = encodeURIComponent('💌 Sugerencia de Palabra Viva' + (name ? ` — ${name}` : ''));
       const bodyLines = [
-        `De: ${name || '(sin nombre)'}`,
-        `Email: ${email || '(no dejó)'}`,
+        `Hola Mariela, te dejo una sugerencia para Palabra Viva:`,
         '',
-        'Mensaje:',
         message,
         '',
-        '— enviado desde Palabra Viva'
-      ];
+        `— ${name || 'Un usuario'}`,
+        email ? `Email para responder: ${email}` : '',
+        '',
+        '(Enviado desde palabra-viva-oficepro.vercel.app)'
+      ].filter(Boolean);
       const body = encodeURIComponent(bodyLines.join('\n'));
       const mailto = `mailto:${ADMIN_EMAIL}?subject=${subject}&body=${body}`;
 
-      // Mostrar éxito y dar la opción de mandar mail
+      // Feedback claro al usuario
       if (savedOk) {
-        showMsg('✅ ¡Gracias! Recibimos tu sugerencia. Si querés, también podés mandárnosla por mail.', 'ok');
+        showMsg(`✅ ¡Gracias! Tu sugerencia quedó guardada.\nAhora abrimos tu correo para que también le llegue al instante a ${ADMIN_EMAIL}.`, 'ok');
       } else {
-        showMsg('No pudimos guardarla en línea. Vamos a abrir el correo para que nos llegue igual.', 'err');
+        showMsg(`Abriendo tu correo para enviarla a ${ADMIN_EMAIL}.\nAsí seguro le llega aunque haya problemas con el servidor.`, 'ok');
       }
 
       btn.disabled = false;
-      btn.innerHTML = '📨 Enviar también por mail';
-      btn.onclick = () => {
-        window.location.href = mailto;
-        setTimeout(close, 800);
-      };
+      btn.textContent = '📨 Abrir correo';
 
-      // Si la grabación falló, abrir mailto automático
-      if (!savedOk) {
-        setTimeout(() => { window.location.href = mailto; }, 600);
-      }
+      // Auto-abrir mailto después de 1.2s (le da tiempo al usuario de leer)
+      const openMail = () => { window.location.href = mailto; setTimeout(() => close(), 1200); };
+      btn.onclick = openMail;
+      setTimeout(openMail, 1200);
     });
 
     document.body.appendChild(modal);
