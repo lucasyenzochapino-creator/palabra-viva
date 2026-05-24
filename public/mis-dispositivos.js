@@ -147,17 +147,60 @@
     async function refresh() {
       const list = panel.querySelector('#pv-disp-list');
       list.innerHTML = '⏳ Cargando…';
+
+      // Diagnóstico local del browser
+      let browserHasSub = false;
+      let browserEndpoint = '';
+      try {
+        if ('serviceWorker' in navigator) {
+          const reg = await navigator.serviceWorker.ready;
+          const sub = await reg.pushManager.getSubscription();
+          if (sub) {
+            browserHasSub = true;
+            browserEndpoint = sub.endpoint;
+          }
+        }
+      } catch {}
+      const browserPerm = ('Notification' in window) ? Notification.permission : 'unsupported';
+
       const devices = await fetchMyDevices();
+
+      // CASO ESPECIAL: hay sub local pero NO en server (o user_id=null por subscribir antes de login)
+      // → ofrecer "Sincronizar"
+      const localButNotServer = browserHasSub && (devices === null || !devices.some(d => d.endpoint === browserEndpoint));
+
+      let diagHtml = `
+        <div class="pv-disp-card" style="background:var(--card2)">
+          <h3>🔍 Estado en este dispositivo</h3>
+          <div class="meta" style="flex-direction:column;align-items:flex-start;gap:4px">
+            <span>${browserPerm === 'granted' ? '✓' : '○'} Permiso de notificaciones: <strong>${browserPerm}</strong></span>
+            <span>${browserHasSub ? '✓' : '○'} Suscripción en el browser: <strong>${browserHasSub ? 'sí' : 'no'}</strong></span>
+            <span>${devices && devices.length ? '✓' : '○'} Dispositivos en tu cuenta: <strong>${devices ? devices.length : '?'}</strong></span>
+          </div>
+          ${localButNotServer ? `<div class="actions"><button id="pv-disp-sync" style="background:var(--brand);color:#fbf3df;border:0;font-size:13px">🔄 Sincronizar este dispositivo con tu cuenta</button></div>` : ''}
+        </div>
+      `;
+
       if (devices === null) {
-        list.innerHTML = '<div class="pv-disp-empty">No pudimos cargar tus dispositivos. Probá de nuevo en unos segundos.</div>';
+        list.innerHTML = diagHtml + '<div class="pv-disp-empty">No pudimos cargar tus dispositivos del servidor. Probá de nuevo.</div>';
+        bindSync(list);
         return;
       }
       if (!devices.length) {
-        list.innerHTML = '<div class="pv-disp-empty">Todavía no activaste notificaciones en ningún dispositivo.<br><small>Volvé a la pantalla principal y tocá <strong>"🔔 Activar versículo diario"</strong>.</small></div>';
+        list.innerHTML = diagHtml + `<div class="pv-disp-empty">
+          Todavía no hay dispositivos asociados a tu cuenta.<br>
+          ${browserHasSub
+            ? '<small style="color:var(--accent)">Tu browser SÍ tiene una suscripción local. Tocá <strong>🔄 Sincronizar</strong> arriba para vincularla a tu cuenta.</small>'
+            : browserPerm === 'granted'
+              ? '<small>Andá a inicio y tocá <strong>🔔 Activar versículo diario</strong> para suscribirte.</small>'
+              : '<small>Andá a inicio y tocá <strong>🔔 Activar versículo diario</strong>, después aceptá el permiso del navegador.</small>'
+          }
+        </div>`;
+        bindSync(list);
         return;
       }
       const escape = s => (s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-      list.innerHTML = devices.map(d => {
+      list.innerHTML = diagHtml + devices.map(d => {
         const isCurrent = d.endpoint === currentEndpoint;
         const created = d.created_at ? new Date(d.created_at).toLocaleDateString('es-AR') : '?';
         const lastSent = d.last_sent_at ? new Date(d.last_sent_at).toLocaleDateString('es-AR') : 'nunca';
@@ -185,6 +228,57 @@
           else { btn.disabled = false; btn.textContent = '❌ Error — reintentar'; }
         });
       });
+      bindSync(list);
+    }
+
+    // Handler del botón "Sincronizar"
+    function bindSync(list) {
+      const syncBtn = list.querySelector('#pv-disp-sync');
+      if (!syncBtn) return;
+      syncBtn.onclick = async () => {
+        syncBtn.disabled = true;
+        syncBtn.textContent = '⏳ Sincronizando…';
+        try {
+          // Re-llamar a la función pública de daily-reminders para que
+          // guarde la suscripción en server (con el user_id ya logueado)
+          const settings = (() => { try { return JSON.parse(localStorage.getItem('pv-reminder-settings') || '{}'); } catch { return {}; } })();
+          const t = settings.time || '08:00';
+          const [hh, mm] = t.split(':').map(n => parseInt(n, 10));
+          // Trigger subscription via daily-reminders module
+          if (window.PVReminders?.syncSubscription) {
+            await window.PVReminders.syncSubscription(hh, mm);
+          } else {
+            // Fallback: re-subscribir directo
+            const reg = await navigator.serviceWorker.ready;
+            let sub = await reg.pushManager.getSubscription();
+            if (!sub) throw new Error('No hay suscripción local');
+            const subData = sub.toJSON();
+            const token = window.PVAuth?.getToken?.();
+            const res = await fetch(`${SUPA_URL}/rest/v1/rpc/upsert_push_subscription`, {
+              method: 'POST',
+              headers: {
+                'apikey': SUPA_KEY,
+                'Authorization': 'Bearer ' + (token || SUPA_KEY),
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                p_endpoint: subData.endpoint,
+                p_p256dh: subData.keys?.p256dh,
+                p_auth_key: subData.keys?.auth,
+                p_hour: hh, p_minute: mm,
+                p_timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/Argentina/Buenos_Aires',
+                p_user_agent: navigator.userAgent.slice(0, 200)
+              })
+            });
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+          }
+          syncBtn.textContent = '✓ Sincronizado';
+          setTimeout(refresh, 800);
+        } catch (e) {
+          syncBtn.disabled = false;
+          syncBtn.textContent = '❌ Error: ' + (e.message || e);
+        }
+      };
     }
     refresh();
   }

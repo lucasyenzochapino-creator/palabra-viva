@@ -682,5 +682,30 @@
     if (!document.hidden) { checkAndNotify(); scheduleNextNotification(); }
   });
 
-  window.PVReminders = { check: checkAndNotify, scheduleNext: scheduleNextNotification };
+  // Re-sincronizar suscripción cuando el usuario inicia sesión
+  // (si subscribió como anónimo, ahora se asocia a su user_id)
+  document.addEventListener('pv-auth-change', async (ev) => {
+    if (!ev.detail) return; // logout, no sync
+    if (Notification.permission !== 'granted') return;
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      const sub = await reg.pushManager.getSubscription();
+      if (!sub) return; // no hay sub local todavía
+      // Re-llamar al upsert con auth.uid() ahora logueado
+      const settings = loadSettings();
+      const t = settings.time || '08:00';
+      const [hh, mm] = t.split(':').map(n => parseInt(n, 10));
+      console.log('[Recordatorio] Re-asociando suscripción anónima al usuario logueado…');
+      await subscribeToPush(hh, mm);
+    } catch (e) { console.warn('[Recordatorio] auto-sync fail:', e); }
+  });
+
+  window.PVReminders = {
+    check: checkAndNotify,
+    scheduleNext: scheduleNextNotification,
+    // Función para sincronizar manualmente la suscripción al server
+    syncSubscription: async (hour, minute) => {
+      return subscribeToPush(hour || 8, minute || 0);
+    }
+  };
 })();
