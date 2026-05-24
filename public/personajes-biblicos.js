@@ -300,7 +300,7 @@
       <p class="soft">${CHARACTERS.length} biografías cortas con historia, lección y referencia. De Adán a Pablo.</p>
       <div class="row wrap"><button class="btn">Conocer personajes</button></div>
     `;
-    window.PVImages?.applyHero?.(card, 'stained_glass');
+    window.PVImages?.applyColorHero?.(card, '✝️', 'amber');
     card.querySelector('button').onclick = open;
     anchor.insertAdjacentElement('afterend', card);
   }

@@ -8,8 +8,8 @@
 
   const EVENTS = [
     { era:'pre',     year:'En el principio', emoji:'🌍', title:'Dios crea el mundo',
-      kid:'Dios habló y nació todo: la luz, el cielo, los árboles, los animales y las personas. Dios hizo todo bueno.',
-      ref:'Génesis 1', linkTo:'Dios crea el mundo' },
+      kid:'Dios habló y nació todo: la luz, el cielo, los árboles, los animales. Al final del sexto día creó a la primera pareja (Adán y Eva) a su imagen. Todo lo hizo bueno.',
+      ref:'Génesis 1-2', linkTo:'Dios crea el mundo' },
     { era:'pre',     year:'Al principio', emoji:'🍎', title:'Adán y Eva',
       kid:'Las primeras personas vivían felices con Dios en un jardín, hasta que desobedecieron y se alejaron de Él.',
       ref:'Génesis 3', linkTo:'Adán y Eva en el jardín' },
@@ -156,8 +156,12 @@
       line.innerHTML = list.map((ev) => {
         const realIdx = EVENTS.indexOf(ev);
         const era = ERA_LABELS[ev.era] || ERA_LABELS.pre;
-        const canPlay = ev.linkTo && (window.PalabraVivaNinos);
-        const audioUrls = canPlay ? (window.PalabraVivaNinos.audioFor?.(ev.linkTo) || []) : [];
+        // SIEMPRE renderizar los botones si el evento tiene linkTo
+        // (chequeamos PalabraVivaNinos al click, no al render — evita
+        //  que se renderice sin botones si los scripts cargan en orden raro)
+        const hasLink = !!ev.linkTo;
+        // Audio URL precomputado pero si no hay API aún, lo dejamos vacío
+        const audioUrls = hasLink ? (window.PalabraVivaNinos?.audioFor?.(ev.linkTo) || []) : [];
         const hasAudio = audioUrls.length > 0;
         return `<article class="pv-tl-item" style="--era-color:${era.color}" data-idx="${realIdx}">
           <div class="pv-tl-dot" aria-hidden="true">${ev.emoji}</div>
@@ -168,7 +172,7 @@
           ${hasAudio ? `<div class="pv-tl-audio-slot" data-audio="${audioUrls[0].replace(/"/g,'&quot;')}"></div>` : ''}
           <div class="pv-tl-cta">
             ${hasAudio ? `<button data-play-audio="${realIdx}" style="background:linear-gradient(135deg,#b45309,#7c4a1e)">🎧 Escuchar voz humana</button>` : ''}
-            ${canPlay ? `<button data-link="${ev.linkTo.replace(/"/g, '&quot;')}" class="read">📖 Leer historia completa</button>` : ''}
+            ${hasLink ? `<button data-link="${ev.linkTo.replace(/"/g, '&quot;')}" class="read">📖 Leer historia completa</button>` : ''}
             <button data-share-ev="${realIdx}" style="background:linear-gradient(135deg,#3b82f6,#8b5cf6)">📤 Compartir</button>
           </div>
         </article>`;
@@ -179,8 +183,20 @@
       line.querySelectorAll('[data-link]').forEach(btn => {
         btn.addEventListener('click', () => {
           const title = btn.dataset.link;
+          console.log('[Timeline] Abrir historia:', title, '— API disponible:', !!window.PalabraVivaNinos?.openStory);
           if (window.PalabraVivaNinos?.openStory) {
             window.PalabraVivaNinos.openStory(title, { fromTimeline: true });
+          } else {
+            // Si el módulo de niños no cargó, esperar y reintentar 1 vez
+            btn.textContent = '⏳ Cargando…';
+            setTimeout(() => {
+              if (window.PalabraVivaNinos?.openStory) {
+                window.PalabraVivaNinos.openStory(title, { fromTimeline: true });
+              } else {
+                alert('No se pudo cargar el módulo de historias. Recargá la página (Ctrl+Shift+R).');
+              }
+              btn.textContent = '📖 Leer historia completa';
+            }, 800);
           }
         });
       });
@@ -288,7 +304,7 @@
       <p class="soft">Recorré la historia desde la Creación hasta hoy. ${EVENTS.length} hitos con explicaciones simples.</p>
       <div class="row wrap"><button class="btn">Comenzar el recorrido</button></div>
     `;
-    window.PVImages?.applyHero?.(card, 'timeline_stone');
+    window.PVImages?.applyColorHero?.(card, '📜', 'gold');
     card.querySelector('button').onclick = openTimeline;
     anchor.insertAdjacentElement('afterend', card);
   }
