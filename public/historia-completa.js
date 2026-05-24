@@ -646,11 +646,25 @@
       } catch {}
     };
 
-    // Versión kids
+    // Versión kids — cierra HC primero, después abre detail kids
+    // (mejor UX: no quedan apilados; back vuelve directo al timeline)
     panel.querySelector('[data-kids]').onclick = () => {
-      if (story.audioKey && window.PalabraVivaNinos?.openStory) {
-        window.PalabraVivaNinos.openStory(story.audioKey, { fromTimeline: true });
+      console.log('[HC] Abrir versión kids:', story.audioKey, '— API:', !!window.PalabraVivaNinos?.openStory);
+      if (!story.audioKey) {
+        alert('No hay versión para niños de esta historia.');
+        return;
       }
+      if (!window.PalabraVivaNinos?.openStory) {
+        alert('El módulo de niños no cargó. Recargá (Ctrl+Shift+R).');
+        return;
+      }
+      // Cerrar HC primero (sin history.back para no romper la pila)
+      window.removeEventListener('popstate', onPop);
+      panel.remove();
+      // Pequeño delay para asegurar que el remove se ve antes de abrir kids
+      setTimeout(() => {
+        window.PalabraVivaNinos.openStory(story.audioKey, { fromTimeline: true });
+      }, 50);
     };
 
     document.body.appendChild(panel);
