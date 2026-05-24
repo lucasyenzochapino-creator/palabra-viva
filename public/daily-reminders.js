@@ -226,21 +226,36 @@
 
   // ── UI: card en Ajustes ───────────────────────────────────────────────────
   function injectStyles() {
-    if (document.getElementById('pv-rem-style')) return;
+    if (document.getElementById('pv-rem-style-v2')) return;
+    document.getElementById('pv-rem-style')?.remove();
     const st = document.createElement('style');
-    st.id = 'pv-rem-style';
+    st.id = 'pv-rem-style-v2';
     st.textContent = `
-      .pv-rem-row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:8px 0}
-      .pv-rem-row label{flex:1;font-size:15px;font-weight:700}
-      .pv-rem-row input[type="time"]{border:1px solid var(--line,#333447);background:var(--card2,#202031);color:var(--text,#f8fafc);border-radius:12px;padding:9px 12px;font:inherit;font-size:15px}
-      .pv-rem-switch{position:relative;width:54px;height:30px;background:var(--card2,#202031);border:1px solid var(--line,#333447);border-radius:99px;cursor:pointer;flex-shrink:0}
-      .pv-rem-switch.on{background:linear-gradient(135deg,#22c55e,#16a34a);border-color:transparent}
-      .pv-rem-switch::after{content:'';position:absolute;top:2px;left:2px;width:24px;height:24px;background:#fff;border-radius:50%;transition:left .2s;box-shadow:0 2px 6px rgba(0,0,0,.3)}
-      .pv-rem-switch.on::after{left:26px}
-      .pv-rem-msg{font-size:13px;color:var(--muted,#c8c5d8);margin:6px 0 0;line-height:1.4}
-      .pv-rem-test{background:var(--card2,#202031);border:1px solid var(--line,#333447);color:var(--text,#f8fafc);border-radius:999px;padding:8px 14px;font-weight:900;font-size:13px;cursor:pointer}
+      .pv-rem-card .pv-rem-step{background:var(--card2);border:1px dashed var(--line);border-radius:14px;padding:14px;margin-top:10px}
+      .pv-rem-card .pv-rem-step.error{background:rgba(154,58,58,.08);border-color:var(--danger)}
+      .pv-rem-card .pv-rem-step.ok{background:rgba(90,111,72,.08);border-color:var(--good)}
+      .pv-rem-card .pv-rem-step.warning{background:rgba(164,119,49,.08);border-color:var(--accent)}
+      .pv-rem-card .pv-rem-cta{display:block;width:100%;background:linear-gradient(135deg,var(--brand),var(--brand2));color:#fbf3df;border:0;border-radius:999px;padding:14px 18px;font-weight:700;font-size:16px;cursor:pointer;min-height:54px;margin-top:10px;font-family:var(--font-sans)}
+      .pv-rem-card .pv-rem-cta:active{transform:scale(.98)}
+      .pv-rem-card .pv-rem-cta:disabled{opacity:.6;cursor:wait}
+      .pv-rem-card .pv-rem-cta.secondary{background:var(--card);color:var(--text);border:1px solid var(--line)}
+      .pv-rem-card .pv-rem-time-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:12px 0;padding:10px 14px;background:var(--card2);border-radius:12px}
+      .pv-rem-card .pv-rem-time-row label{font-weight:700;font-size:15px}
+      .pv-rem-card .pv-rem-time-row input[type="time"]{border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:10px;padding:9px 14px;font:inherit;font-size:18px;font-weight:700}
+      .pv-rem-card .pv-rem-status-icon{font-size:22px;line-height:1;flex-shrink:0}
+      .pv-rem-card .pv-rem-step-content{display:flex;gap:10px;align-items:flex-start}
+      .pv-rem-card .pv-rem-step-content > div{flex:1}
+      .pv-rem-card .pv-rem-step h4{margin:0 0 4px;font-size:15px;font-family:var(--font-sans)}
+      .pv-rem-card .pv-rem-step p{margin:0;font-size:13px;line-height:1.5;color:var(--text)}
     `;
     document.head.appendChild(st);
+  }
+
+  function isIOS() {
+    return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+  }
+  function isPWA() {
+    return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
   }
 
   function renderInAjustes() {
@@ -248,147 +263,200 @@
       document.querySelector('.pv-rem-card')?.remove();
       return;
     }
-    if (document.querySelector('.pv-rem-card')) return;
-    injectStyles();
-    const stack = document.querySelector('.app .stack');
-    if (!stack) return;
+    // Si ya existe, refrescar contenido (no re-crear) — para que cambios
+    // de estado (permiso, suscripción) se reflejen al volver a Ajustes
+    let card = document.querySelector('.pv-rem-card');
+    if (!card) {
+      injectStyles();
+      const stack = document.querySelector('.app .stack');
+      if (!stack) return;
+      card = document.createElement('section');
+      card.className = 'card pv-rem-card';
+      stack.appendChild(card);
+    }
+    renderCardContent(card);
+  }
 
-    const s = loadSettings();
-    const enabled = !!s.enabled;
-    const time = s.time || '08:00';
+  function renderCardContent(card) {
+    const supported = ('Notification' in window) && ('serviceWorker' in navigator) && ('PushManager' in window);
+    const perm = supported ? Notification.permission : 'unsupported';
+    const settings = loadSettings();
+    const enabled = !!settings.enabled;
+    const time = settings.time || '08:00';
+    const iOSnoPWA = isIOS() && !isPWA();
 
-    const card = document.createElement('section');
-    card.className = 'card pv-rem-card';
+    let stepsHtml = '';
+
+    // 1. iPhone sin PWA → bloque informativo
+    if (iOSnoPWA) {
+      stepsHtml = `
+        <div class="pv-rem-step warning">
+          <div class="pv-rem-step-content">
+            <span class="pv-rem-status-icon">📱</span>
+            <div>
+              <h4>iPhone: instalar primero</h4>
+              <p>En iPhone las notificaciones <strong>solo funcionan con la app instalada</strong> (iOS 16.4+).<br>
+              En Safari tocá <strong>Compartir 📤 → "Añadir a pantalla de inicio"</strong>. Después abrí la app desde el ícono y volvé acá.</p>
+            </div>
+          </div>
+        </div>`;
+    }
+    // 2. Browser no soporta nada
+    else if (!supported) {
+      stepsHtml = `
+        <div class="pv-rem-step error">
+          <div class="pv-rem-step-content">
+            <span class="pv-rem-status-icon">⚠️</span>
+            <div>
+              <h4>Tu navegador no soporta notificaciones</h4>
+              <p>Probá en Chrome o Safari actualizado.</p>
+            </div>
+          </div>
+        </div>`;
+    }
+    // 3. Permiso denegado → instrucciones para desbloquear
+    else if (perm === 'denied') {
+      stepsHtml = `
+        <div class="pv-rem-step error">
+          <div class="pv-rem-step-content">
+            <span class="pv-rem-status-icon">🔒</span>
+            <div>
+              <h4>Notificaciones bloqueadas</h4>
+              <p>Las desbloqueaste antes o el navegador las bloqueó. Para activarlas: tocá el ícono <strong>🔒</strong> al lado de la URL → <strong>Permisos del sitio</strong> → Notificaciones → <strong>Permitir</strong>. Después recargá esta página.</p>
+            </div>
+          </div>
+        </div>`;
+    }
+    // 4. Permiso default → mostrar BIG botón "Permitir notificaciones"
+    else if (perm === 'default') {
+      stepsHtml = `
+        <div class="pv-rem-step">
+          <div class="pv-rem-step-content">
+            <span class="pv-rem-status-icon">1️⃣</span>
+            <div>
+              <h4>Paso 1: dar permiso</h4>
+              <p>Tocá el botón. Tu navegador va a preguntar si querés recibir notificaciones de esta app. Decí <strong>Permitir</strong>.</p>
+            </div>
+          </div>
+          <button class="pv-rem-cta" id="pv-rem-request">🔔 Permitir notificaciones</button>
+        </div>`;
+    }
+    // 5. Permiso granted → mostrar configuración
+    else if (perm === 'granted') {
+      const subscribed = !!localStorage.getItem(SUB_SAVED_KEY);
+      stepsHtml = `
+        <div class="pv-rem-step ok">
+          <div class="pv-rem-step-content">
+            <span class="pv-rem-status-icon">✅</span>
+            <div>
+              <h4>Permiso concedido</h4>
+              <p>Ya podemos enviarte el versículo del día.${subscribed ? ' La suscripción está activa en el servidor.' : ''}</p>
+            </div>
+          </div>
+        </div>
+        <div class="pv-rem-time-row">
+          <label for="pv-rem-time">⏰ Hora del envío</label>
+          <input type="time" id="pv-rem-time" value="${time}">
+        </div>
+        <button class="pv-rem-cta" id="pv-rem-activate">${enabled && subscribed ? '✓ Recordatorio activado — actualizar hora' : '🔔 Activar recordatorio diario'}</button>
+        ${enabled && subscribed ? '<button class="pv-rem-cta secondary" id="pv-rem-disable">⏸ Desactivar recordatorio</button>' : ''}
+        <button class="pv-rem-cta secondary" id="pv-rem-test">📩 Probar notificación ahora</button>
+      `;
+    }
+
     card.innerHTML = `
-      <h3>🔔 Recordatorio diario</h3>
-      <p class="soft">Te avisamos con un versículo a la hora que elijas. La app tiene que estar abierta al menos una vez por día (en celular o compu).</p>
-      <div class="pv-rem-row">
-        <label>Activar recordatorio</label>
-        <div class="pv-rem-switch ${enabled?'on':''}" id="pv-rem-toggle" role="switch" aria-checked="${enabled}" tabindex="0"></div>
-      </div>
-      <div class="pv-rem-row">
-        <label for="pv-rem-time">Hora del recordatorio</label>
-        <input type="time" id="pv-rem-time" value="${time}">
-      </div>
-      <div class="pv-rem-row">
-        <button class="pv-rem-test" id="pv-rem-test">📩 Probar ahora</button>
-      </div>
-      <p class="pv-rem-msg" id="pv-rem-status"></p>
+      <h3>🔔 Versículo diario</h3>
+      <p class="soft">Recibí un versículo cada día a la hora que elijas, incluso si la app está cerrada (push verdadero con servidor).</p>
+      ${stepsHtml}
     `;
-    stack.appendChild(card);
 
-    const toggle = card.querySelector('#pv-rem-toggle');
-    const timeInp = card.querySelector('#pv-rem-time');
-    const status = card.querySelector('#pv-rem-status');
-    const testBtn = card.querySelector('#pv-rem-test');
-
-    function isIOS() {
-      return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-    }
-    function isPWA() {
-      return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
-    }
-
-    function refreshStatus() {
-      const s2 = loadSettings();
-      if (!('Notification' in window)) {
-        status.innerHTML = '⚠️ Tu navegador no soporta notificaciones. Probá en Chrome o Safari actualizado.';
-        return;
-      }
-      // iOS Safari requiere PWA instalada para notificaciones (desde iOS 16.4)
-      if (isIOS() && !isPWA()) {
-        status.innerHTML = '📱 <strong>En iPhone hay que instalar la app primero</strong>: en Safari tocá Compartir 📤 → "Añadir a pantalla de inicio". Después abrí la app desde el ícono y vení acá de nuevo.';
-        return;
-      }
-      if (s2.enabled && Notification.permission === 'granted') {
-        const last = localStorage.getItem(LAST_SENT_KEY);
-        const sentToday = last === todayStr();
-        status.innerHTML = `✅ <strong>Activo</strong> — te avisaremos a las <strong>${s2.time}</strong>.<br>
-          <small style="font-size:12px;color:var(--muted)">Importante: tenés que abrir la app al menos una vez al día (en celular o compu) para que llegue el aviso.${sentToday ? '<br>✨ Ya recibiste tu aviso de hoy.' : ''}</small>`;
-      } else if (s2.enabled && Notification.permission === 'denied') {
-        status.innerHTML = '❌ <strong>Notificaciones bloqueadas</strong>. Activalas en los permisos del navegador (ícono 🔒 al lado de la URL).';
-      } else if (Notification.permission === 'granted') {
-        status.innerHTML = 'Permiso concedido. Encendé el interruptor verde para activar el recordatorio.';
-      } else {
-        status.innerHTML = 'Encendé el interruptor verde y permití notificaciones cuando te pregunte el navegador.';
-      }
-    }
-    refreshStatus();
-
-    async function setEnabled(on) {
-      if (on) {
-        if (!('Notification' in window)) return;
-        if (Notification.permission === 'default') {
-          const perm = await Notification.requestPermission();
-          if (perm !== 'granted') {
-            toggle.classList.remove('on');
-            refreshStatus();
-            return;
+    // ── Handlers ─────────────────────────────────────────────────────────
+    const reqBtn = card.querySelector('#pv-rem-request');
+    if (reqBtn) {
+      reqBtn.onclick = async () => {
+        console.log('[Recordatorio] Solicitando permiso de notificaciones…');
+        reqBtn.disabled = true;
+        reqBtn.textContent = '⏳ Esperando respuesta…';
+        try {
+          let perm;
+          // requestPermission con callback Y promise (compat doble)
+          if (Notification.requestPermission.length) {
+            perm = await new Promise(resolve => {
+              const r = Notification.requestPermission(resolve);
+              if (r && typeof r.then === 'function') r.then(resolve);
+            });
+          } else {
+            perm = await Notification.requestPermission();
           }
+          console.log('[Recordatorio] Permiso:', perm);
+          // Re-render con el nuevo estado
+          renderCardContent(card);
+        } catch (e) {
+          console.error('[Recordatorio] Error pidiendo permiso:', e);
+          reqBtn.disabled = false;
+          reqBtn.textContent = '🔔 Permitir notificaciones';
+          alert('Error al pedir permiso: ' + (e.message || e));
         }
-        if (Notification.permission !== 'granted') {
-          toggle.classList.remove('on');
-          refreshStatus();
-          return;
-        }
-      }
-      saveSettings({ ...loadSettings(), enabled: on, time: timeInp.value });
-      toggle.classList.toggle('on', on);
-      toggle.setAttribute('aria-checked', on);
-      // Suscripción Web Push (push verdadero — funciona aunque app esté cerrada)
-      if (on) {
-        const [hh, mm] = (timeInp.value || '08:00').split(':').map(n => parseInt(n, 10));
-        const ok = await subscribeToPush(hh, mm);
-        if (ok) status.innerHTML = '✅ <strong>Activo con Push real</strong> — recibirás la notificación a las <strong>' + timeInp.value + '</strong> aunque la app esté cerrada.';
-      } else {
-        await unsubscribeFromPush();
-      }
-      // Re-render del status según permisos finales
-      setTimeout(refreshStatus, 200);
-      scheduleNextNotification();
+      };
     }
 
-    toggle.onclick = () => setEnabled(!toggle.classList.contains('on'));
-    toggle.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle.click(); } };
-    timeInp.onchange = async () => {
-      saveSettings({ ...loadSettings(), time: timeInp.value });
-      // Si está activo, re-suscribir con la nueva hora para que el server sepa
-      const s = loadSettings();
-      if (s.enabled && Notification.permission === 'granted') {
-        const [hh, mm] = (timeInp.value || '08:00').split(':').map(n => parseInt(n, 10));
-        await subscribeToPush(hh, mm);
-      }
-      refreshStatus();
-      scheduleNextNotification();
-    };
+    const timeInp = card.querySelector('#pv-rem-time');
 
-    testBtn.onclick = async () => {
-      if (!('Notification' in window)) {
-        alert('Tu navegador no soporta notificaciones.');
-        return;
-      }
-      if (Notification.permission === 'default') {
-        const perm = await Notification.requestPermission();
-        if (perm !== 'granted') {
-          alert('Para probar el recordatorio, primero permití las notificaciones.');
-          return;
+    const activateBtn = card.querySelector('#pv-rem-activate');
+    if (activateBtn) {
+      activateBtn.onclick = async () => {
+        const t = timeInp?.value || '08:00';
+        const [hh, mm] = t.split(':').map(n => parseInt(n, 10));
+        activateBtn.disabled = true;
+        activateBtn.textContent = '⏳ Activando…';
+        console.log('[Recordatorio] Activando con hora', hh + ':' + mm);
+        const ok = await subscribeToPush(hh, mm);
+        saveSettings({ enabled: true, time: t });
+        scheduleNextNotification();
+        if (ok) {
+          activateBtn.textContent = '✓ Activado';
+          alert('🎉 ¡Listo! Vas a recibir el versículo del día a las ' + t + '. Podés cerrar la app — llegará igual.');
+        } else {
+          activateBtn.textContent = '⚠️ Activado solo localmente';
+          alert('La activación local funciona, pero no pudimos guardar la suscripción en el servidor. El recordatorio llegará solo si la app está abierta.');
         }
-      }
-      if (Notification.permission !== 'granted') {
-        alert('Las notificaciones están bloqueadas. Activalas en los permisos del navegador.');
-        return;
-      }
-      const verse = todaysVerse();
-      const [text, ref] = verse.split(' — ');
-      const title = '📖 Palabra Viva — ' + (ref || 'Hoy');
-      const body = text || verse;
-      if (navigator.serviceWorker?.controller) {
-        const reg = await navigator.serviceWorker.ready;
-        await reg.showNotification(title, { body, icon: '/icon-192.png', tag: 'pv-test' });
-      } else {
-        new Notification(title, { body, icon: '/icon-192.png' });
-      }
-    };
+        setTimeout(() => renderCardContent(card), 1500);
+      };
+    }
+
+    const disableBtn = card.querySelector('#pv-rem-disable');
+    if (disableBtn) {
+      disableBtn.onclick = async () => {
+        disableBtn.disabled = true;
+        disableBtn.textContent = '⏳ Desactivando…';
+        await unsubscribeFromPush();
+        saveSettings({ enabled: false, time: timeInp?.value || '08:00' });
+        setTimeout(() => renderCardContent(card), 500);
+      };
+    }
+
+    const testBtn = card.querySelector('#pv-rem-test');
+    if (testBtn) {
+      testBtn.onclick = async () => {
+        const verse = todaysVerse();
+        const [text, ref] = verse.split(' — ');
+        const title = '📖 Palabra Viva — ' + (ref || 'Hoy');
+        const body = text || verse;
+        try {
+          if (navigator.serviceWorker?.ready) {
+            const reg = await navigator.serviceWorker.ready;
+            await reg.showNotification(title, { body, icon: '/icon-192.png', tag: 'pv-test', requireInteraction: false });
+          } else {
+            new Notification(title, { body, icon: '/icon-192.png' });
+          }
+          testBtn.textContent = '✓ Enviada';
+          setTimeout(() => { testBtn.textContent = '📩 Probar notificación ahora'; }, 2000);
+        } catch (e) {
+          console.error('[Recordatorio] Test error:', e);
+          alert('No se pudo mostrar la notificación: ' + (e.message || e));
+        }
+      };
+    }
   }
 
   function isAjustesTab() {
@@ -404,7 +472,14 @@
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
   else boot();
   window.addEventListener('load', boot);
-  setInterval(boot, 3000);
+  // Solo refresca el render si cambió la pestaña — no machaca el card si ya existe
+  setInterval(() => {
+    if (!isAjustesTab() && document.querySelector('.pv-rem-card')) {
+      document.querySelector('.pv-rem-card')?.remove();
+    } else if (isAjustesTab() && !document.querySelector('.pv-rem-card')) {
+      renderInAjustes();
+    }
+  }, 3000);
   // Verificar cada 60s mientras la app esté abierta (fallback al timer exacto)
   setInterval(checkAndNotify, 60000);
   // Re-agendar al volver al primer plano (ej. usuario vuelve después de mediodía)
