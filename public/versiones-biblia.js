@@ -220,10 +220,11 @@
     card.className = 'card pv-vers-home';
     card.innerHTML = `
       <p class="ref">Conocé las traducciones</p>
-      <h3>📚 Versiones de la Biblia</h3>
+      <h3>Versiones de la Biblia</h3>
       <p class="soft">¿RVR60? ¿NVI? ¿NTV? Comparativa simple de las ${VERSIONS.length} versiones más usadas en español.</p>
       <div class="row wrap"><button class="btn">Ver comparativa</button></div>
     `;
+    window.PVImages?.applyHero?.(card, 'bible_stack');
     card.querySelector('button').onclick = open;
     anchor.insertAdjacentElement('afterend', card);
   }

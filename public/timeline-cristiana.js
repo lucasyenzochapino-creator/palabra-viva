@@ -284,10 +284,11 @@
     card.className = 'card pv-tl-home';
     card.innerHTML = `
       <p class="ref">Para niños · Educativo</p>
-      <h3>📜 Línea del tiempo bíblica</h3>
+      <h3>Línea del tiempo bíblica</h3>
       <p class="soft">Recorré la historia desde la Creación hasta hoy. ${EVENTS.length} hitos con explicaciones simples.</p>
       <div class="row wrap"><button class="btn">Comenzar el recorrido</button></div>
     `;
+    window.PVImages?.applyHero?.(card, 'timeline_stone');
     card.querySelector('button').onclick = openTimeline;
     anchor.insertAdjacentElement('afterend', card);
   }

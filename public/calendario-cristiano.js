@@ -207,10 +207,11 @@
     card.className = 'card pv-cal-home';
     card.innerHTML = `
       <p class="ref">Año litúrgico</p>
-      <h3>📅 Calendario cristiano</h3>
+      <h3>Calendario cristiano</h3>
       <p class="soft">${days === 0 ? '🎉 Hoy es' : `Faltan ${days} día${days===1?'':'s'} para`} <strong>${next.emoji} ${next.title}</strong></p>
       <div class="row wrap"><button class="btn">Ver calendario completo</button></div>
     `;
+    window.PVImages?.applyHero?.(card, 'calendar');
     card.querySelector('button').onclick = open;
     anchor.insertAdjacentElement('afterend', card);
   }

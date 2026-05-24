@@ -532,10 +532,11 @@ out center body;`;
     card.className = 'card pv-igl-home';
     card.innerHTML = `
       <p class="ref">Comunidad cerca</p>
-      <h3>⛪ Iglesias cristianas cerca</h3>
+      <h3>Iglesias cristianas cerca</h3>
       <p class="soft">Encontrá una congregación evangélica cerca tuyo. Usá tu ubicación (con permiso) y elegí el radio.</p>
       <div class="row wrap"><button class="btn">Ver iglesias cerca</button></div>
     `;
+    window.PVImages?.applyHero?.(card, 'church_exterior');
     card.querySelector('button').onclick = openPanel;
     anchor.insertAdjacentElement('afterend', card);
   }

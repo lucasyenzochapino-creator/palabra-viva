@@ -296,10 +296,11 @@
     card.className = 'card pv-pers-home';
     card.innerHTML = `
       <p class="ref">Educativo</p>
-      <h3>📖 Personajes bíblicos</h3>
+      <h3>Personajes bíblicos</h3>
       <p class="soft">${CHARACTERS.length} biografías cortas con historia, lección y referencia. De Adán a Pablo.</p>
       <div class="row wrap"><button class="btn">Conocer personajes</button></div>
     `;
+    window.PVImages?.applyHero?.(card, 'stained_glass');
     card.querySelector('button').onclick = open;
     anchor.insertAdjacentElement('afterend', card);
   }

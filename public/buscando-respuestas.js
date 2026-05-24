@@ -209,6 +209,7 @@
     const card = document.createElement('section');
     card.className = 'card respuestas-home-card';
     card.innerHTML = `<p class="ref">Buscando respuestas</p><h3>¿Quién es Dios? ¿Existe? ¿Quién es Jesús?</h3><p class="soft">Preguntas simples para empezar a entender la fe cristiana.</p><button class="btn">Abrir respuestas</button>`;
+    window.PVImages?.applyHero?.(card, 'cross_sunset');
     card.querySelector('button').onclick = openPanel;
     mood.insertAdjacentElement('afterend', card);
   }
