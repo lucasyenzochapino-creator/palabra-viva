@@ -57,34 +57,33 @@
         return false;
       }
 
-      // Guardar/actualizar en Supabase via upsert
+      // Guardar via RPC SECURITY DEFINER (maneja upsert seguro para anon)
       const token = window.PVAuth?.getToken?.();
       const headers = {
         'apikey': SUPA_KEY,
         'Authorization': 'Bearer ' + (token || SUPA_KEY),
-        'Content-Type': 'application/json',
-        'Prefer': 'resolution=merge-duplicates,return=minimal'
+        'Content-Type': 'application/json'
       };
       const body = {
-        user_id: window.PVAuth?.getUser?.()?.id || null,
-        endpoint,
-        p256dh,
-        auth_key,
-        hour: hour || 8,
-        minute: minute || 0,
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/Argentina/Buenos_Aires',
-        active: true,
-        user_agent: navigator.userAgent.slice(0, 200)
+        p_endpoint: endpoint,
+        p_p256dh: p256dh,
+        p_auth_key: auth_key,
+        p_hour: hour || 8,
+        p_minute: minute || 0,
+        p_timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/Argentina/Buenos_Aires',
+        p_user_agent: navigator.userAgent.slice(0, 200)
       };
-      const res = await fetch(`${SUPA_URL}/rest/v1/push_subscriptions?on_conflict=endpoint`, {
+      const res = await fetch(`${SUPA_URL}/rest/v1/rpc/upsert_push_subscription`, {
         method: 'POST', headers, body: JSON.stringify(body)
       });
       if (res.ok) {
+        const subId = await res.json().catch(() => null);
         try { localStorage.setItem(SUB_SAVED_KEY, endpoint); } catch {}
-        console.log('[Push] Suscripción guardada en servidor');
+        console.log('[Push] Suscripción guardada en servidor, id:', subId);
         return true;
       }
-      console.warn('[Push] Server save failed', res.status, await res.text().catch(()=>''));
+      const errTxt = await res.text().catch(() => '');
+      console.warn('[Push] Server save failed', res.status, errTxt);
       return false;
     } catch (e) {
       console.error('[Push] Error subscribing:', e);
