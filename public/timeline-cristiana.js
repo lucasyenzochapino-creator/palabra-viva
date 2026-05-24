@@ -204,7 +204,13 @@
         history.back();
       }
     }
-    function onPop() { window.removeEventListener('popstate', onPop); panel.remove(); }
+    // popstate solo cierra timeline si REALMENTE saliste de la página timeline
+    // (no si abriste una sub-pantalla como #kids-detail y volviste a #timeline)
+    function onPop() {
+      if (location.hash === '#timeline') return; // sigo en timeline (volví de detail)
+      window.removeEventListener('popstate', onPop);
+      panel.remove();
+    }
 
     panel.querySelector('[data-close]').onclick = () => closePanel(true);
     panel.querySelectorAll('.pv-tl-era-chip').forEach(b => {
@@ -216,7 +222,7 @@
     });
 
     document.body.appendChild(panel);
-    window.addEventListener('popstate', onPop, { once: true });
+    window.addEventListener('popstate', onPop); // NO once: true — chequea hash adentro
     render();
   }
 
