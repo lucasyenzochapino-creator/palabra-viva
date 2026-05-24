@@ -162,18 +162,35 @@
     const status = card.querySelector('#pv-rem-status');
     const testBtn = card.querySelector('#pv-rem-test');
 
+    function isIOS() {
+      return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    }
+    function isPWA() {
+      return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+    }
+
     function refreshStatus() {
       const s2 = loadSettings();
       if (!('Notification' in window)) {
-        status.innerHTML = '⚠️ Tu navegador no soporta notificaciones.';
+        status.innerHTML = '⚠️ Tu navegador no soporta notificaciones. Probá en Chrome o Safari actualizado.';
+        return;
+      }
+      // iOS Safari requiere PWA instalada para notificaciones (desde iOS 16.4)
+      if (isIOS() && !isPWA()) {
+        status.innerHTML = '📱 <strong>En iPhone hay que instalar la app primero</strong>: en Safari tocá Compartir 📤 → "Añadir a pantalla de inicio". Después abrí la app desde el ícono y vení acá de nuevo.';
         return;
       }
       if (s2.enabled && Notification.permission === 'granted') {
-        status.innerHTML = `✅ Activo — te avisaremos a las <strong>${s2.time}</strong>.`;
+        const last = localStorage.getItem(LAST_SENT_KEY);
+        const sentToday = last === todayStr();
+        status.innerHTML = `✅ <strong>Activo</strong> — te avisaremos a las <strong>${s2.time}</strong>.<br>
+          <small style="font-size:12px;color:var(--muted)">Importante: tenés que abrir la app al menos una vez al día (en celular o compu) para que llegue el aviso.${sentToday ? '<br>✨ Ya recibiste tu aviso de hoy.' : ''}</small>`;
       } else if (s2.enabled && Notification.permission === 'denied') {
-        status.innerHTML = '❌ Las notificaciones están bloqueadas. Activalas en los permisos del navegador.';
+        status.innerHTML = '❌ <strong>Notificaciones bloqueadas</strong>. Activalas en los permisos del navegador (ícono 🔒 al lado de la URL).';
+      } else if (Notification.permission === 'granted') {
+        status.innerHTML = 'Permiso concedido. Encendé el interruptor verde para activar el recordatorio.';
       } else {
-        status.innerHTML = 'Tocá el botón verde para activar.';
+        status.innerHTML = 'Encendé el interruptor verde y permití notificaciones cuando te pregunte el navegador.';
       }
     }
     refreshStatus();
