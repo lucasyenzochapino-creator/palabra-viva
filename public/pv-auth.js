@@ -28,13 +28,54 @@
   }
 
   async function fetchProfile(userId, token) {
-    const res = await fetch(
-      `${SUPA_URL}/rest/v1/profiles?id=eq.${userId}&select=*`,
-      { headers: { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' } }
-    );
-    if (!res.ok) return null;
-    const rows = await res.json().catch(() => []);
-    return rows[0] || null;
+    // 1) Intentar con RPC get_my_profile (SECURITY DEFINER) — bypassea RLS y
+    //    siempre devuelve el profile del current user, sin importar policies.
+    try {
+      const res = await fetch(`${SUPA_URL}/rest/v1/rpc/get_my_profile`, {
+        method: 'POST',
+        headers: {
+          'apikey': SUPA_KEY,
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: '{}'
+      });
+      if (res.ok) {
+        const data = await res.json().catch(() => null);
+        if (data && typeof data === 'object') return data;
+      }
+    } catch (e) { console.warn('[Auth] RPC get_my_profile falló, probando SELECT directo'); }
+    // 2) Fallback: SELECT directo a la tabla (depende de RLS)
+    try {
+      const res = await fetch(
+        `${SUPA_URL}/rest/v1/profiles?id=eq.${userId}&select=*`,
+        { headers: { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' } }
+      );
+      if (!res.ok) return null;
+      const rows = await res.json().catch(() => []);
+      return rows[0] || null;
+    } catch { return null; }
+  }
+
+  // Refresca el profile del usuario logueado actualmente. Útil tras un cambio
+  // de role en server o si la sesión guardada quedó vieja. Si detecta que el
+  // role cambió, dispara pv-auth-change para que la UI se redibuje.
+  async function refreshProfile() {
+    const session = getSession();
+    if (!session || !session.user?.id || !session.access_token) return null;
+    const profile = await fetchProfile(session.user.id, session.access_token);
+    if (!profile) return null;
+    const oldRole = session.user.profile?.role;
+    const newRole = profile.role;
+    session.user.profile = profile;
+    lsSet(SESSION_KEY, session);
+    if (oldRole !== newRole) {
+      console.log('[Auth] role cambió:', oldRole, '→', newRole, '— refrescando UI');
+      document.dispatchEvent(new CustomEvent('pv-auth-change', { detail: session }));
+      updateUI();
+    }
+    return profile;
   }
 
   async function signIn(email, password) {
@@ -538,6 +579,9 @@
   const initAuthFlow = () => {
     const hadRecovery = checkRecoveryCallback();
     if (!hadRecovery) maybePromptLogin();
+    // Refrescar el profile en background. Si role cambió en server (admin
+    // promovido recientemente), actualiza la UI sin pedir re-login.
+    setTimeout(() => { refreshProfile().catch(() => {}); }, 800);
   };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initAuthFlow);
   else initAuthFlow();
@@ -545,6 +589,9 @@
     const quick = document.querySelector('.quick');
     if (quick && !quick.querySelector('.pv-user-btn')) updateUI();
   }, 3000);
+  // Refresh periódico del profile cada 5 min (por si el admin agregó/quitó
+  // permisos remotamente y el cliente sigue con la sesión vieja)
+  setInterval(() => { refreshProfile().catch(() => {}); }, 5 * 60 * 1000);
 
   // ── API pública ───────────────────────────────────────────────────────────
   window.PVAuth = {
@@ -554,6 +601,7 @@
     isAdmin,
     signOut,
     openModal,
-    shareInviteLink
+    shareInviteLink,
+    refreshProfile
   };
 })();
