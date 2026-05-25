@@ -46,23 +46,35 @@
 
   async function submitPrayer(text, displayName, category) {
     const token = getToken();
-    const res = await fetch(`${SUPA_URL}/rest/v1/prayer_requests`, {
-      method: 'POST',
-      headers: {
-        'apikey': SUPA_KEY,
-        'Authorization': 'Bearer ' + (token || SUPA_KEY),
-        'Content-Type': 'application/json',
-        'Prefer': 'return=minimal'
-      },
-      body: JSON.stringify({
-        request_text: text.trim(),
-        display_name: displayName.trim() || 'Anónimo/a',
-        category: category || 'general',
-        user_agent: navigator.userAgent.slice(0, 200),
-        status: 'pending'
-      })
-    });
-    return res.ok;
+    // Usar RPC SECURITY DEFINER (mismo patrón que upsert_push_subscription).
+    // El INSERT directo a la tabla rebota por RLS en clientes con anon key,
+    // la RPC bypasea eso con validación interna en SQL.
+    try {
+      const res = await fetch(`${SUPA_URL}/rest/v1/rpc/submit_prayer_request`, {
+        method: 'POST',
+        headers: {
+          'apikey': SUPA_KEY,
+          'Authorization': 'Bearer ' + (token || SUPA_KEY),
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          p_request_text: text.trim(),
+          p_display_name: (displayName || '').trim() || 'Anónimo/a',
+          p_category: category || 'general',
+          p_user_agent: navigator.userAgent.slice(0, 200)
+        })
+      });
+      if (!res.ok) {
+        const errText = await res.text().catch(() => '');
+        console.error('[Oración] submit falló:', res.status, errText);
+        return { ok: false, error: errText || ('HTTP ' + res.status) };
+      }
+      const id = await res.json().catch(() => null);
+      return { ok: true, id };
+    } catch (e) {
+      console.error('[Oración] submit network error:', e);
+      return { ok: false, error: e.message || String(e) };
+    }
   }
 
   async function pray(id) {
@@ -320,8 +332,8 @@
       if (text.length < 5) { alert('Escribí al menos 5 caracteres.'); return; }
       const btn = overlay.querySelector('.submit');
       btn.disabled = true; btn.textContent = '⏳ Enviando…';
-      const ok = await submitPrayer(text, name, cat);
-      if (ok) {
+      const result = await submitPrayer(text, name, cat);
+      if (result && result.ok) {
         overlay.querySelector('.pv-orac-form').innerHTML = `
           <div style="text-align:center;padding:30px 10px">
             <div style="font-size:48px;margin-bottom:8px">🙏</div>
@@ -336,7 +348,8 @@
         };
       } else {
         btn.disabled = false; btn.textContent = 'Enviar';
-        alert('No se pudo enviar. Probá de nuevo.');
+        const detail = result?.error ? '\n\nDetalle: ' + result.error.slice(0, 200) : '';
+        alert('No se pudo enviar la petición.' + detail + '\n\nProbá de nuevo en un momento.');
       }
     };
   }

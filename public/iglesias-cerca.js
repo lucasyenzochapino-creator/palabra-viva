@@ -7,10 +7,13 @@
   // dentro de un radio. Filtra católicas para mostrar solo evangélicas /
   // protestantes / cristianas (alineado con el target de la app).
 
+  // Múltiples servidores Overpass — probamos en orden, el primero que responda gana.
+  // Ojo: kumi a veces tiene rate-limit estricto desde móviles; lo dejamos último.
   const OVERPASS_URLS = [
     'https://overpass-api.de/api/interpreter',
-    'https://overpass.kumi.systems/api/interpreter',
-    'https://overpass.openstreetmap.fr/api/interpreter'
+    'https://overpass.openstreetmap.fr/api/interpreter',
+    'https://overpass.private.coffee/api/interpreter',
+    'https://overpass.kumi.systems/api/interpreter'
   ];
 
   const SUPA_URL = 'https://fuxojzmwyyecefxczfrn.supabase.co';
@@ -204,20 +207,31 @@
 );
 out center body;`;
 
+    let lastErrorDetail = '';
     for (let i = 0; i < OVERPASS_URLS.length; i++) {
       const url = OVERPASS_URLS[i];
       if (onProgress) onProgress(`Probando servidor ${i+1} de ${OVERPASS_URLS.length}…`);
       const ctrl = new AbortController();
       const timeoutId = setTimeout(() => ctrl.abort(), 35000); // 35s
       try {
+        // Formato CORRECTO para Overpass: POST x-www-form-urlencoded con
+        // body "data=<query URL-encoded>". El text/plain con query directo
+        // devolvía 406 Not Acceptable en algunos servidores.
         const res = await fetch(url, {
           method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
-          body: query,
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Accept': 'application/json'
+          },
+          body: 'data=' + encodeURIComponent(query),
           signal: ctrl.signal
         });
         clearTimeout(timeoutId);
-        if (!res.ok) continue;
+        if (!res.ok) {
+          lastErrorDetail = `${url.split('//')[1].split('/')[0]} → HTTP ${res.status}`;
+          console.warn('[Iglesias] Overpass error', url, res.status);
+          continue;
+        }
         const data = await res.json();
         const churches = (data.elements || []).map(el => ({
           id: el.id,
@@ -247,11 +261,17 @@ out center body;`;
         return churches;
       } catch (e) {
         clearTimeout(timeoutId);
-        if (e.name === 'AbortError') console.warn(`Overpass ${url} timeout`);
+        if (e.name === 'AbortError') {
+          lastErrorDetail = `${url.split('//')[1].split('/')[0]} → timeout`;
+          console.warn(`[Iglesias] Overpass ${url} timeout`);
+        } else {
+          lastErrorDetail = `${url.split('//')[1].split('/')[0]} → ${e.message || e.name}`;
+          console.warn('[Iglesias] Overpass exception', url, e);
+        }
         continue;
       }
     }
-    throw new Error('Los 3 servidores de mapas están lentos o caídos ahora. Probá en unos minutos.');
+    throw new Error('No pudimos consultar OpenStreetMap (probamos ' + OVERPASS_URLS.length + ' servidores). Último error: ' + lastErrorDetail + '. Probá de nuevo en unos minutos.');
   }
 
   // Calcular distancia en km (Haversine)
