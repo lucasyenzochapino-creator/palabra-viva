@@ -101,6 +101,10 @@
           <h2>⛪ Iglesias propuestas</h2>
           <div class="pv-adm-spin">⏳ Cargando…</div>
         </div>
+        <div class="pv-adm-section" id="pv-adm-prayers">
+          <h2>🙏 Peticiones de oración</h2>
+          <div class="pv-adm-spin">⏳ Cargando…</div>
+        </div>
       </div>`;
 
     document.body.appendChild(panel);
@@ -431,6 +435,73 @@
         if (!confirm('¿Borrar esta propuesta de iglesia?')) return;
         btn.disabled = true; btn.textContent = '⏳';
         const { ok } = await supa(`/rest/v1/community_churches?id=eq.${btn.dataset.chDel}`, {
+          method: 'DELETE', headers: { 'Prefer': 'return=minimal' }
+        });
+        if (ok) setTimeout(loadData, 500); else { btn.textContent = '❌'; btn.disabled = false; }
+      }));
+    }
+
+    // ── Peticiones de oración ──
+    const { ok: prOk, data: prData } = await supa('/rest/v1/prayer_requests?select=*&order=created_at.desc&limit=200');
+    const prayers = prOk && Array.isArray(prData) ? prData : [];
+    if (!panel) return;
+    const prEl = $('#pv-adm-prayers', panel);
+    if (!prayers.length) {
+      prEl.innerHTML = '<h2>🙏 Peticiones de oración</h2><div class="pv-adm-empty">Todavía no hay peticiones.</div>';
+    } else {
+      const escapeHtml = s => (s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+      const pending = prayers.filter(p => p.status === 'pending').length;
+      prEl.innerHTML = `<h2>🙏 Peticiones de oración <span style="font-size:13px;color:var(--muted,#c8c5d8);font-weight:400">(${prayers.length}${pending ? ` · ${pending} pendientes` : ''})</span></h2>
+        <div style="display:flex;flex-direction:column;gap:10px">
+        ${prayers.map(p => {
+          const dt = p.created_at ? new Date(p.created_at).toLocaleString('es-AR') : '';
+          const borderColor = p.status === 'pending'  ? 'rgba(245,158,11,.5)'
+                            : p.status === 'approved' ? 'rgba(34,197,94,.5)'
+                            : 'rgba(251,113,133,.5)';
+          const statusBadge = p.status === 'pending'  ? '<span class="pv-adm-badge admin" style="font-size:10px">PENDIENTE</span>'
+                            : p.status === 'approved' ? '<span class="pv-adm-badge premium" style="font-size:10px">PUBLICADA</span>'
+                            : '<span class="pv-adm-badge" style="background:#7f1d1d;color:#fff;font-size:10px">RECHAZADA</span>';
+          return `<article style="background:var(--card2,#202031);border:1px solid ${borderColor};border-radius:16px;padding:12px 14px">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:6px">
+              <div style="display:flex;gap:8px;align-items:center;font-size:11px;color:var(--muted,#c8c5d8);text-transform:uppercase;letter-spacing:.06em">
+                <span>${escapeHtml(p.category || 'general')}</span>·<span>${escapeHtml(p.display_name || 'Anónimo')}</span>
+              </div>
+              ${statusBadge}
+            </div>
+            <p style="margin:0 0 8px;font-size:14px;line-height:1.55;white-space:pre-wrap;color:var(--text,#f8fafc)">${escapeHtml(p.request_text)}</p>
+            <div style="font-size:11px;color:var(--muted,#c8c5d8);display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+              <span>📅 ${dt}</span>
+              <span>🙏 ${p.prayer_count || 0} orando</span>
+            </div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+              ${p.status !== 'approved' ? `<button data-pr-app="${p.id}" style="background:rgba(34,197,94,.18);color:#86efac;border:1px solid rgba(34,197,94,.5);border-radius:999px;padding:5px 12px;font-size:12px;cursor:pointer;font-weight:700">✓ Aprobar</button>` : ''}
+              ${p.status !== 'rejected' ? `<button data-pr-rej="${p.id}" style="background:rgba(251,113,133,.10);color:#fda4af;border:1px solid rgba(251,113,133,.4);border-radius:999px;padding:5px 12px;font-size:12px;cursor:pointer;font-weight:700">✗ Rechazar</button>` : ''}
+              <button data-pr-del="${p.id}" style="background:transparent;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:5px 10px;font-size:12px;cursor:pointer">🗑</button>
+            </div>
+          </article>`;
+        }).join('')}
+        </div>`;
+
+      prEl.querySelectorAll('[data-pr-app]').forEach(btn => btn.addEventListener('click', async () => {
+        btn.disabled = true; btn.textContent = '⏳';
+        const { ok } = await supa(`/rest/v1/prayer_requests?id=eq.${btn.dataset.prApp}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ status: 'approved', approved_at: new Date().toISOString() }),
+          headers: { 'Prefer': 'return=minimal' }
+        });
+        if (ok) setTimeout(loadData, 500); else { btn.textContent = '❌'; btn.disabled = false; }
+      }));
+      prEl.querySelectorAll('[data-pr-rej]').forEach(btn => btn.addEventListener('click', async () => {
+        btn.disabled = true; btn.textContent = '⏳';
+        const { ok } = await supa(`/rest/v1/prayer_requests?id=eq.${btn.dataset.prRej}`, {
+          method: 'PATCH', body: JSON.stringify({ status: 'rejected' }), headers: { 'Prefer': 'return=minimal' }
+        });
+        if (ok) setTimeout(loadData, 500); else { btn.textContent = '❌'; btn.disabled = false; }
+      }));
+      prEl.querySelectorAll('[data-pr-del]').forEach(btn => btn.addEventListener('click', async () => {
+        if (!confirm('¿Borrar esta petición de oración? No se puede recuperar.')) return;
+        btn.disabled = true; btn.textContent = '⏳';
+        const { ok } = await supa(`/rest/v1/prayer_requests?id=eq.${btn.dataset.prDel}`, {
           method: 'DELETE', headers: { 'Prefer': 'return=minimal' }
         });
         if (ok) setTimeout(loadData, 500); else { btn.textContent = '❌'; btn.disabled = false; }

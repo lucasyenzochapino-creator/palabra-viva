@@ -17,6 +17,8 @@
     { emoji: '🎧', label: 'Biblia en audio',          cb: () => window.PalabraVivaAudioBible?.openInBibleTab?.() },
     { emoji: '💌', label: 'Enviar sugerencia',        cb: () => window.PVFeedback?.open?.() },
     { emoji: '📤', label: 'Invitar a un amigo',       cb: () => window.PVAuth?.shareInviteLink?.() },
+    { emoji: '🙏', label: 'Comunidad de oración',     cb: () => window.PVOracionesComunidad?.open?.() },
+    { emoji: '🔥', label: 'Mis rachas y logros',      cb: () => window.PVRachas?.open?.() },
     { emoji: '📱', label: 'Mis dispositivos',         cb: () => window.PVDispositivos?.open?.() },
     { emoji: '📲', label: 'Instalar en mi teléfono',  cb: () => {
         if (window.PVIOSInstall?.isInstalled?.()) {
