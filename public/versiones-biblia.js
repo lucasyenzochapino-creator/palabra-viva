@@ -207,9 +207,29 @@
     window.addEventListener('popstate', onPop);
   }
 
-  // Home card removida para mantener el home limpio. Acceso via
-  // menú "✨ Más" → "📚 Versiones de la Biblia".
-  function boot() { injectStyles(); document.querySelector('.pv-vers-home')?.remove(); }
+  function addHomeCard() {
+    const title = document.querySelector('h1')?.textContent || '';
+    if (!title.includes('Una palabra para hoy')) {
+      document.querySelector('.pv-vers-home')?.remove();
+      return;
+    }
+    if (document.querySelector('.pv-vers-home')) return;
+    const anchor = document.querySelector('.pv-pers-home') || document.querySelector('.pv-cal-home') || document.querySelector('.pv-igl-home') || document.querySelector('.hero');
+    if (!anchor) return;
+    const card = document.createElement('section');
+    card.className = 'card pv-vers-home';
+    card.innerHTML = `
+      <p class="ref">Conocé las traducciones</p>
+      <h3>Versiones de la Biblia</h3>
+      <p class="soft">¿RVR60? ¿NVI? ¿NTV? Comparativa simple de las ${VERSIONS.length} versiones más usadas en español.</p>
+      <div class="row wrap"><button class="btn">Ver comparativa</button></div>
+    `;
+    window.PVImages?.applyHero?.(card, 'bible_stack');
+    card.querySelector('button').onclick = open;
+    anchor.insertAdjacentElement('afterend', card);
+  }
+
+  function boot() { injectStyles(); addHomeCard(); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
   else boot();
   window.addEventListener('load', boot);

@@ -297,10 +297,26 @@
   }
 
   // Card en home + integración con modo Niños
-  // Home card removida para mantener el home limpio. Acceso via
-  // menú "✨ Más" → "📜 Línea del tiempo bíblica".
   function addHomeCard() {
-    document.querySelector('.pv-tl-home')?.remove();
+    const title = document.querySelector('h1')?.textContent || '';
+    if (!title.includes('Una palabra para hoy')) {
+      document.querySelector('.pv-tl-home')?.remove();
+      return;
+    }
+    if (document.querySelector('.pv-tl-home')) return;
+    const anchor = document.querySelector('.pv-kids-home') || document.querySelector('.pv-ba-card') || document.querySelector('.hero');
+    if (!anchor) return;
+    const card = document.createElement('section');
+    card.className = 'card pv-tl-home';
+    card.innerHTML = `
+      <p class="ref">Para niños · Educativo</p>
+      <h3>Línea del tiempo bíblica</h3>
+      <p class="soft">Recorré la historia desde la Creación hasta hoy. ${EVENTS.length} hitos con explicaciones simples.</p>
+      <div class="row wrap"><button class="btn">Comenzar el recorrido</button></div>
+    `;
+    window.PVImages?.applyColorHero?.(card, '📜', 'gold');
+    card.querySelector('button').onclick = openTimeline;
+    anchor.insertAdjacentElement('afterend', card);
   }
 
   // Botón dentro del panel de Niños

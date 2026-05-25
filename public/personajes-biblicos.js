@@ -283,9 +283,29 @@
     window.addEventListener('popstate', onPopDet);
   }
 
-  // Home card removida para mantener el home limpio. Sigue accesible via
-  // menú "✨ Más" → "📖 Personajes bíblicos".
-  function boot() { injectStyles(); document.querySelector('.pv-pers-home')?.remove(); }
+  function addHomeCard() {
+    const title = document.querySelector('h1')?.textContent || '';
+    if (!title.includes('Una palabra para hoy')) {
+      document.querySelector('.pv-pers-home')?.remove();
+      return;
+    }
+    if (document.querySelector('.pv-pers-home')) return;
+    const anchor = document.querySelector('.pv-cal-home') || document.querySelector('.pv-igl-home') || document.querySelector('.pv-tl-home') || document.querySelector('.pv-kids-home') || document.querySelector('.hero');
+    if (!anchor) return;
+    const card = document.createElement('section');
+    card.className = 'card pv-pers-home';
+    card.innerHTML = `
+      <p class="ref">Educativo</p>
+      <h3>Personajes bíblicos</h3>
+      <p class="soft">${CHARACTERS.length} biografías cortas con historia, lección y referencia. De Adán a Pablo.</p>
+      <div class="row wrap"><button class="btn">Conocer personajes</button></div>
+    `;
+    window.PVImages?.applyColorHero?.(card, '✝️', 'amber');
+    card.querySelector('button').onclick = open;
+    anchor.insertAdjacentElement('afterend', card);
+  }
+
+  function boot() { injectStyles(); addHomeCard(); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
   else boot();
   window.addEventListener('load', boot);

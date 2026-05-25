@@ -538,9 +538,30 @@ out center body;`;
     window.addEventListener('popstate', onPop, { once: true });
   }
 
-  // Home card removida para mantener el home limpio. Acceso via
-  // menú "✨ Más" → "⛪ Iglesias cristianas cerca".
-  function boot() { injectStyles(); document.querySelector('.pv-igl-home')?.remove(); }
+  // ── Card en home ──────────────────────────────────────────────────────────
+  function addHomeCard() {
+    const title = document.querySelector('h1')?.textContent || '';
+    if (!title.includes('Una palabra para hoy')) {
+      document.querySelector('.pv-igl-home')?.remove();
+      return;
+    }
+    if (document.querySelector('.pv-igl-home')) return;
+    const anchor = document.querySelector('.pv-kids-home') || document.querySelector('.pv-tl-home') || document.querySelector('.pv-ba-card') || document.querySelector('.hero');
+    if (!anchor) return;
+    const card = document.createElement('section');
+    card.className = 'card pv-igl-home';
+    card.innerHTML = `
+      <p class="ref">Comunidad cerca</p>
+      <h3>Iglesias cristianas cerca</h3>
+      <p class="soft">Encontrá una congregación evangélica cerca tuyo. Usá tu ubicación (con permiso) y elegí el radio.</p>
+      <div class="row wrap"><button class="btn">Ver iglesias cerca</button></div>
+    `;
+    window.PVImages?.applyHero?.(card, 'church_exterior');
+    card.querySelector('button').onclick = openPanel;
+    anchor.insertAdjacentElement('afterend', card);
+  }
+
+  function boot() { injectStyles(); addHomeCard(); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
   else boot();
   window.addEventListener('load', boot);

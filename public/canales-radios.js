@@ -732,10 +732,18 @@
     window.addEventListener('popstate',()=>v.remove(),{once:true});
   }
 
-  // Home card removida. Sigue accesible desde el botón rápido "📻 Radio"
-  // de la barra inferior y desde "✨ Más → 📻 Radios cristianas".
+  // ── Tarjeta y botón en Home ────────────────────────────────────────────────
   function addHomeCard(){
-    document.querySelector('.cr-home-card')?.remove();
+    const h1=document.querySelector('h1');
+    if(!h1?.textContent?.includes('Una palabra para hoy'))return;
+    if(document.querySelector('.cr-home-card'))return;
+    const anchor=document.querySelector('.moodBox,.hero,.card.gradient');
+    if(!anchor)return;
+    const card=document.createElement('section');
+    card.className='card cr-home-card';
+    card.innerHTML='<p class="ref">📻 Radio cristiana</p><h3>Radios evangélicas y canales</h3><p class="soft">Dial directo. Solo evangélicas en español, sin radios católicas.</p><button class="btn">Abrir dial</button>';
+    card.querySelector('button').onclick=openPanel;
+    anchor.insertAdjacentElement('afterend',card);
   }
 
   function addQuickBtn(){
