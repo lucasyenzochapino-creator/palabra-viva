@@ -50,7 +50,7 @@
       { date: easter,                emoji:'🌅', title:'Pascua de Resurrección', ref:'Mateo 28:6', body:'¡Cristo vive! La tumba está vacía. La esperanza más grande de la fe cristiana.', kind:'movible', highlight:true },
       { date: ascension,             emoji:'☁️', title:'Ascensión',           ref:'Hechos 1:9',  body:'Jesús sube al cielo 40 días después de resucitar. Promete enviar al Espíritu.', kind:'movible' },
       { date: pentecost,             emoji:'🔥', title:'Pentecostés',         ref:'Hechos 2:1-4', body:'Llega el Espíritu Santo. Nace la Iglesia. Comienza la misión a todas las naciones.', kind:'movible' },
-      { date: new Date(year, 9, 31), emoji:'📜', title:'Día de la Reforma',   ref:'Romanos 1:17', body:'En 1517, Martín Lutero publicó las 95 tesis. Solo por gracia, solo por fe, solo Cristo.', kind:'fija' },
+      { date: new Date(year, 9, 31), emoji:'📜', title:'Día de la Reforma protestante', ref:'Romanos 1:17', body:'Conmemoramos la Reforma del siglo XVI: solo por gracia, solo por fe, solo en Cristo, según las Escrituras.', kind:'fija' },
       { date: new Date(year, 10, 1), emoji:'✨', title:'Día de Todos los Santos', ref:'Hebreos 12:1', body:'Recordamos a quienes nos precedieron en la fe. Esa nube de testigos nos acompaña.', kind:'fija' },
       { date: new Date(year, 11, 24),emoji:'🕯️', title:'Nochebuena',           ref:'Lucas 2:7',   body:'La noche en que Dios nació como bebé en un pesebre. Inmensa humildad.', kind:'fija' },
       { date: new Date(year, 11, 25),emoji:'🎄', title:'Navidad',             ref:'Lucas 2:11',  body:'Nos ha nacido un Salvador. Dios con nosotros — Emanuel.', kind:'fija', highlight:true },
@@ -129,17 +129,6 @@
           </div>
           <button class="pv-cal-close" data-close>Cerrar ✕</button>
         </div>
-        ${upcoming ? `
-          <div class="pv-cal-next">
-            <p class="label">Próxima fiesta</p>
-            <h2>${upcoming.emoji} ${upcoming.title}</h2>
-            <p>${upcoming.body}</p>
-            <p style="font-size:13px;opacity:.85"><strong>📖 ${upcoming.ref}</strong> · ${fmtDate(upcoming.date)}</p>
-            ${daysUntil(upcoming.date) === 0
-              ? '<p class="countdown">¡Hoy! 🎉</p>'
-              : `<p class="countdown">${daysUntil(upcoming.date)} día${daysUntil(upcoming.date)===1?'':'s'}</p>`}
-          </div>
-        ` : ''}
         <div class="pv-cal-list">
           ${events.map(e => {
             const d = daysUntil(e.date);
@@ -188,35 +177,14 @@
     }, 200);
   }
 
-  function addHomeCard() {
-    const title = document.querySelector('h1')?.textContent || '';
-    if (!title.includes('Una palabra para hoy')) {
-      document.querySelector('.pv-cal-home')?.remove();
-      return;
-    }
-    if (document.querySelector('.pv-cal-home')) return;
-    const anchor = document.querySelector('.pv-igl-home') || document.querySelector('.pv-tl-home') || document.querySelector('.pv-kids-home') || document.querySelector('.hero');
-    if (!anchor) return;
-
-    const events = buildEvents(new Date().getFullYear());
-    const next = events.find(e => daysUntil(e.date) >= 0);
-    if (!next) return;
-    const days = daysUntil(next.date);
-
-    const card = document.createElement('section');
-    card.className = 'card pv-cal-home';
-    card.innerHTML = `
-      <p class="ref">Año litúrgico</p>
-      <h3>Calendario cristiano</h3>
-      <p class="soft">${days === 0 ? '🎉 Hoy es' : `Faltan ${days} día${days===1?'':'s'} para`} <strong>${next.emoji} ${next.title}</strong></p>
-      <div class="row wrap"><button class="btn">Ver calendario completo</button></div>
-    `;
-    window.PVImages?.applyHero?.(card, 'calendar');
-    card.querySelector('button').onclick = open;
-    anchor.insertAdjacentElement('afterend', card);
+  // Antes había una "home card" que mostraba el próximo festejo cristiano
+  // en la pantalla principal. Se removió por pedido del usuario — quedó como
+  // limpieza preventiva por si ya estaba renderizada en sesiones anteriores.
+  function removeHomeCardIfPresent() {
+    document.querySelector('.pv-cal-home')?.remove();
   }
 
-  function boot() { injectStyles(); addHomeCard(); }
+  function boot() { injectStyles(); removeHomeCardIfPresent(); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
   else boot();
   window.addEventListener('load', boot);

@@ -808,11 +808,16 @@
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
   else boot();
   window.addEventListener('load', boot);
-  // Solo refresca el render si cambió la pestaña — no machaca el card si ya existe
+  // Refresca el render si cambió la pestaña — la card vive en Home Y Ajustes
   setInterval(() => {
-    if (!isAjustesTab() && document.querySelector('.pv-rem-card')) {
+    const inAjustes = isAjustesTab();
+    const inHome    = isHomeTab();
+    const cardExists = !!document.querySelector('.pv-rem-card');
+    if (!inAjustes && !inHome && cardExists) {
+      // Solo eliminar si NO estamos ni en home ni en ajustes
       document.querySelector('.pv-rem-card')?.remove();
-    } else if (isAjustesTab() && !document.querySelector('.pv-rem-card')) {
+    } else if ((inAjustes || inHome) && !cardExists) {
+      // Re-renderizar si la card debería estar y no está
       renderInAjustes();
     }
   }, 3000);
