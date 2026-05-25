@@ -85,6 +85,10 @@
           <h2>📡 Salud del sistema</h2>
           <div class="pv-adm-spin">⏳ Cargando…</div>
         </div>
+        <div class="pv-adm-section" id="pv-adm-errores">
+          <h2>🚨 Errores recientes</h2>
+          <div class="pv-adm-spin">⏳ Cargando…</div>
+        </div>
         <div class="pv-adm-section" id="pv-adm-usuarios">
           <h2>👥 Usuarios</h2>
           <div class="pv-adm-spin">⏳ Cargando…</div>
@@ -126,7 +130,7 @@
     if (!panel) return;
 
     // Cargar usuarios
-    const { ok: usOk, data: usData } = await supa('/rest/v1/profiles?select=id,email,display_name,role,is_premium,created_at&order=created_at.desc&limit=200');
+    const { ok: usOk, data: usData } = await supa('/rest/v1/profiles?select=id,email,display_name,role,is_premium,is_suspended,created_at&order=created_at.desc&limit=200');
     const users = usOk && Array.isArray(usData) ? usData : [];
 
     // Cargar donaciones
@@ -234,6 +238,119 @@
         <div class="pv-adm-empty" style="color:#fb7185">⚠️ Error: ${e.message || e}</div>`;
     }
 
+    // ── Errores recientes ──
+    const errEl = $('#pv-adm-errores', panel);
+    try {
+      const { ok: erOk, data: erData } = await supa('/rest/v1/app_errors?select=id,level,source,message,stack,url,user_agent,app_version,resolved,created_at&order=created_at.desc&limit=50');
+      const errors = erOk && Array.isArray(erData) ? erData : [];
+      if (!errors.length) {
+        errEl.innerHTML = `<h2>🚨 Errores recientes</h2>
+          <div class="pv-adm-empty" style="color:#86efac">✓ Sin errores reportados — todo limpio.</div>
+          <div style="margin-top:10px;text-align:right">
+            <button class="pv-adm-btn-sm" id="pv-adm-test-alert">📩 Enviar reporte de prueba al admin</button>
+          </div>`;
+      } else {
+        const escapeHtml = s => (s || '').toString().replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+        const unresolved = errors.filter(e => !e.resolved).length;
+        const criticalCount = errors.filter(e => e.level === 'critical' && !e.resolved).length;
+        // Agrupar por message (primeros 80 chars) para ver el más frecuente
+        const groups = {};
+        errors.forEach(e => {
+          const k = e.message?.slice(0,80) || 'unknown';
+          if (!groups[k]) groups[k] = { count: 0, last: e, level: e.level, source: e.source };
+          groups[k].count++;
+          if (new Date(e.created_at) > new Date(groups[k].last.created_at)) groups[k].last = e;
+        });
+        const topGroups = Object.entries(groups).sort((a, b) => b[1].count - a[1].count).slice(0, 8);
+
+        errEl.innerHTML = `<h2>🚨 Errores recientes <span style="font-size:13px;color:var(--muted,#c8c5d8);font-weight:400">(${errors.length}${unresolved ? ` · ${unresolved} sin resolver` : ''}${criticalCount ? ` · ${criticalCount} críticos` : ''})</span></h2>
+          ${criticalCount > 0 ? `<div style="background:rgba(251,113,133,.12);border:1px solid rgba(251,113,133,.5);border-radius:14px;padding:12px;margin-bottom:12px;color:#fda4af">
+            <strong>🚨 ${criticalCount} error(es) crítico(s)</strong> requieren atención urgente.
+          </div>` : ''}
+          <div style="margin-bottom:12px">
+            <p style="font-size:13px;color:var(--muted,#c8c5d8);margin:0 0 6px">Top mensajes (agrupados):</p>
+            <div style="display:flex;flex-direction:column;gap:6px">
+              ${topGroups.map(([msg, info]) => {
+                const color = info.level === 'critical' ? '#fb7185' : info.level === 'warning' ? '#fbbf24' : 'var(--muted,#c8c5d8)';
+                return `<div style="background:var(--card2,#202031);border-radius:10px;padding:8px 12px;font-size:13px">
+                  <div style="display:flex;justify-content:space-between;gap:8px;align-items:center">
+                    <span style="color:${color};font-weight:700">${info.count}×</span>
+                    <span style="flex:1;color:var(--text,#f8fafc);font-family:monospace;font-size:12px;word-break:break-word">${escapeHtml(msg)}</span>
+                  </div>
+                  <div style="font-size:10px;color:var(--muted,#c8c5d8);margin-top:2px">📦 ${escapeHtml(info.source)} · último: ${new Date(info.last.created_at).toLocaleString('es-AR')}</div>
+                </div>`;
+              }).join('')}
+            </div>
+          </div>
+          <details>
+            <summary style="cursor:pointer;color:var(--brand,#f59e0b);font-size:13px;font-weight:700">Ver lista completa (${errors.length})</summary>
+            <div style="max-height:400px;overflow-y:auto;margin-top:10px;display:flex;flex-direction:column;gap:6px">
+              ${errors.map(e => {
+                const lvlColor = e.level === 'critical' ? '#fb7185' : e.level === 'warning' ? '#fbbf24' : '#c8c5d8';
+                return `<div style="background:var(--card2,#202031);border-left:3px solid ${lvlColor};border-radius:6px;padding:8px 12px;font-size:12px">
+                  <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start">
+                    <span style="color:${lvlColor};font-weight:700;text-transform:uppercase;font-size:10px">${e.level}</span>
+                    <span style="color:var(--muted,#c8c5d8);font-size:10px">${new Date(e.created_at).toLocaleString('es-AR')}</span>
+                  </div>
+                  <div style="margin-top:4px;color:var(--text,#f8fafc);font-family:monospace;word-break:break-word">${escapeHtml(e.message)}</div>
+                  <div style="margin-top:4px;color:var(--muted,#c8c5d8);font-size:10px">📦 ${escapeHtml(e.source)} · ${escapeHtml((e.user_agent||'').slice(0,50))}</div>
+                  <div style="margin-top:6px;display:flex;gap:4px">
+                    ${!e.resolved ? `<button data-err-resolve="${e.id}" style="background:rgba(34,197,94,.18);color:#86efac;border:1px solid rgba(34,197,94,.5);border-radius:999px;padding:3px 10px;font-size:11px;cursor:pointer">✓ Resolver</button>` : '<span style="color:#86efac;font-size:11px">✓ resuelto</span>'}
+                    <button data-err-del="${e.id}" style="background:transparent;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:3px 8px;font-size:11px;cursor:pointer">🗑</button>
+                  </div>
+                </div>`;
+              }).join('')}
+            </div>
+          </details>
+          <div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap">
+            <button class="pv-adm-btn-sm" id="pv-adm-test-alert">📩 Enviar reporte ahora</button>
+            <button class="pv-adm-btn-sm" id="pv-adm-clear-errors">🗑 Borrar resueltos</button>
+          </div>`;
+
+        errEl.querySelectorAll('[data-err-resolve]').forEach(btn => btn.addEventListener('click', async () => {
+          btn.disabled = true;
+          await supa(`/rest/v1/app_errors?id=eq.${btn.dataset.errResolve}`, {
+            method: 'PATCH', body: JSON.stringify({ resolved: true }), headers: { 'Prefer': 'return=minimal' }
+          });
+          setTimeout(loadData, 400);
+        }));
+        errEl.querySelectorAll('[data-err-del]').forEach(btn => btn.addEventListener('click', async () => {
+          if (!confirm('¿Borrar este error?')) return;
+          btn.disabled = true;
+          await supa(`/rest/v1/app_errors?id=eq.${btn.dataset.errDel}`, {
+            method: 'DELETE', headers: { 'Prefer': 'return=minimal' }
+          });
+          setTimeout(loadData, 400);
+        }));
+        $('#pv-adm-clear-errors', errEl)?.addEventListener('click', async () => {
+          if (!confirm('¿Borrar TODOS los errores marcados como resueltos? No se puede deshacer.')) return;
+          await supa('/rest/v1/app_errors?resolved=eq.true', { method: 'DELETE', headers: { 'Prefer': 'return=minimal' } });
+          setTimeout(loadData, 400);
+        });
+      }
+      // Botón "Enviar reporte ahora" — invoca la edge function manualmente
+      const testBtn = $('#pv-adm-test-alert', errEl);
+      if (testBtn) {
+        testBtn.addEventListener('click', async () => {
+          testBtn.disabled = true; testBtn.textContent = '⏳ Enviando…';
+          try {
+            const res = await fetch(`${SUPA_URL}/functions/v1/admin-alert`, {
+              method: 'POST',
+              headers: { 'apikey': SUPA_KEY, 'Content-Type': 'application/json' },
+              body: JSON.stringify({ force: true })
+            });
+            const d = await res.json().catch(() => ({}));
+            testBtn.textContent = d.ok ? '✓ Reporte enviado al admin' : '❌ Falló: ' + (d.error || res.status);
+            setTimeout(() => { testBtn.disabled = false; testBtn.textContent = '📩 Enviar reporte ahora'; }, 4000);
+          } catch (e) {
+            testBtn.disabled = false; testBtn.textContent = '❌ ' + e.message;
+          }
+        });
+      }
+    } catch (e) {
+      errEl.innerHTML = `<h2>🚨 Errores recientes</h2><div class="pv-adm-empty" style="color:#fb7185">⚠️ Error cargando: ${e.message || e}</div>`;
+    }
+
     // ── Usuarios ──
     const usEl = $('#pv-adm-usuarios', panel);
     if (!users.length) {
@@ -254,11 +371,14 @@
             <td>
               <span class="pv-adm-badge ${u.role}">${u.role === 'admin' ? '👑 Admin' : 'Usuario'}</span>
               ${u.is_premium ? '<span class="pv-adm-badge premium" style="margin-left:4px">⭐ Premium</span>' : ''}
+              ${u.is_suspended ? '<span class="pv-adm-badge" style="background:#7f1d1d;color:#fff;margin-left:4px">🚫 Suspendido</span>' : ''}
             </td>
             <td style="font-size:12px;color:var(--muted,#c8c5d8)">${u.created_at ? new Date(u.created_at).toLocaleDateString('es-AR') : '—'}</td>
             <td>
               <div style="display:flex;gap:6px;flex-wrap:wrap">
                 ${!u.is_premium ? `<button class="pv-adm-btn-sm" data-prem="${u.id}">⭐ Premium</button>` : `<button class="pv-adm-btn-sm danger" data-unprem="${u.id}">Quitar premium</button>`}
+                ${u.role !== 'admin' ? `<button class="pv-adm-btn-sm" data-make-admin="${u.id}">👑 Admin</button>` : `<button class="pv-adm-btn-sm danger" data-remove-admin="${u.id}">Quitar admin</button>`}
+                ${!u.is_suspended ? `<button class="pv-adm-btn-sm danger" data-suspend="${u.id}">🚫 Suspender</button>` : `<button class="pv-adm-btn-sm" data-unsuspend="${u.id}">↺ Reactivar</button>`}
               </div>
             </td>
           </tr>`).join('')}
@@ -292,6 +412,43 @@
           else { btn.textContent = '❌ Error'; btn.disabled = false; }
         });
       });
+      // Hacer admin / quitar admin / suspender / reactivar — via RPC admin_set_user_status
+      async function userAction(uid, action, confirmMsg, label) {
+        if (confirmMsg && !confirm(confirmMsg)) return false;
+        const { ok, data } = await supa('/rest/v1/rpc/admin_set_user_status', {
+          method: 'POST',
+          body: JSON.stringify({ p_user_id: uid, p_action: action })
+        });
+        if (!ok) {
+          alert('No se pudo: ' + (data?.message || JSON.stringify(data) || 'error desconocido'));
+          return false;
+        }
+        return true;
+      }
+      usEl.querySelectorAll('[data-make-admin]').forEach(btn => btn.addEventListener('click', async () => {
+        const uid = btn.dataset.makeAdmin;
+        btn.disabled = true; btn.textContent = '⏳';
+        const ok = await userAction(uid, 'make_admin', '¿Hacer ADMIN a este usuario? Va a poder ver y modificar todo este panel.', 'admin');
+        if (ok) setTimeout(loadData, 600); else { btn.disabled = false; btn.textContent = '👑 Admin'; }
+      }));
+      usEl.querySelectorAll('[data-remove-admin]').forEach(btn => btn.addEventListener('click', async () => {
+        const uid = btn.dataset.removeAdmin;
+        btn.disabled = true; btn.textContent = '⏳';
+        const ok = await userAction(uid, 'remove_admin', '¿Quitar permisos de admin a este usuario? Va a quedar como usuario normal.');
+        if (ok) setTimeout(loadData, 600); else { btn.disabled = false; btn.textContent = 'Quitar admin'; }
+      }));
+      usEl.querySelectorAll('[data-suspend]').forEach(btn => btn.addEventListener('click', async () => {
+        const uid = btn.dataset.suspend;
+        btn.disabled = true; btn.textContent = '⏳';
+        const ok = await userAction(uid, 'suspend', '¿Suspender este usuario? No va a poder usar funciones que requieren login (oraciones, sync, etc.). Lo podés reactivar después.');
+        if (ok) setTimeout(loadData, 600); else { btn.disabled = false; btn.textContent = '🚫 Suspender'; }
+      }));
+      usEl.querySelectorAll('[data-unsuspend]').forEach(btn => btn.addEventListener('click', async () => {
+        const uid = btn.dataset.unsuspend;
+        btn.disabled = true; btn.textContent = '⏳';
+        const ok = await userAction(uid, 'unsuspend');
+        if (ok) setTimeout(loadData, 600); else { btn.disabled = false; btn.textContent = '↺ Reactivar'; }
+      }));
     }
 
     // ── Donaciones ──
