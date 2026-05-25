@@ -17,7 +17,19 @@
     { emoji: '🎧', label: 'Biblia en audio',          cb: () => window.PalabraVivaAudioBible?.openInBibleTab?.() },
     { emoji: '💌', label: 'Enviar sugerencia',        cb: () => window.PVFeedback?.open?.() },
     { emoji: '📤', label: 'Invitar a un amigo',       cb: () => window.PVAuth?.shareInviteLink?.() },
-    { emoji: '📱', label: 'Mis dispositivos',         cb: () => window.PVDispositivos?.open?.() }
+    { emoji: '📱', label: 'Mis dispositivos',         cb: () => window.PVDispositivos?.open?.() },
+    { emoji: '📲', label: 'Instalar en mi teléfono',  cb: () => {
+        if (window.PVIOSInstall?.isInstalled?.()) {
+          alert('✓ La app ya está instalada en tu teléfono.');
+        } else if (window.PVIOSInstall?.canShow?.()) {
+          window.PVIOSInstall.show();
+        } else if (window.PVIOSInstall?.isAndroid?.()) {
+          alert('📲 En Android Chrome:\n\n1. Tocá los 3 puntos arriba a la derecha\n2. Tocá "Instalar app" o "Añadir a pantalla de inicio"\n3. Confirmá');
+        } else {
+          alert('💻 En PC/Mac: el navegador suele mostrar un ícono para instalar a la derecha de la URL.\n\n📱 En móvil: andá a "Compartir" → "Añadir a pantalla de inicio".');
+        }
+      } },
+    { emoji: '📋', label: 'Privacidad y términos',    cb: () => window.PVLegal?.open?.() }
   ];
 
   function injectStyles() {
