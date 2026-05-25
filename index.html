@@ -55,38 +55,41 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
-    <script src="/imagenes.js?v=img-v2"></script>
-    <script src="/daily-word.js"></script>
-    <script src="/sentir-completo.js"></script>
-    <script src="/buscando-respuestas.js"></script>
-    <script src="/palabra-viva-plus.js"></script>
-    <script src="/ui-fixes.js"></script>
-    <script src="/canales-radios.js?v=radios-v17-realfreq"></script>
-    <script src="/bible-audio-player.js?v=bap-v5"></script>
-    <script src="/kids-mode.js?v=kids-v17-now-playing"></script>
-    <script src="/historia-completa.js?v=hc-v2"></script>
-    <script src="/timeline-cristiana.js?v=tl-v6"></script>
-    <script src="/iglesias-cerca.js?v=igl-v6"></script>
-    <script src="/calendario-cristiano.js?v=cal-v2"></script>
-    <script src="/personajes-biblicos.js?v=pers-v3"></script>
-    <script src="/versiones-biblia.js?v=vers-v2"></script>
-    <script src="/menu-mas.js?v=mas-v4-legal-install"></script>
-    <script src="/reading-mode.js?v=read-v1"></script>
-    <script src="/verse-notes.js?v=notes-v1"></script>
-    <script src="/daily-reminders.js?v=rem-v10-typed-errors"></script>
-    <script src="/mis-dispositivos.js?v=disp-v3"></script>
-    <script src="/daily-notification.js?v=legacy-off" defer></script>
-    <script src="/home-shortcuts.js" defer></script>
-    <script src="/back-navigation.js"></script>
-    <script src="/verse-image.js?v=img-v1"></script>
-    <script src="/onboarding.js?v=onb-v2" defer></script>
-    <script src="/pv-auth.js?v=auth-v8"></script>
-    <script src="/pv-sync.js?v=sync-v1" defer></script>
-    <script src="/pv-feedback.js?v=fb-v2" defer></script>
-    <script src="/dona-apoya.js?v=dona-v7"></script>
-    <script src="/pv-admin.js?v=admin-v4-health"></script>
-    <script src="/pv-legal.js?v=legal-v1" defer></script>
-    <script src="/pv-ios-install.js?v=iosinst-v1" defer></script>
+    <!-- Todos los módulos vanilla usan `defer` para no bloquear el render inicial.
+         Cada uno se auto-inicializa con setInterval/setTimeout cuando React está montado.
+         El orden de ejecución se mantiene (defer ejecuta en orden de aparición). -->
+    <script defer src="/imagenes.js?v=img-v2"></script>
+    <script defer src="/daily-word.js"></script>
+    <script defer src="/sentir-completo.js"></script>
+    <script defer src="/buscando-respuestas.js"></script>
+    <script defer src="/palabra-viva-plus.js"></script>
+    <script defer src="/ui-fixes.js"></script>
+    <script defer src="/canales-radios.js?v=radios-v17-realfreq"></script>
+    <script defer src="/bible-audio-player.js?v=bap-v5"></script>
+    <script defer src="/kids-mode.js?v=kids-v17-now-playing"></script>
+    <script defer src="/historia-completa.js?v=hc-v2"></script>
+    <script defer src="/timeline-cristiana.js?v=tl-v6"></script>
+    <script defer src="/iglesias-cerca.js?v=igl-v6"></script>
+    <script defer src="/calendario-cristiano.js?v=cal-v2"></script>
+    <script defer src="/personajes-biblicos.js?v=pers-v3"></script>
+    <script defer src="/versiones-biblia.js?v=vers-v2"></script>
+    <script defer src="/menu-mas.js?v=mas-v4-legal-install"></script>
+    <script defer src="/reading-mode.js?v=read-v1"></script>
+    <script defer src="/verse-notes.js?v=notes-v1"></script>
+    <script defer src="/daily-reminders.js?v=rem-v10-typed-errors"></script>
+    <script defer src="/mis-dispositivos.js?v=disp-v3"></script>
+    <script defer src="/daily-notification.js?v=legacy-off"></script>
+    <script defer src="/home-shortcuts.js"></script>
+    <script defer src="/back-navigation.js"></script>
+    <script defer src="/verse-image.js?v=img-v1"></script>
+    <script defer src="/onboarding.js?v=onb-v2"></script>
+    <script defer src="/pv-auth.js?v=auth-v8"></script>
+    <script defer src="/pv-sync.js?v=sync-v1"></script>
+    <script defer src="/pv-feedback.js?v=fb-v2"></script>
+    <script defer src="/dona-apoya.js?v=dona-v7"></script>
+    <script defer src="/pv-admin.js?v=admin-v4-health"></script>
+    <script defer src="/pv-legal.js?v=legal-v1"></script>
+    <script defer src="/pv-ios-install.js?v=iosinst-v1"></script>
     <!-- Vercel Web Analytics (free 5k events/mes en Hobby plan; sin cookies, GDPR-friendly) -->
     <script defer src="/_vercel/insights/script.js"></script>
   </body>
