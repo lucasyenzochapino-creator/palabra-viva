@@ -443,10 +443,11 @@
 
   // ── UI: card en Ajustes ───────────────────────────────────────────────────
   function injectStyles() {
-    if (document.getElementById('pv-rem-style-v2')) return;
+    if (document.getElementById('pv-rem-style-v3')) return;
     document.getElementById('pv-rem-style')?.remove();
+    document.getElementById('pv-rem-style-v2')?.remove();
     const st = document.createElement('style');
-    st.id = 'pv-rem-style-v2';
+    st.id = 'pv-rem-style-v3';
     st.textContent = `
       .pv-rem-card .pv-rem-step{background:var(--card2);border:1px dashed var(--line);border-radius:14px;padding:14px;margin-top:10px}
       .pv-rem-card .pv-rem-step.error{background:rgba(154,58,58,.08);border-color:var(--danger)}
@@ -464,6 +465,15 @@
       .pv-rem-card .pv-rem-step-content > div{flex:1}
       .pv-rem-card .pv-rem-step h4{margin:0 0 4px;font-size:15px;font-family:var(--font-sans)}
       .pv-rem-card .pv-rem-step p{margin:0;font-size:13px;line-height:1.5;color:var(--text)}
+      /* === Banner mini para HOME cuando ya está activado === */
+      .pv-rem-card.pv-rem-card-mini{padding:10px 14px;background:linear-gradient(135deg,rgba(90,111,72,.10),rgba(90,111,72,.04));border:1px solid rgba(90,111,72,.3)}
+      .pv-rem-card.pv-rem-card-mini .pv-rem-mini-row{display:flex;align-items:center;gap:10px}
+      .pv-rem-card.pv-rem-card-mini .pv-rem-mini-icon{font-size:20px;width:32px;height:32px;background:var(--good);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-weight:900}
+      .pv-rem-card.pv-rem-card-mini .pv-rem-mini-text{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.3}
+      .pv-rem-card.pv-rem-card-mini .pv-rem-mini-text strong{font-size:14px;color:var(--text);font-family:var(--font-sans)}
+      .pv-rem-card.pv-rem-card-mini .pv-rem-mini-text span{font-size:12px;color:var(--muted);font-family:var(--font-sans);margin-top:2px}
+      .pv-rem-card.pv-rem-card-mini .pv-rem-mini-link{color:var(--brand);font-size:12px;font-weight:700;text-decoration:none;font-family:var(--font-sans);white-space:nowrap;flex-shrink:0;padding:6px 10px;border-radius:999px;background:rgba(164,119,49,.10)}
+      .pv-rem-card.pv-rem-card-mini h3, .pv-rem-card.pv-rem-card-mini > p.soft{display:none}
     `;
     document.head.appendChild(st);
   }
@@ -496,28 +506,60 @@
       if (!stack) return;
       card = document.createElement('section');
       card.className = 'card pv-rem-card';
-      // En home: insertar después del hero (no al final)
+      // En home: insertar al TOPE, justo después del control de pantalla (visualControls)
+      // Si ya está activado, se muestra como banner ✓ verde más discreto.
       if (isHome) {
-        const anchor = document.querySelector('.pv-tl-home') || document.querySelector('.pv-ba-card') || document.querySelector('.hero');
-        if (anchor) {
-          anchor.insertAdjacentElement('afterend', card);
+        const visualControls = document.querySelector('.visualControls');
+        if (visualControls) {
+          visualControls.insertAdjacentElement('afterend', card);
         } else {
-          stack.appendChild(card);
+          stack.insertBefore(card, stack.firstChild);
         }
       } else {
         stack.appendChild(card);
       }
     }
-    renderCardContent(card);
+    renderCardContent(card, isHome);
   }
 
-  function renderCardContent(card) {
+  function renderCardContent(card, isHomeMode = false) {
     const supported = ('Notification' in window) && ('serviceWorker' in navigator) && ('PushManager' in window);
     const perm = supported ? Notification.permission : 'unsupported';
     const settings = loadSettings();
     const enabled = !!settings.enabled;
     const time = settings.time || '08:00';
     const iOSnoPWA = isIOS() && !isPWA();
+
+    // En HOME: si las notificaciones YA están activadas y funcionando, mostrar
+    // un banner mini compacto en vez de la card completa (para no ocupar tanto).
+    // El control completo queda en Ajustes.
+    if (isHomeMode && perm === 'granted') {
+      const subscribed = !!localStorage.getItem(SUB_SAVED_KEY);
+      card.classList.add('pv-rem-card-mini');
+      card.innerHTML = `
+        <div class="pv-rem-mini-row">
+          <span class="pv-rem-mini-icon">✓</span>
+          <div class="pv-rem-mini-text">
+            <strong>🔔 Versículo diario activado</strong>
+            <span>Llega a las <b>${time}</b> ${subscribed ? '· server conectado' : '· conectando…'}</span>
+          </div>
+          <a class="pv-rem-mini-link" href="#ajustes-rem" data-rem-goto-ajustes>Cambiar →</a>
+        </div>
+      `;
+      // Click va a Ajustes (donde está el control completo)
+      const link = card.querySelector('[data-rem-goto-ajustes]');
+      if (link) {
+        link.onclick = (e) => {
+          e.preventDefault();
+          // Simular click en el botón "Ajustes" de la quick bar
+          const ajustesBtn = Array.from(document.querySelectorAll('.quick button')).find(b => b.getAttribute('aria-label') === 'Ajustes');
+          ajustesBtn?.click();
+        };
+      }
+      return;
+    }
+    // Si entramos en modo completo, asegurar que NO tenga la clase mini
+    card.classList.remove('pv-rem-card-mini');
 
     let stepsHtml = '';
 
@@ -736,7 +778,28 @@
     return (document.querySelector('h1')?.textContent || '').trim() === 'Ajustes';
   }
 
+  // Limpia el "1" del ícono de la app + cierra notificaciones pendientes con
+  // tag 'pv-daily' o 'pv-push' (las del versículo diario). Se llama cada vez
+  // que el usuario abre/enfoca la app.
+  async function clearBadgeAndStaleNotifs() {
+    // 1) Borrar el contador del ícono
+    try { await navigator.clearAppBadge?.(); } catch {}
+    try {
+      const reg = await navigator.serviceWorker?.ready;
+      // 2) Cerrar notificaciones acumuladas del versículo diario
+      if (reg?.getNotifications) {
+        const notifs = await reg.getNotifications();
+        notifs.forEach(n => {
+          if (['pv-daily', 'pv-push', 'pv-test', 'pv-diag'].includes(n.tag)) {
+            try { n.close(); } catch {}
+          }
+        });
+      }
+    } catch {}
+  }
+
   function boot() {
+    clearBadgeAndStaleNotifs();
     renderInAjustes();
     checkAndNotify();
     scheduleNextNotification(); // setTimeout exacto a la hora objetivo
@@ -756,8 +819,13 @@
   // Verificar cada 60s mientras la app esté abierta (fallback al timer exacto)
   setInterval(checkAndNotify, 60000);
   // Re-agendar al volver al primer plano (ej. usuario vuelve después de mediodía)
+  // + limpiar el "1" del ícono de la app cuando el usuario vuelve a abrirla
   document.addEventListener('visibilitychange', () => {
-    if (!document.hidden) { checkAndNotify(); scheduleNextNotification(); }
+    if (!document.hidden) {
+      clearBadgeAndStaleNotifs();
+      checkAndNotify();
+      scheduleNextNotification();
+    }
   });
 
   // Re-sincronizar suscripción cuando el usuario inicia sesión

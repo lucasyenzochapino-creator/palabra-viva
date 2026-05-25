@@ -1,5 +1,5 @@
-const VERSION    = 'palabra-viva-v9';
-const RUNTIME    = 'palabra-viva-runtime-v9';
+const VERSION    = 'palabra-viva-v10';
+const RUNTIME    = 'palabra-viva-runtime-v10';
 const APP_SHELL  = [
   '/',
   '/manifest.webmanifest',
@@ -110,9 +110,12 @@ self.addEventListener('message', (event) => {
   if (event.data === 'SKIP_WAITING') self.skipWaiting();
 });
 
-// Click en notificación → abrir/enfocar la app
+// Click en notificación → abrir/enfocar la app + limpiar badge "1" del ícono
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
+  // Limpiar el contador "1" del ícono de la app
+  try { self.navigator.clearAppBadge?.(); } catch {}
+  try { self.registration.clearAppBadge?.(); } catch {}
   const url = event.notification.data?.url || '/';
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
@@ -124,6 +127,12 @@ self.addEventListener('notificationclick', (event) => {
       return self.clients.openWindow(url);
     })
   );
+});
+
+// Cuando se cierra una notificación (sin click), también limpiar badge
+self.addEventListener('notificationclose', () => {
+  try { self.navigator.clearAppBadge?.(); } catch {}
+  try { self.registration.clearAppBadge?.(); } catch {}
 });
 
 // ── Web Push: recibir push del server y mostrar notificación ──────────────
