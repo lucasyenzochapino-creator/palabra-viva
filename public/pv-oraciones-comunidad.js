@@ -33,22 +33,50 @@
 
   async function listPrayers() {
     try {
-      const res = await fetch(`${SUPA_URL}/rest/v1/prayer_requests?status=eq.approved&select=id,display_name,request_text,prayer_count,category,created_at,approved_at&order=approved_at.desc.nullslast,created_at.desc&limit=100`, {
-        headers: {
-          'apikey': SUPA_KEY,
-          'Authorization': 'Bearer ' + (getToken() || SUPA_KEY)
-        }
-      });
+      const res = await supaFetch(
+        `${SUPA_URL}/rest/v1/prayer_requests?status=eq.approved&select=id,display_name,request_text,prayer_count,category,created_at,approved_at&order=approved_at.desc.nullslast,created_at.desc&limit=100`,
+        { method: 'GET' }
+      );
       if (!res.ok) return [];
       return await res.json();
     } catch { return []; }
   }
 
-  async function submitPrayer(text, displayName, category) {
+  // Hace una request al backend con auto-retry si el JWT del usuario expiró.
+  // El token de Supabase vive 1h; si está expirado, devuelve PGRST303
+  // "JWT expired" con HTTP 401. En ese caso reintenta con la anon key
+  // (que NUNCA expira porque es la clave pública del proyecto).
+  async function supaFetch(url, opts = {}) {
     const token = getToken();
-    // Usar RPC SECURITY DEFINER (mismo patrón que upsert_push_subscription).
-    // El INSERT directo a la tabla rebota por RLS en clientes con anon key,
-    // la RPC bypasea eso con validación interna en SQL.
+    const baseHeaders = {
+      'apikey': SUPA_KEY,
+      'Content-Type': 'application/json',
+      ...(opts.headers || {})
+    };
+    // Intento 1: con el token de la sesión si existe
+    let res = await fetch(url, {
+      ...opts,
+      headers: { ...baseHeaders, 'Authorization': 'Bearer ' + (token || SUPA_KEY) }
+    });
+    // Si falla por JWT expirado y teníamos token, reintentamos sin él
+    if (!res.ok && token && res.status === 401) {
+      const txt = await res.clone().text().catch(() => '');
+      if (/jwt expired|jwt expir|jwtexpired/i.test(txt) || /PGRST303/i.test(txt)) {
+        console.warn('[Supa] JWT expirado — reintentando como anónimo');
+        // Intentar refrescar la sesión en background si el módulo PVAuth lo soporta
+        try { await window.PVAuth?.refreshSession?.(); } catch {}
+        res = await fetch(url, {
+          ...opts,
+          headers: { ...baseHeaders, 'Authorization': 'Bearer ' + SUPA_KEY }
+        });
+      }
+    }
+    return res;
+  }
+
+  async function submitPrayer(text, displayName, category) {
+    // Usar RPC SECURITY DEFINER. La RPC funciona igual con anon o auth
+    // (hace su validación interna), así que el retry con anon es seguro.
     const url = `${SUPA_URL}/rest/v1/rpc/submit_prayer_request`;
     const body = {
       p_request_text: text.trim(),
@@ -58,15 +86,7 @@
     };
     console.log('[Oración] POST →', url, body);
     try {
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'apikey': SUPA_KEY,
-          'Authorization': 'Bearer ' + (token || SUPA_KEY),
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(body)
-      });
+      const res = await supaFetch(url, { method: 'POST', body: JSON.stringify(body) });
       console.log('[Oración] HTTP', res.status, res.statusText);
       if (!res.ok) {
         const errText = await res.text().catch(() => '');
@@ -83,14 +103,8 @@
   }
 
   async function pray(id) {
-    const token = getToken();
-    const res = await fetch(`${SUPA_URL}/rest/v1/rpc/increment_prayer_count`, {
+    const res = await supaFetch(`${SUPA_URL}/rest/v1/rpc/increment_prayer_count`, {
       method: 'POST',
-      headers: {
-        'apikey': SUPA_KEY,
-        'Authorization': 'Bearer ' + (token || SUPA_KEY),
-        'Content-Type': 'application/json'
-      },
       body: JSON.stringify({ p_request_id: id })
     });
     if (res.ok) {
