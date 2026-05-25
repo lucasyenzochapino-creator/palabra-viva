@@ -31,52 +31,31 @@
     try { localStorage.setItem(PRAYED_KEY, JSON.stringify([...s])); } catch {}
   }
 
+  // SIEMPRE usamos SUPA_KEY (anon, nunca expira). NUNCA mandamos token de
+  // sesión, así no nos importa si el JWT del usuario está vencido.
+  // La RPC submit_prayer_request es SECURITY DEFINER y captura auth.uid()
+  // internamente si hay sesión, sino lo deja NULL — ambas cosas funcionan.
+  function anonHeaders(extra = {}) {
+    return {
+      'apikey': SUPA_KEY,
+      'Authorization': 'Bearer ' + SUPA_KEY,
+      'Content-Type': 'application/json',
+      ...extra
+    };
+  }
+
   async function listPrayers() {
     try {
-      const res = await supaFetch(
+      const res = await fetch(
         `${SUPA_URL}/rest/v1/prayer_requests?status=eq.approved&select=id,display_name,request_text,prayer_count,category,created_at,approved_at&order=approved_at.desc.nullslast,created_at.desc&limit=100`,
-        { method: 'GET' }
+        { headers: anonHeaders() }
       );
       if (!res.ok) return [];
       return await res.json();
     } catch { return []; }
   }
 
-  // Hace una request al backend con auto-retry si el JWT del usuario expiró.
-  // El token de Supabase vive 1h; si está expirado, devuelve PGRST303
-  // "JWT expired" con HTTP 401. En ese caso reintenta con la anon key
-  // (que NUNCA expira porque es la clave pública del proyecto).
-  async function supaFetch(url, opts = {}) {
-    const token = getToken();
-    const baseHeaders = {
-      'apikey': SUPA_KEY,
-      'Content-Type': 'application/json',
-      ...(opts.headers || {})
-    };
-    // Intento 1: con el token de la sesión si existe
-    let res = await fetch(url, {
-      ...opts,
-      headers: { ...baseHeaders, 'Authorization': 'Bearer ' + (token || SUPA_KEY) }
-    });
-    // Si falla por JWT expirado y teníamos token, reintentamos sin él
-    if (!res.ok && token && res.status === 401) {
-      const txt = await res.clone().text().catch(() => '');
-      if (/jwt expired|jwt expir|jwtexpired/i.test(txt) || /PGRST303/i.test(txt)) {
-        console.warn('[Supa] JWT expirado — reintentando como anónimo');
-        // Intentar refrescar la sesión en background si el módulo PVAuth lo soporta
-        try { await window.PVAuth?.refreshSession?.(); } catch {}
-        res = await fetch(url, {
-          ...opts,
-          headers: { ...baseHeaders, 'Authorization': 'Bearer ' + SUPA_KEY }
-        });
-      }
-    }
-    return res;
-  }
-
   async function submitPrayer(text, displayName, category) {
-    // Usar RPC SECURITY DEFINER. La RPC funciona igual con anon o auth
-    // (hace su validación interna), así que el retry con anon es seguro.
     const url = `${SUPA_URL}/rest/v1/rpc/submit_prayer_request`;
     const body = {
       p_request_text: text.trim(),
@@ -86,7 +65,11 @@
     };
     console.log('[Oración] POST →', url, body);
     try {
-      const res = await supaFetch(url, { method: 'POST', body: JSON.stringify(body) });
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: anonHeaders(),
+        body: JSON.stringify(body)
+      });
       console.log('[Oración] HTTP', res.status, res.statusText);
       if (!res.ok) {
         const errText = await res.text().catch(() => '');
@@ -103,15 +86,22 @@
   }
 
   async function pray(id) {
-    const res = await supaFetch(`${SUPA_URL}/rest/v1/rpc/increment_prayer_count`, {
-      method: 'POST',
-      body: JSON.stringify({ p_request_id: id })
-    });
-    if (res.ok) {
-      markAsPrayed(id);
-      return await res.json();
+    try {
+      const res = await fetch(`${SUPA_URL}/rest/v1/rpc/increment_prayer_count`, {
+        method: 'POST',
+        headers: anonHeaders(),
+        body: JSON.stringify({ p_request_id: id })
+      });
+      if (res.ok) {
+        markAsPrayed(id);
+        return await res.json();
+      }
+      console.error('[Oración] pray failed:', res.status);
+      return null;
+    } catch (e) {
+      console.error('[Oración] pray error:', e);
+      return null;
     }
-    return null;
   }
 
   function injectStyles() {
