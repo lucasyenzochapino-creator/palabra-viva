@@ -1,5 +1,5 @@
-const VERSION    = 'palabra-viva-v10';
-const RUNTIME    = 'palabra-viva-runtime-v10';
+const VERSION    = 'palabra-viva-v11';
+const RUNTIME    = 'palabra-viva-runtime-v11';
 const APP_SHELL  = [
   '/',
   '/manifest.webmanifest',
@@ -68,6 +68,25 @@ self.addEventListener('fetch', (event) => {
 
   const request = event.request;
   const isNavigation = request.mode === 'navigate';
+
+  // Assets con query param ?v=X son cache-busted intencionalmente.
+  // Estrategia: network-first → siempre traemos la versión NUEVA si hay red.
+  // Esto evita el bug "el SW sigue sirviendo el JS viejo" tras un deploy.
+  try {
+    const urlObj = new URL(url);
+    if (urlObj.searchParams.has('v') && !isNavigation) {
+      event.respondWith(
+        fetch(request).then((response) => {
+          if (response && response.ok) {
+            const copy = response.clone();
+            caches.open(RUNTIME).then((c) => c.put(request, copy)).catch(() => {});
+          }
+          return response;
+        }).catch(() => caches.match(request))
+      );
+      return;
+    }
+  } catch {}
 
   // Estrategia para navegación (HTML): network-first con fallback al cache
   // → garantiza que siempre obtengamos el HTML más nuevo cuando hay red,

@@ -49,31 +49,36 @@
     // Usar RPC SECURITY DEFINER (mismo patrón que upsert_push_subscription).
     // El INSERT directo a la tabla rebota por RLS en clientes con anon key,
     // la RPC bypasea eso con validación interna en SQL.
+    const url = `${SUPA_URL}/rest/v1/rpc/submit_prayer_request`;
+    const body = {
+      p_request_text: text.trim(),
+      p_display_name: (displayName || '').trim() || 'Anónimo/a',
+      p_category: category || 'general',
+      p_user_agent: navigator.userAgent.slice(0, 200)
+    };
+    console.log('[Oración] POST →', url, body);
     try {
-      const res = await fetch(`${SUPA_URL}/rest/v1/rpc/submit_prayer_request`, {
+      const res = await fetch(url, {
         method: 'POST',
         headers: {
           'apikey': SUPA_KEY,
           'Authorization': 'Bearer ' + (token || SUPA_KEY),
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          p_request_text: text.trim(),
-          p_display_name: (displayName || '').trim() || 'Anónimo/a',
-          p_category: category || 'general',
-          p_user_agent: navigator.userAgent.slice(0, 200)
-        })
+        body: JSON.stringify(body)
       });
+      console.log('[Oración] HTTP', res.status, res.statusText);
       if (!res.ok) {
         const errText = await res.text().catch(() => '');
         console.error('[Oración] submit falló:', res.status, errText);
-        return { ok: false, error: errText || ('HTTP ' + res.status) };
+        return { ok: false, error: 'HTTP ' + res.status + ' — ' + (errText || res.statusText || 'sin detalle') };
       }
       const id = await res.json().catch(() => null);
+      console.log('[Oración] OK — id:', id);
       return { ok: true, id };
     } catch (e) {
       console.error('[Oración] submit network error:', e);
-      return { ok: false, error: e.message || String(e) };
+      return { ok: false, error: 'Sin conexión a Supabase: ' + (e.message || e.name || String(e)) };
     }
   }
 
