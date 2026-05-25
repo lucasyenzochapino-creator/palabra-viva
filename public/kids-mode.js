@@ -470,7 +470,8 @@
     panel=null;
     if(useHistory&&location.hash==='#kids'){window._pvPanelClosing=true;history.back();}
   }
-  function addHome(){const title=document.querySelector('h1')?.textContent||'';if(!title.includes('Una palabra para hoy')||document.querySelector('.pv-kids-home'))return;const anchor=document.querySelector('.pv-ba-card')||document.querySelector('.pv-path-card')||document.querySelector('.hero');if(!anchor)return;const t=today(),n=STORIES.filter(isRead).length;const card=document.createElement('section');card.className='card pv-kids-home';card.innerHTML=`<p class="ref">Para los más chicos</p><h3>Biblia para chicos</h3><p class="soft">${STORIES.length} historias con preguntas, oración y audio. Hoy: <strong>${t.title}</strong> ${t.emoji}</p><p class="soft" style="font-size:13px">📖 ${n} de ${STORIES.length} leídas</p><div class="row wrap"><button class="btn">Abrir historias</button></div>`;window.PVImages?.applyHero?.(card,'child_reading');card.querySelector('button').onclick=openPanel;anchor.insertAdjacentElement('afterend',card)}
+  // Home card removida (limpieza del home). Acceso via menú "✨ Más" → "👶 Biblia para niños".
+  function addHome(){document.querySelector('.pv-kids-home')?.remove()}
   function addQuick(){const q=document.querySelector('.quick');if(!q||document.querySelector('.pv-kids-quick'))return;const b=document.createElement('button');b.className='pv-kids-quick';b.textContent='👶 Niños';b.onclick=openPanel;q.insertBefore(b,q.firstChild)}
   // API pública
   window.PalabraVivaNinos = {
