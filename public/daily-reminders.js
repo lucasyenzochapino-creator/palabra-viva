@@ -9,6 +9,7 @@
   const SETTINGS_KEY = 'pv-reminder-settings';
   const LAST_SENT_KEY = 'pv-reminder-last';
   const SUB_SAVED_KEY = 'pv-push-sub-saved';
+  const PAUSED_KEY    = 'pv-reminder-paused'; // flag explícito: el usuario lo apagó
 
   // Web Push — VAPID public key (la privada vive en el servidor)
   const VAPID_PUBLIC = 'BHYBE7lSF9SrZbFFb87HLAbOo6PuD0xL1neYscC-1ELjZ7RCjtU_U_Rv015hoG3qbVjw0rn_akqhlOxDQP_C8pI';
@@ -141,6 +142,15 @@
   let _autoSubscribing = false;
   async function autoSubscribe(card) {
     if (_autoSubscribing) return;
+    // RESPETAR PAUSED: si el usuario apagó manualmente, NO re-suscribir solo
+    // porque sigue teniendo permiso. Antes había un bug donde apretar
+    // "Desactivar" no servía de nada porque autoSubscribe lo reactivaba.
+    try {
+      if (localStorage.getItem(PAUSED_KEY) === '1') {
+        console.log('[Recordatorio] Auto-sub salteado: usuario lo pausó manualmente.');
+        return;
+      }
+    } catch {}
     _autoSubscribing = true;
     try {
       const settings = loadSettings();
@@ -308,14 +318,37 @@
     log('🎉 TODO OK. Tu suscripción está activa en el servidor. Vas a recibir el versículo del día a la hora elegida — incluso si la app está cerrada.', 'ok');
   }
 
-  // Cancelar suscripción
+  // Cancelar suscripción — local (browser) + server (Supabase)
   async function unsubscribeFromPush() {
+    let endpoint = null;
     try {
       const reg = await navigator.serviceWorker.ready;
       const sub = await reg.pushManager.getSubscription();
-      if (sub) await sub.unsubscribe();
+      if (sub) {
+        endpoint = sub.endpoint;
+        try { await sub.unsubscribe(); } catch {}
+      }
       try { localStorage.removeItem(SUB_SAVED_KEY); } catch {}
     } catch (e) { console.warn('[Push] unsubscribe error', e); }
+    // Marcar al server como inactivo así no nos sigue mandando push
+    if (endpoint) {
+      try {
+        const token = window.PVAuth?.getToken?.();
+        await fetch(`${SUPA_URL}/rest/v1/rpc/deactivate_push_subscription`, {
+          method: 'POST',
+          headers: {
+            'apikey': SUPA_KEY,
+            'Authorization': 'Bearer ' + (token || SUPA_KEY),
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ p_endpoint: endpoint })
+        });
+      } catch (e) {
+        console.warn('[Push] no se pudo desactivar del server:', e);
+      }
+    }
+    // Marcar PAUSED para que autoSubscribe no resucite la suscripción
+    try { localStorage.setItem(PAUSED_KEY, '1'); } catch {}
   }
 
   // Versículos rotativos (mismo bloque que el hero por hora)
@@ -443,11 +476,12 @@
 
   // ── UI: card en Ajustes ───────────────────────────────────────────────────
   function injectStyles() {
-    if (document.getElementById('pv-rem-style-v3')) return;
+    if (document.getElementById('pv-rem-style-v4')) return;
     document.getElementById('pv-rem-style')?.remove();
     document.getElementById('pv-rem-style-v2')?.remove();
+    document.getElementById('pv-rem-style-v3')?.remove();
     const st = document.createElement('style');
-    st.id = 'pv-rem-style-v3';
+    st.id = 'pv-rem-style-v4';
     st.textContent = `
       .pv-rem-card .pv-rem-step{background:var(--card2);border:1px dashed var(--line);border-radius:14px;padding:14px;margin-top:10px}
       .pv-rem-card .pv-rem-step.error{background:rgba(154,58,58,.08);border-color:var(--danger)}
@@ -467,8 +501,10 @@
       .pv-rem-card .pv-rem-step p{margin:0;font-size:13px;line-height:1.5;color:var(--text)}
       /* === Banner mini para HOME cuando ya está activado === */
       .pv-rem-card.pv-rem-card-mini{padding:10px 14px;background:linear-gradient(135deg,rgba(90,111,72,.10),rgba(90,111,72,.04));border:1px solid rgba(90,111,72,.3)}
+      .pv-rem-card.pv-rem-card-mini.pv-rem-card-paused{background:linear-gradient(135deg,rgba(120,113,108,.10),rgba(120,113,108,.04));border-color:rgba(120,113,108,.35)}
       .pv-rem-card.pv-rem-card-mini .pv-rem-mini-row{display:flex;align-items:center;gap:10px}
       .pv-rem-card.pv-rem-card-mini .pv-rem-mini-icon{font-size:20px;width:32px;height:32px;background:var(--good);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-weight:900}
+      .pv-rem-card.pv-rem-card-mini .pv-rem-mini-icon.paused{background:#78716c;color:#fff}
       .pv-rem-card.pv-rem-card-mini .pv-rem-mini-text{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.3}
       .pv-rem-card.pv-rem-card-mini .pv-rem-mini-text strong{font-size:14px;color:var(--text);font-family:var(--font-sans)}
       .pv-rem-card.pv-rem-card-mini .pv-rem-mini-text span{font-size:12px;color:var(--muted);font-family:var(--font-sans);margin-top:2px}
@@ -530,28 +566,42 @@
     const time = settings.time || '08:00';
     const iOSnoPWA = isIOS() && !isPWA();
 
-    // En HOME: si las notificaciones YA están activadas y funcionando, mostrar
-    // un banner mini compacto en vez de la card completa (para no ocupar tanto).
-    // El control completo queda en Ajustes.
+    // En HOME: banner mini compacto. 3 variantes:
+    //   (a) Activado y conectado al server → ✓ verde
+    //   (b) Pausado manualmente → 🔕 gris con "Activar →"
+    //   (c) Permiso granted pero todavía conectando → fallback
     if (isHomeMode && perm === 'granted') {
       const subscribed = !!localStorage.getItem(SUB_SAVED_KEY);
+      const isPaused   = (() => { try { return localStorage.getItem(PAUSED_KEY) === '1'; } catch { return false; } })();
       card.classList.add('pv-rem-card-mini');
-      card.innerHTML = `
-        <div class="pv-rem-mini-row">
-          <span class="pv-rem-mini-icon">✓</span>
-          <div class="pv-rem-mini-text">
-            <strong>🔔 Versículo diario activado</strong>
-            <span>Llega a las <b>${time}</b> ${subscribed ? '· server conectado' : '· conectando…'}</span>
-          </div>
-          <a class="pv-rem-mini-link" href="#ajustes-rem" data-rem-goto-ajustes>Cambiar →</a>
-        </div>
-      `;
+      if (isPaused) {
+        card.classList.add('pv-rem-card-paused');
+        card.innerHTML = `
+          <div class="pv-rem-mini-row">
+            <span class="pv-rem-mini-icon paused">🔕</span>
+            <div class="pv-rem-mini-text">
+              <strong>Versículo diario apagado</strong>
+              <span>Lo apagaste vos. Volvé a Ajustes para encenderlo.</span>
+            </div>
+            <a class="pv-rem-mini-link" href="#ajustes-rem" data-rem-goto-ajustes>Activar →</a>
+          </div>`;
+      } else {
+        card.classList.remove('pv-rem-card-paused');
+        card.innerHTML = `
+          <div class="pv-rem-mini-row">
+            <span class="pv-rem-mini-icon">✓</span>
+            <div class="pv-rem-mini-text">
+              <strong>🔔 Versículo diario activado</strong>
+              <span>Llega a las <b>${time}</b>${subscribed ? '' : ' · conectando…'}</span>
+            </div>
+            <a class="pv-rem-mini-link" href="#ajustes-rem" data-rem-goto-ajustes>Cambiar →</a>
+          </div>`;
+      }
       // Click va a Ajustes (donde está el control completo)
       const link = card.querySelector('[data-rem-goto-ajustes]');
       if (link) {
         link.onclick = (e) => {
           e.preventDefault();
-          // Simular click en el botón "Ajustes" de la quick bar
           const ajustesBtn = Array.from(document.querySelectorAll('.quick button')).find(b => b.getAttribute('aria-label') === 'Ajustes');
           ajustesBtn?.click();
         };
@@ -559,7 +609,7 @@
       return;
     }
     // Si entramos en modo completo, asegurar que NO tenga la clase mini
-    card.classList.remove('pv-rem-card-mini');
+    card.classList.remove('pv-rem-card-mini', 'pv-rem-card-paused');
 
     let stepsHtml = '';
 
@@ -615,30 +665,51 @@
           Una vez activado queda <strong>siempre encendido</strong>. Si querés apagarlo, vení acá y tocá Desactivar.
         </p>`;
     }
-    // 5. Permiso granted → mostrar estado activo + opciones
+    // 5. Permiso granted → mostrar estado activo / pausado + opciones
     else if (perm === 'granted') {
       const subscribed = !!localStorage.getItem(SUB_SAVED_KEY);
-      // Si todavía no se suscribió pero ya tenemos permiso → auto-suscribir
-      if (!subscribed && !enabled) {
-        setTimeout(() => autoSubscribe(card), 200);
-      }
-      stepsHtml = `
-        <div class="pv-rem-step ok">
-          <div class="pv-rem-step-content">
-            <span class="pv-rem-status-icon">✓</span>
-            <div>
-              <h4>Versículo diario activado</h4>
-              <p>Recibirás el versículo del día a las <strong>${time}</strong> aunque la app esté cerrada.${subscribed ? '' : ' <em>Conectando con servidor…</em>'}</p>
+      const isPaused = (() => { try { return localStorage.getItem(PAUSED_KEY) === '1'; } catch { return false; } })();
+
+      // Caso A: usuario lo apagó explícitamente → ofrecer re-activar (NO auto)
+      if (isPaused) {
+        stepsHtml = `
+          <div class="pv-rem-step warning">
+            <div class="pv-rem-step-content">
+              <span class="pv-rem-status-icon">🔕</span>
+              <div>
+                <h4>Versículo diario apagado</h4>
+                <p>Lo apagaste vos. Cuando quieras reactivarlo, tocá el botón verde.</p>
+              </div>
             </div>
           </div>
-        </div>
-        <div class="pv-rem-time-row">
-          <label for="pv-rem-time">⏰ Cambiar hora</label>
-          <input type="time" id="pv-rem-time" value="${time}">
-        </div>
-        <button class="pv-rem-cta secondary" id="pv-rem-test">📩 Probar notificación ahora</button>
-        <button class="pv-rem-cta secondary" id="pv-rem-disable" style="background:rgba(154,58,58,.10);color:var(--danger);border-color:rgba(154,58,58,.4)">⏸ Desactivar versículo diario</button>
-      `;
+          <div class="pv-rem-time-row">
+            <label for="pv-rem-time">⏰ Hora del envío</label>
+            <input type="time" id="pv-rem-time" value="${time}">
+          </div>
+          <button class="pv-rem-cta" id="pv-rem-reenable">🔔 Volver a activar</button>`;
+      } else {
+        // Caso B: activo. Si no se suscribió todavía → auto-sub (respeta PAUSED)
+        if (!subscribed && !enabled) {
+          setTimeout(() => autoSubscribe(card), 200);
+        }
+        stepsHtml = `
+          <div class="pv-rem-step ok">
+            <div class="pv-rem-step-content">
+              <span class="pv-rem-status-icon">✓</span>
+              <div>
+                <h4>Versículo diario activado</h4>
+                <p>Recibirás el versículo del día a las <strong>${time}</strong> aunque la app esté cerrada.${subscribed ? '' : ' <em>Conectando con servidor…</em>'}</p>
+              </div>
+            </div>
+          </div>
+          <div class="pv-rem-time-row">
+            <label for="pv-rem-time">⏰ Cambiar hora</label>
+            <input type="time" id="pv-rem-time" value="${time}">
+          </div>
+          <button class="pv-rem-cta secondary" id="pv-rem-test">📩 Probar notificación ahora</button>
+          <button class="pv-rem-cta secondary" id="pv-rem-disable" style="background:rgba(154,58,58,.10);color:var(--danger);border-color:rgba(154,58,58,.4)">⏸ Desactivar versículo diario</button>
+        `;
+      }
     }
 
     card.innerHTML = `
@@ -681,6 +752,8 @@
           const timeInpNow = card.querySelector('#pv-rem-time');
           const t = timeInpNow?.value || '08:00';
           const [hh, mm] = t.split(':').map(n => parseInt(n, 10));
+          // El usuario está activando explícitamente → limpiar flag de pausa
+          try { localStorage.removeItem(PAUSED_KEY); } catch {}
           const result = await subscribeToPush(hh, mm);
           saveSettings({ enabled: true, time: t });
           scheduleNextNotification();
@@ -732,9 +805,30 @@
         if (!confirm('¿Apagar el versículo diario? Podés volver a activarlo en cualquier momento.')) return;
         disableBtn.disabled = true;
         disableBtn.textContent = '⏳ Desactivando…';
-        await unsubscribeFromPush();
+        await unsubscribeFromPush(); // borra browser sub + server sub + setea PAUSED=1
         saveSettings({ enabled: false, time: timeInp?.value || '08:00' });
         setTimeout(() => renderCardContent(card), 500);
+      };
+    }
+
+    // Botón "Volver a activar" cuando está en estado pausado
+    const reenableBtn = card.querySelector('#pv-rem-reenable');
+    if (reenableBtn) {
+      reenableBtn.onclick = async () => {
+        reenableBtn.disabled = true;
+        reenableBtn.textContent = '⏳ Activando…';
+        const tInp = card.querySelector('#pv-rem-time');
+        const t = tInp?.value || '08:00';
+        // Quitar la marca de pausa para que las re-suscripciones funcionen
+        try { localStorage.removeItem(PAUSED_KEY); } catch {}
+        const [hh, mm] = t.split(':').map(n => parseInt(n, 10));
+        const result = await subscribeToPush(hh, mm);
+        saveSettings({ enabled: true, time: t });
+        scheduleNextNotification();
+        if (!result.ok) {
+          alert('No se pudo conectar con el servidor de notificaciones.\nEtapa: ' + result.stage + '\nDetalle: ' + result.error);
+        }
+        setTimeout(() => renderCardContent(card), 600);
       };
     }
 
