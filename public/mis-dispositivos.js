@@ -244,9 +244,12 @@
           const settings = (() => { try { return JSON.parse(localStorage.getItem('pv-reminder-settings') || '{}'); } catch { return {}; } })();
           const t = settings.time || '08:00';
           const [hh, mm] = t.split(':').map(n => parseInt(n, 10));
-          // Trigger subscription via daily-reminders module
+          // Trigger subscription via daily-reminders module — devuelve {ok, stage?, error?}
           if (window.PVReminders?.syncSubscription) {
-            await window.PVReminders.syncSubscription(hh, mm);
+            const result = await window.PVReminders.syncSubscription(hh, mm);
+            if (result && result.ok === false) {
+              throw new Error('[' + result.stage + '] ' + result.error);
+            }
           } else {
             // Fallback: re-subscribir directo
             const reg = await navigator.serviceWorker.ready;
@@ -276,7 +279,8 @@
           setTimeout(refresh, 800);
         } catch (e) {
           syncBtn.disabled = false;
-          syncBtn.textContent = '❌ Error: ' + (e.message || e);
+          syncBtn.textContent = '❌ Error';
+          alert('No se pudo sincronizar:\n\n' + (e.message || e) + '\n\nProbá tocar "🔍 Diagnosticar" desde Inicio o Ajustes para más detalles.');
         }
       };
     }

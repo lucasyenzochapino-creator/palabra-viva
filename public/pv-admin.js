@@ -81,6 +81,10 @@
           <h2>📊 Resumen</h2>
           <div class="pv-adm-spin">⏳ Cargando…</div>
         </div>
+        <div class="pv-adm-section" id="pv-adm-salud">
+          <h2>📡 Salud del sistema</h2>
+          <div class="pv-adm-spin">⏳ Cargando…</div>
+        </div>
         <div class="pv-adm-section" id="pv-adm-usuarios">
           <h2>👥 Usuarios</h2>
           <div class="pv-adm-spin">⏳ Cargando…</div>
@@ -147,6 +151,84 @@
           <div class="pv-adm-stat-l">Premium</div>
         </div>
       </div>`;
+
+    // ── Salud del sistema (push notifications) ──
+    const saludEl = $('#pv-adm-salud', panel);
+    try {
+      const { ok: psOk, data: psData } = await supa('/rest/v1/push_subscriptions?select=id,active,last_sent_at,created_at&order=created_at.desc');
+      const subs = psOk && Array.isArray(psData) ? psData : null;
+      if (!psOk || subs === null) {
+        saludEl.innerHTML = `<h2>📡 Salud del sistema</h2>
+          <div class="pv-adm-empty" style="color:#fb7185">
+            ⚠️ No se pudo leer push_subscriptions.<br>
+            <small>Verificá las policies RLS para role 'admin' en esa tabla.</small>
+          </div>`;
+      } else {
+        const total = subs.length;
+        const active = subs.filter(s => s.active !== false).length;
+        const now = Date.now();
+        const last24h = subs.filter(s => s.last_sent_at && (now - new Date(s.last_sent_at).getTime()) < 24*60*60*1000).length;
+        const lastSendTs = subs.reduce((mx, s) => {
+          if (!s.last_sent_at) return mx;
+          const t = new Date(s.last_sent_at).getTime();
+          return t > mx ? t : mx;
+        }, 0);
+        const hoursSinceLast = lastSendTs ? Math.round((now - lastSendTs) / 3600000) : -1;
+        const lastSendStr = lastSendTs ? new Date(lastSendTs).toLocaleString('es-AR') : 'nunca';
+
+        // Alertas
+        let alerts = '';
+        if (total === 0) {
+          alerts += `<div style="background:rgba(251,113,133,.12);border:1px solid rgba(251,113,133,.5);border-radius:14px;padding:12px;margin-top:10px;color:#fda4af">
+            <strong>🚨 SIN SUSCRIPCIONES ACTIVAS</strong><br>
+            <small>Ningún usuario va a recibir el versículo diario. Algo está roto en el flujo de suscripción.</small>
+          </div>`;
+        } else if (active === 0) {
+          alerts += `<div style="background:rgba(251,113,133,.12);border:1px solid rgba(251,113,133,.5);border-radius:14px;padding:12px;margin-top:10px;color:#fda4af">
+            <strong>⚠️ Todas las suscripciones están desactivadas</strong><br>
+            <small>Hay ${total} suscripciones registradas pero ninguna activa.</small>
+          </div>`;
+        } else if (lastSendTs === 0 && total > 5) {
+          alerts += `<div style="background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.5);border-radius:14px;padding:12px;margin-top:10px;color:#fcd34d">
+            <strong>⚠️ Nunca se enviaron notificaciones</strong><br>
+            <small>Hay ${total} suscripciones pero ninguna recibió un push. Revisá la Edge Function 'send-daily-push' y el pg_cron.</small>
+          </div>`;
+        } else if (hoursSinceLast > 30) {
+          alerts += `<div style="background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.5);border-radius:14px;padding:12px;margin-top:10px;color:#fcd34d">
+            <strong>⚠️ Hace ${hoursSinceLast}h que no se envía ningún push</strong><br>
+            <small>Último envío: ${lastSendStr}. Esperado: cada usuario al menos 1 vez por día. Revisá Edge Function logs.</small>
+          </div>`;
+        } else {
+          alerts += `<div style="background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.5);border-radius:14px;padding:12px;margin-top:10px;color:#86efac">
+            <strong>✓ Sistema funcionando</strong><br>
+            <small>Último envío: ${lastSendStr} (hace ${hoursSinceLast}h) · ${last24h} envíos en últimas 24h</small>
+          </div>`;
+        }
+
+        saludEl.innerHTML = `<h2>📡 Salud del sistema</h2>
+          <div class="pv-adm-stat">
+            <div class="pv-adm-stat-box">
+              <div class="pv-adm-stat-n" style="color:${total > 0 ? 'inherit' : '#fb7185'}">${total}</div>
+              <div class="pv-adm-stat-l">Suscripciones</div>
+            </div>
+            <div class="pv-adm-stat-box">
+              <div class="pv-adm-stat-n" style="color:${active > 0 ? '#86efac' : '#fb7185'}">${active}</div>
+              <div class="pv-adm-stat-l">Activas</div>
+            </div>
+            <div class="pv-adm-stat-box">
+              <div class="pv-adm-stat-n" style="color:${last24h > 0 ? '#86efac' : 'inherit'}">${last24h}</div>
+              <div class="pv-adm-stat-l">Envíos 24h</div>
+            </div>
+          </div>
+          ${alerts}
+          <div style="margin-top:10px;font-size:11px;color:var(--muted,#c8c5d8);text-align:right">
+            <a href="https://supabase.com/dashboard/project/fuxojzmwyyecefxczfrn/functions/send-daily-push/logs" target="_blank" rel="noopener noreferrer" style="color:var(--brand,#f59e0b)">Ver logs de la Edge Function ↗</a>
+          </div>`;
+      }
+    } catch (e) {
+      saludEl.innerHTML = `<h2>📡 Salud del sistema</h2>
+        <div class="pv-adm-empty" style="color:#fb7185">⚠️ Error: ${e.message || e}</div>`;
+    }
 
     // ── Usuarios ──
     const usEl = $('#pv-adm-usuarios', panel);

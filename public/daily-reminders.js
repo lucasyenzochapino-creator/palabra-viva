@@ -33,31 +33,76 @@
     return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
   }
 
-  // Suscribir el browser a Web Push y guardar en Supabase
+  // Compara dos Uint8Array bit-a-bit (para detectar VAPID stale)
+  function arrayBufferEq(a, b) {
+    if (!a || !b) return false;
+    const aa = new Uint8Array(a), bb = new Uint8Array(b);
+    if (aa.length !== bb.length) return false;
+    for (let i = 0; i < aa.length; i++) if (aa[i] !== bb[i]) return false;
+    return true;
+  }
+
+  // Resultado tipado de subscribeToPush para mostrar errores claros al usuario
+  // { ok: true } | { ok: false, stage: string, error: string }
   async function subscribeToPush(hour, minute) {
-    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-      console.warn('[Push] Browser no soporta Web Push');
-      return false;
+    if (!('serviceWorker' in navigator)) {
+      return { ok: false, stage: 'support', error: 'Tu navegador no soporta Service Worker.' };
     }
+    if (!('PushManager' in window)) {
+      return { ok: false, stage: 'support', error: 'Tu navegador no soporta Push Notifications.' };
+    }
+    if (Notification.permission !== 'granted') {
+      return { ok: false, stage: 'permission', error: 'No diste permiso de notificaciones (estado: ' + Notification.permission + ').' };
+    }
+
+    let reg;
     try {
-      const reg = await navigator.serviceWorker.ready;
-      let sub = await reg.pushManager.getSubscription();
+      reg = await navigator.serviceWorker.ready;
+    } catch (e) {
+      return { ok: false, stage: 'sw-ready', error: 'Service Worker no está listo: ' + (e.message || e) };
+    }
+
+    // PASO CRÍTICO: si existe una suscripción vieja con un VAPID key distinto
+    // (que pasaba cuando rotamos las claves), DEBEMOS desuscribir primero y
+    // crear una nueva. Si no, el browser nos devuelve la sub vieja inválida.
+    const expectedKey = urlBase64ToUint8Array(VAPID_PUBLIC);
+    let sub;
+    try {
+      sub = await reg.pushManager.getSubscription();
+      if (sub) {
+        const currentKey = sub.options?.applicationServerKey;
+        const isCurrentValid = currentKey && arrayBufferEq(expectedKey, currentKey);
+        if (!isCurrentValid) {
+          console.log('[Push] Suscripción existente con VAPID distinta — re-creando…');
+          try { await sub.unsubscribe(); } catch {}
+          sub = null;
+        }
+      }
       if (!sub) {
         sub = await reg.pushManager.subscribe({
           userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC)
+          applicationServerKey: expectedKey
         });
       }
-      const subData = sub.toJSON();
-      const endpoint = subData.endpoint;
-      const p256dh = subData.keys?.p256dh;
-      const auth_key = subData.keys?.auth;
-      if (!endpoint || !p256dh || !auth_key) {
-        console.warn('[Push] Subscription incompleta', subData);
-        return false;
-      }
+    } catch (e) {
+      const reason = e?.name === 'NotAllowedError' ? 'El navegador bloqueó la suscripción (permiso o configuración).' :
+                     e?.name === 'AbortError' ? 'La suscripción fue cancelada.' :
+                     e?.name === 'NotSupportedError' ? 'Tu navegador no soporta este tipo de notificación.' :
+                     (e?.message || String(e));
+      return { ok: false, stage: 'pushmanager', error: reason };
+    }
 
-      // Guardar via RPC SECURITY DEFINER (maneja upsert seguro para anon)
+    const subData = sub.toJSON();
+    const endpoint = subData.endpoint;
+    const p256dh = subData.keys?.p256dh;
+    const auth_key = subData.keys?.auth;
+    if (!endpoint || !p256dh || !auth_key) {
+      return { ok: false, stage: 'subscription-data', error: 'La suscripción del navegador está incompleta. Probá reiniciar el browser.' };
+    }
+
+    // Guardar via RPC SECURITY DEFINER
+    let res;
+    try {
       const token = window.PVAuth?.getToken?.();
       const headers = {
         'apikey': SUPA_KEY,
@@ -73,22 +118,22 @@
         p_timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/Argentina/Buenos_Aires',
         p_user_agent: navigator.userAgent.slice(0, 200)
       };
-      const res = await fetch(`${SUPA_URL}/rest/v1/rpc/upsert_push_subscription`, {
+      res = await fetch(`${SUPA_URL}/rest/v1/rpc/upsert_push_subscription`, {
         method: 'POST', headers, body: JSON.stringify(body)
       });
-      if (res.ok) {
-        const subId = await res.json().catch(() => null);
-        try { localStorage.setItem(SUB_SAVED_KEY, endpoint); } catch {}
-        console.log('[Push] Suscripción guardada en servidor, id:', subId);
-        return true;
-      }
-      const errTxt = await res.text().catch(() => '');
-      console.warn('[Push] Server save failed', res.status, errTxt);
-      return false;
     } catch (e) {
-      console.error('[Push] Error subscribing:', e);
-      return false;
+      return { ok: false, stage: 'network', error: 'Error de red al guardar en el servidor: ' + (e.message || e) };
     }
+
+    if (!res.ok) {
+      const errTxt = await res.text().catch(() => '');
+      return { ok: false, stage: 'rpc', error: 'El servidor rechazó la suscripción (HTTP ' + res.status + '): ' + errTxt.slice(0, 200) };
+    }
+
+    const subId = await res.json().catch(() => null);
+    try { localStorage.setItem(SUB_SAVED_KEY, endpoint); } catch {}
+    console.log('[Push] Suscripción guardada en servidor, id:', subId);
+    return { ok: true, subscriptionId: subId, endpoint };
   }
 
   // Auto-suscribe si el usuario YA dio permiso pero todavía no se guardó la
@@ -102,11 +147,32 @@
       const t = settings.time || '08:00';
       const [hh, mm] = t.split(':').map(n => parseInt(n, 10));
       console.log('[Recordatorio] Auto-suscribiendo (permiso ya concedido)…');
-      const ok = await subscribeToPush(hh, mm);
-      if (ok) {
+      const result = await subscribeToPush(hh, mm);
+      if (result.ok) {
         saveSettings({ ...settings, enabled: true, time: t });
         scheduleNextNotification();
         if (card) renderCardContent(card);
+      } else {
+        console.warn('[Recordatorio] auto-subscribe falló — etapa:', result.stage, '— error:', result.error);
+        // Mostrar el error en la card si está visible
+        if (card) {
+          const errBox = card.querySelector('#pv-rem-autoerr') || (() => {
+            const d = document.createElement('div');
+            d.id = 'pv-rem-autoerr';
+            d.className = 'pv-rem-step error';
+            card.querySelector('h3')?.insertAdjacentElement('afterend', d);
+            return d;
+          })();
+          errBox.innerHTML = `
+            <div class="pv-rem-step-content">
+              <span class="pv-rem-status-icon">⚠️</span>
+              <div>
+                <h4>No se pudo conectar con el servidor de notificaciones</h4>
+                <p><strong>Etapa:</strong> ${result.stage}<br><strong>Detalle:</strong> ${result.error}</p>
+                <p style="margin-top:6px"><em>Las notificaciones locales sí funcionarán mientras la app esté abierta. Tocá "🔍 Diagnosticar" para más info.</em></p>
+              </div>
+            </div>`;
+        }
       }
     } finally {
       _autoSubscribing = false;
@@ -573,15 +639,24 @@
           const timeInpNow = card.querySelector('#pv-rem-time');
           const t = timeInpNow?.value || '08:00';
           const [hh, mm] = t.split(':').map(n => parseInt(n, 10));
-          const ok = await subscribeToPush(hh, mm);
+          const result = await subscribeToPush(hh, mm);
           saveSettings({ enabled: true, time: t });
           scheduleNextNotification();
-          if (ok) {
+          if (result.ok) {
             oneShotBtn.textContent = '✓ ¡Activado!';
+            setTimeout(() => renderCardContent(card), 1000);
           } else {
-            oneShotBtn.textContent = '⚠️ Activado solo localmente';
+            oneShotBtn.textContent = '⚠️ Hubo un problema';
+            console.error('[Recordatorio] Sub falló — etapa:', result.stage, '— error:', result.error);
+            alert(
+              'No se pudo activar las notificaciones en el servidor.\n\n' +
+              '📍 Etapa donde falló: ' + result.stage + '\n\n' +
+              '🐛 Detalle: ' + result.error + '\n\n' +
+              'Igual las notificaciones LOCALES funcionarán mientras tengas la app abierta. ' +
+              'Tocá "🔍 Diagnosticar" para más info.'
+            );
+            setTimeout(() => renderCardContent(card), 1500);
           }
-          setTimeout(() => renderCardContent(card), 1000);
         } catch (e) {
           console.error('[Recordatorio] Error activación:', e);
           oneShotBtn.disabled = false;
@@ -600,7 +675,10 @@
         saveSettings({ ...settings, time: t });
         if (Notification.permission === 'granted') {
           const [hh, mm] = t.split(':').map(n => parseInt(n, 10));
-          await subscribeToPush(hh, mm);
+          const result = await subscribeToPush(hh, mm);
+          if (!result.ok) {
+            console.warn('[Recordatorio] re-sub al cambiar hora falló:', result.stage, result.error);
+          }
         }
         scheduleNextNotification();
       };
@@ -696,7 +774,8 @@
       const t = settings.time || '08:00';
       const [hh, mm] = t.split(':').map(n => parseInt(n, 10));
       console.log('[Recordatorio] Re-asociando suscripción anónima al usuario logueado…');
-      await subscribeToPush(hh, mm);
+      const result = await subscribeToPush(hh, mm);
+      if (!result.ok) console.warn('[Recordatorio] sync post-login falló:', result.stage, result.error);
     } catch (e) { console.warn('[Recordatorio] auto-sync fail:', e); }
   });
 

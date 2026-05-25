@@ -269,16 +269,21 @@
         <h1>${story.title}</h1>
 
         ${aud.length ? `
-        <div class="pv-kids-human-audio" style="background:linear-gradient(135deg,#fef3c7,#fde68a);border:2px solid #b45309;border-radius:18px;padding:14px;display:flex;flex-direction:column;gap:10px">
-          <div style="display:flex;align-items:center;gap:10px">
-            <span style="font-size:32px;line-height:1">🎙️</span>
+        <div class="pv-kids-human-audio" style="background:linear-gradient(135deg,#fef3c7,#fde68a);border:3px solid #b45309;border-radius:20px;padding:16px;display:flex;flex-direction:column;gap:12px;box-shadow:0 6px 18px rgba(180,83,9,.15)">
+          <div style="display:flex;align-items:center;gap:10px;border-bottom:1px dashed rgba(180,83,9,.35);padding-bottom:10px">
+            <span style="font-size:36px;line-height:1">🎙️</span>
             <div style="flex:1">
-              <div style="font-weight:900;color:#92400e;font-size:15px;line-height:1.2">Voz humana narrada</div>
-              <div style="font-size:12px;color:#7c4a1e;line-height:1.3">Oceano Multimedia — narración real, no robótica</div>
+              <div style="font-weight:900;color:#92400e;font-size:16px;line-height:1.2;text-transform:uppercase;letter-spacing:.04em">Audio narrado</div>
+              <div style="font-size:11px;color:#7c4a1e;line-height:1.3">Voz humana real — Oceano Multimedia</div>
             </div>
           </div>
+          <div style="background:rgba(255,255,255,.7);border-radius:14px;padding:12px;text-align:center">
+            <div style="font-size:11px;color:#7c4a1e;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">📻 Ahora suena</div>
+            <div style="font-size:18px;font-weight:900;color:#92400e;line-height:1.25">${story.title}</div>
+            <div style="font-size:13px;color:#7c4a1e;margin-top:4px;font-weight:600">📖 ${story.ref}</div>
+          </div>
           <audio class="pv-kids-player" controls preload="metadata" src="${aud[0]}" style="width:100%"></audio>
-          <div class="pv-kids-audio-status" style="font-size:12px;color:#7c4a1e;text-align:center;min-height:16px"></div>
+          <div class="pv-kids-audio-status" style="font-size:13px;color:#7c4a1e;text-align:center;min-height:18px;font-weight:600"></div>
         </div>
         ` : `
         <div class="pv-kids-audio-note" style="background:#fff;border:1px dashed #d1b083;border-radius:14px;padding:12px;color:#7c4a1e">
