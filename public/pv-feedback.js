@@ -105,21 +105,48 @@
       btn.disabled = true;
       btn.textContent = '⏳ Enviando…';
 
-      // 1) Guardar en Supabase (siempre intenta, no bloquea si falla)
-      let savedOk = false;
-      let supabaseError = '';
+      // 1) PRINCIPAL: Edge Function que manda el mail directo via Gmail SMTP.
+      //    Antes confiábamos en mailto: pero muchos celulares no lo abren —
+      //    por eso "no llegaban" los correos. Ahora el server lo manda.
+      let emailSent = false;
+      let emailError = '';
       try {
-        const token = window.PVAuth?.getToken?.();
-        const headers = {
-          'apikey': SUPA_KEY,
-          'Content-Type': 'application/json',
-          'Prefer': 'return=minimal'
-        };
-        if (token) headers['Authorization'] = 'Bearer ' + token;
-        else        headers['Authorization'] = 'Bearer ' + SUPA_KEY; // anon
-        const res = await fetch(`${SUPA_URL}/rest/v1/suggestions`, {
+        const res = await fetch(`${SUPA_URL}/functions/v1/send-suggestion-email`, {
           method: 'POST',
-          headers,
+          headers: {
+            'apikey': SUPA_KEY,
+            'Authorization': 'Bearer ' + SUPA_KEY,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            name: name || '',
+            email: email || '',
+            message,
+            user_agent: navigator.userAgent.slice(0, 200)
+          })
+        });
+        const data = await res.json().catch(() => ({}));
+        emailSent = res.ok && data?.ok === true;
+        if (!emailSent) {
+          emailError = data?.error || `HTTP ${res.status}`;
+          console.warn('[Feedback] Edge function falló:', emailError);
+        }
+      } catch (e) {
+        emailError = e.message || String(e);
+        console.warn('[Feedback] Edge function error:', e);
+      }
+
+      // 2) BACKUP: guardar también en Supabase para que la admin lo vea en
+      //    el panel admin aunque el mail falle.
+      try {
+        await fetch(`${SUPA_URL}/rest/v1/suggestions`, {
+          method: 'POST',
+          headers: {
+            'apikey': SUPA_KEY,
+            'Authorization': 'Bearer ' + SUPA_KEY,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=minimal'
+          },
           body: JSON.stringify({
             user_id: window.PVAuth?.getUser?.()?.id || null,
             email: email || null,
@@ -128,19 +155,21 @@
             user_agent: navigator.userAgent.slice(0, 200)
           })
         });
-        savedOk = res.ok;
-        if (!savedOk) {
-          const txt = await res.text().catch(() => '?');
-          supabaseError = `HTTP ${res.status}: ${txt.slice(0,200)}`;
-          console.warn('[Feedback] Supabase falló:', supabaseError);
-        }
-      } catch (e) {
-        supabaseError = e.message || String(e);
-        console.warn('[Feedback] error red:', e);
+      } catch (e) { console.warn('[Feedback] Supabase backup falló:', e); }
+
+      // 3) Feedback al usuario
+      if (emailSent) {
+        // Caso ideal: el mail YA salió. No abrimos mailto.
+        showMsg(`✅ ¡Gracias! Tu sugerencia se envió a ${ADMIN_EMAIL}.\nVamos a leerla y, si dejaste tu email, te respondemos.`, 'ok');
+        btn.disabled = false;
+        btn.textContent = '✓ Enviado';
+        setTimeout(() => close(), 2500);
+        return;
       }
 
-      // 2) ABRIR SIEMPRE el cliente de mail con la sugerencia pre-llenada
-      //    Este es el camino principal — Supabase es solo backup para el admin.
+      // FALLBACK: si la edge function falló, abrimos el cliente de mail
+      // como antes (al menos algunos usuarios pueden enviarlo manualmente).
+      console.warn('[Feedback] Cayendo al fallback mailto. Detalle:', emailError);
       const subject = encodeURIComponent('💌 Sugerencia de Palabra Viva' + (name ? ` — ${name}` : ''));
       const bodyLines = [
         `Hola Mariela, te dejo una sugerencia para Palabra Viva:`,
@@ -150,22 +179,14 @@
         `— ${name || 'Un usuario'}`,
         email ? `Email para responder: ${email}` : '',
         '',
-        '(Enviado desde palabra-viva-oficepro.vercel.app)'
+        '(Enviado desde palabraviva-ar.vercel.app)'
       ].filter(Boolean);
       const body = encodeURIComponent(bodyLines.join('\n'));
       const mailto = `mailto:${ADMIN_EMAIL}?subject=${subject}&body=${body}`;
 
-      // Feedback claro al usuario
-      if (savedOk) {
-        showMsg(`✅ ¡Gracias! Tu sugerencia quedó guardada.\nAhora abrimos tu correo para que también le llegue al instante a ${ADMIN_EMAIL}.`, 'ok');
-      } else {
-        showMsg(`Abriendo tu correo para enviarla a ${ADMIN_EMAIL}.\nAsí seguro le llega aunque haya problemas con el servidor.`, 'ok');
-      }
-
+      showMsg(`No pudimos enviar automáticamente. Abrimos tu correo para que la envíes vos.`, 'ok');
       btn.disabled = false;
       btn.textContent = '📨 Abrir correo';
-
-      // Auto-abrir mailto después de 1.2s (le da tiempo al usuario de leer)
       const openMail = () => { window.location.href = mailto; setTimeout(() => close(), 1200); };
       btn.onclick = openMail;
       setTimeout(openMail, 1200);
