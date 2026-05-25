@@ -71,6 +71,56 @@ const plans=[
     'Salmos 23','Salmos 34','Salmos 42','Salmos 71','Salmos 73','Lamentaciones 3',
     'Juan 11','Juan 14','Romanos 8','2 Corintios 1','2 Corintios 4','1 Tesalonicenses 4',
     'Apocalipsis 21','Mateo 5'
+  ]},
+  {id:'mujeres14',title:'14 días con mujeres de fe',days:[
+    'Génesis 21','Génesis 24','Éxodo 2','Rut 1','Rut 2','1 Samuel 1',
+    'Ester 4','Proverbios 31','Lucas 1','Lucas 10','Juan 4','Hechos 16',
+    'Hechos 18','2 Timoteo 1'
+  ]},
+  {id:'padres10',title:'10 días para padres y madres con propósito',days:[
+    'Deuteronomio 6','Salmos 127','Salmos 128','Proverbios 22','Proverbios 31',
+    'Efesios 6','Colosenses 3','1 Tesalonicenses 2','3 Juan 1','Mateo 18'
+  ]},
+  {id:'casados21',title:'21 días para matrimonios sanos',days:[
+    'Génesis 2','Cantares 2','Cantares 8','Proverbios 5','Proverbios 18',
+    'Eclesiastés 4','Malaquías 2','Mateo 5','Mateo 19','Marcos 10',
+    '1 Corintios 7','1 Corintios 13','Efesios 4','Efesios 5','Filipenses 2',
+    'Colosenses 3','Hebreos 13','1 Pedro 3','1 Pedro 4','1 Juan 4','Apocalipsis 19'
+  ]},
+  {id:'emprender14',title:'14 días para emprender con fe',days:[
+    'Génesis 1','Eclesiastés 9','Eclesiastés 11','Proverbios 6','Proverbios 16',
+    'Proverbios 21','Proverbios 31','Isaías 40','Mateo 25','Lucas 14',
+    'Lucas 16','Romanos 12','Colosenses 3','Santiago 4'
+  ]},
+  {id:'sanacion14',title:'14 días de sanación interior',days:[
+    'Salmos 6','Salmos 30','Salmos 51','Salmos 91','Salmos 103','Salmos 116',
+    'Salmos 147','Isaías 53','Isaías 61','Jeremías 17','Mateo 11','Marcos 5',
+    'Lucas 8','1 Pedro 2'
+  ]},
+  {id:'desanimo7',title:'7 días cuando todo cuesta',days:[
+    '1 Reyes 19','Salmos 42','Salmos 88','Lamentaciones 3',
+    'Mateo 11','2 Corintios 4','Hebreos 12'
+  ]},
+  {id:'gratitud21',title:'21 días de gratitud',days:[
+    'Salmos 100','Salmos 103','Salmos 107','Salmos 116','Salmos 118',
+    'Salmos 136','Salmos 138','Salmos 145','1 Crónicas 16','Daniel 6',
+    'Lucas 17','Filipenses 4','Colosenses 3','1 Tesalonicenses 5',
+    '2 Corintios 9','Efesios 5','Hebreos 12','Apocalipsis 7','Salmos 95',
+    'Salmos 96','Salmos 150'
+  ]},
+  {id:'promesas30',title:'30 promesas de Dios',days:[
+    'Génesis 9','Génesis 12','Génesis 28','Éxodo 14','Deuteronomio 31',
+    'Josué 1','Salmos 23','Salmos 27','Salmos 34','Salmos 91',
+    'Isaías 40','Isaías 41','Isaías 43','Isaías 54','Isaías 55',
+    'Jeremías 29','Jeremías 31','Ezequiel 36','Mateo 6','Mateo 28',
+    'Juan 10','Juan 14','Romanos 8','2 Corintios 1','Filipenses 4',
+    '2 Timoteo 1','Hebreos 13','Santiago 1','1 Pedro 5','Apocalipsis 21'
+  ]},
+  {id:'jesus-at21',title:'21 días: Jesús en el Antiguo Testamento',days:[
+    'Génesis 3','Génesis 22','Éxodo 12','Levítico 16','Números 21',
+    'Deuteronomio 18','Josué 5','Rut 4','2 Samuel 7','Salmos 22',
+    'Salmos 110','Isaías 7','Isaías 9','Isaías 53','Jeremías 23',
+    'Ezequiel 34','Daniel 7','Miqueas 5','Zacarías 9','Zacarías 12','Malaquías 4'
   ]}
 ];
 const prayers=[['Primera oración','Dios, no sé todo, pero quiero acercarme. Mostrame quién sos y guiame paso a paso.'],['Paz mental','Señor, calmá mis pensamientos y ayudame a vivir este día con claridad.'],['Familia','Dios, cuidá mi casa y saná lo que duele.'],['Perdón','Señor, dame humildad para reconocer errores y fuerza para cambiar.']];

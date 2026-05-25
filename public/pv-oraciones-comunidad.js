@@ -341,5 +341,101 @@
     };
   }
 
-  window.PVOracionesComunidad = { open };
+  // ── Home card: muestra 1 petición reciente + CTA al panel completo ──────
+  function isHomeTab() {
+    return (document.querySelector('h1')?.textContent || '').toLowerCase().includes('palabra para hoy');
+  }
+
+  function injectHomeStyles() {
+    if (document.getElementById('pv-orac-home-style')) return;
+    const st = document.createElement('style');
+    st.id = 'pv-orac-home-style';
+    st.textContent = `
+      .pv-orac-home-card{background:linear-gradient(135deg,var(--card),rgba(154,58,58,.05));border:1px solid var(--line);border-radius:18px;padding:14px 16px;display:flex;flex-direction:column;gap:10px;cursor:pointer}
+      .pv-orac-home-card:hover{border-color:var(--brand)}
+      .pv-orac-home-card .pv-orac-home-eyebrow{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--brand);font-weight:700;font-family:var(--font-sans);display:flex;align-items:center;justify-content:space-between;gap:8px}
+      .pv-orac-home-card h3{margin:0;font-size:18px;letter-spacing:-.01em}
+      .pv-orac-home-card .pv-orac-home-quote{background:var(--card2);border-left:3px solid var(--brand);padding:10px 12px;border-radius:0 10px 10px 0;font-size:14px;line-height:1.5;font-style:italic;color:var(--text);max-height:80px;overflow:hidden;position:relative}
+      .pv-orac-home-card .pv-orac-home-quote::after{content:'';position:absolute;bottom:0;left:0;right:0;height:24px;background:linear-gradient(to bottom,transparent,var(--card2))}
+      .pv-orac-home-card .pv-orac-home-meta{font-size:12px;color:var(--muted);font-family:var(--font-sans);display:flex;justify-content:space-between;gap:8px}
+      .pv-orac-home-card .pv-orac-home-cta{background:var(--brand);color:#fbf3df;border:0;border-radius:999px;padding:10px;font-weight:700;font-size:13px;cursor:pointer;font-family:var(--font-sans);min-height:42px;width:100%;margin-top:2px}
+    `;
+    document.head.appendChild(st);
+  }
+
+  let _homeCardLoaded = false;
+  async function renderHomeCard() {
+    if (!isHomeTab()) {
+      document.querySelector('.pv-orac-home-card')?.remove();
+      _homeCardLoaded = false;
+      return;
+    }
+    if (document.querySelector('.pv-orac-home-card')) return;
+    if (_homeCardLoaded) return;
+    _homeCardLoaded = true;
+
+    injectHomeStyles();
+    // Insertar después de la card de racha o del recordatorio, antes del menú "Más"
+    const stack = document.querySelector('.app .stack');
+    if (!stack) return;
+    const anchor = document.querySelector('.pv-rem-card') || document.querySelector('.pv-racha-card') || stack.children[2];
+
+    const card = document.createElement('section');
+    card.className = 'pv-orac-home-card';
+    card.setAttribute('role', 'button');
+    card.setAttribute('tabindex', '0');
+    card.innerHTML = `
+      <div class="pv-orac-home-eyebrow">
+        <span>🙏 Oramos juntos</span>
+        <span style="color:var(--muted);font-weight:400">⏳ cargando…</span>
+      </div>
+      <h3>Llevamos cargas unos por otros</h3>
+    `;
+    card.onclick = open;
+    if (anchor && anchor.parentElement === stack) {
+      anchor.insertAdjacentElement('afterend', card);
+    } else {
+      stack.appendChild(card);
+    }
+
+    // Cargar petición destacada (la más reciente)
+    try {
+      const prayers = await listPrayers();
+      if (!prayers.length) {
+        card.innerHTML = `
+          <div class="pv-orac-home-eyebrow">
+            <span>🙏 Oramos juntos</span>
+          </div>
+          <h3>Sé el primero/a en pedir oración</h3>
+          <p style="margin:0;font-size:14px;color:var(--muted);line-height:1.5">Compartí lo que cargás hoy. La comunidad va a orar por vos.</p>
+          <button class="pv-orac-home-cta">✍️ Pedir oración</button>
+        `;
+        card.querySelector('button').onclick = (e) => { e.stopPropagation(); open(); };
+      } else {
+        const p = prayers[0];
+        const cat = CATEGORIES.find(c => c.id === p.category) || CATEGORIES[0];
+        card.innerHTML = `
+          <div class="pv-orac-home-eyebrow">
+            <span>🙏 Oramos juntos</span>
+            <span style="color:var(--muted);font-weight:400">${prayers.length} peticiones</span>
+          </div>
+          <h3>${cat.emoji} ${cat.label} · ${timeAgo(p.approved_at || p.created_at)}</h3>
+          <div class="pv-orac-home-quote">${escape(p.request_text)}</div>
+          <div class="pv-orac-home-meta">
+            <span>— ${escape(p.display_name || 'Anónimo/a')}</span>
+            <span>🙏 ${p.prayer_count || 0} orando</span>
+          </div>
+          <button class="pv-orac-home-cta">Ver todas las peticiones</button>
+        `;
+      }
+    } catch {
+      card.remove();
+      _homeCardLoaded = false;
+    }
+  }
+
+  // Re-render al cambiar de tab
+  setInterval(renderHomeCard, 4000);
+
+  window.PVOracionesComunidad = { open, renderHomeCard };
 })();
