@@ -2,19 +2,15 @@
   // ===========================================================================
   // PALABRA VIVA — Gate de autenticación para usuarios NUEVOS
   // ===========================================================================
-  // Comportamiento:
+  // Comportamiento (MODO ESTRICTO):
   //   - Usuario con sesión activa (logueado) → entra directo, sin gate.
-  //   - Usuario que YA usó la app alguna vez (flag pv-onboarded) → entra
-  //     directo, sin gate. Puede iniciar sesión voluntariamente desde Ajustes.
-  //   - Usuario NUEVO sin sesión y sin flag → pantalla bloqueante con
-  //     "Crear cuenta" o "Iniciar sesión". No puede saltarse.
+  //   - Usuario SIN sesión → pantalla bloqueante con "Crear cuenta" o
+  //     "Iniciar sesión". No puede saltarse. Aplica a TODOS — usuarios
+  //     nuevos Y existentes. Para usar la app, hay que tener cuenta.
   //
-  // El flag pv-onboarded se setea automáticamente cuando:
-  //   - El usuario crea una cuenta (cualquier provider).
-  //   - El usuario inicia sesión con credenciales válidas.
-  // Una vez seteado, NO se borra al cerrar sesión — la persona ya pasó
-  // por el embudo de registro, no la obligamos otra vez si volviera a
-  // entrar como anónima.
+  // Antes existía un flag pv-onboarded que dejaba pasar a usuarios que ya
+  // habían pasado por el gate alguna vez. Se removió por pedido de la
+  // dueña: "quiero que todos si si tengan que registrarse".
 
   const ONBOARDED_KEY = 'pv-onboarded';
 
@@ -135,18 +131,11 @@
 
   function evaluate() {
     if (hasSession()) {
-      // Sesión activa → marcar como onboarded y cerrar gate si estuviera
-      markOnboarded();
+      // Sesión activa → entrar a la app
       if (_shown) hideGate();
       return;
     }
-    if (isOnboarded()) {
-      // Ya pasó por el gate alguna vez (hizo logout o expiró sesión) →
-      // no obligamos otra vez, dejamos usar la app sin login.
-      if (_shown) hideGate();
-      return;
-    }
-    // Usuario nuevo y sin sesión → mostrar gate bloqueante
+    // SIN sesión → siempre mostrar gate bloqueante (TODOS deben registrarse)
     showGate();
   }
 
