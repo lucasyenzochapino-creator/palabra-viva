@@ -394,8 +394,39 @@
     if (!users.length) {
       usEl.innerHTML = '<h2>👥 Usuarios</h2><div class="pv-adm-empty">No hay usuarios registrados todavía.</div>';
     } else {
+      function renderUserRows(filterText) {
+        const filtered = filterText
+          ? users.filter(u => {
+              const q = filterText.toLowerCase();
+              return (u.email||'').toLowerCase().includes(q)
+                  || (u.display_name||'').toLowerCase().includes(q);
+            })
+          : users;
+        return `<tbody>${filtered.map(u => `<tr data-uid="${u.id}">
+            <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${u.email || '—'}</td>
+            <td>
+              <span class="pv-adm-badge ${u.role}">${u.role === 'admin' ? '👑 Admin' : 'Usuario'}</span>
+              ${u.is_premium ? '<span class="pv-adm-badge premium" style="margin-left:4px">⭐</span>' : ''}
+              ${u.is_suspended ? '<span class="pv-adm-badge" style="background:#7f1d1d;color:#fff;margin-left:4px">🚫</span>' : ''}
+            </td>
+            <td style="font-size:12px;color:var(--muted,#c8c5d8)">${u.created_at ? new Date(u.created_at).toLocaleDateString('es-AR') : '—'}</td>
+            <td>
+              <div style="display:flex;gap:6px;flex-wrap:wrap">
+                ${!u.is_premium ? `<button class="pv-adm-btn-sm" data-prem="${u.id}">⭐</button>` : `<button class="pv-adm-btn-sm danger" data-unprem="${u.id}">Quitar ⭐</button>`}
+                ${u.role !== 'admin' ? `<button class="pv-adm-btn-sm" data-make-admin="${u.id}">👑</button>` : `<button class="pv-adm-btn-sm danger" data-remove-admin="${u.id}">Quitar 👑</button>`}
+                ${!u.is_suspended ? `<button class="pv-adm-btn-sm danger" data-suspend="${u.id}">🚫</button>` : `<button class="pv-adm-btn-sm" data-unsuspend="${u.id}">↺</button>`}
+                <button class="pv-adm-btn-sm" data-reset-pwd="${u.id}" title="Resetear contraseña">🔑</button>
+              </div>
+            </td>
+          </tr>`).join('') || '<tr><td colspan="4" class="pv-adm-empty">Sin resultados</td></tr>'}</tbody>`;
+      }
+
       usEl.innerHTML = `<h2>👥 Usuarios <span style="font-size:13px;color:var(--muted,#c8c5d8);font-weight:400">(${users.length})</span></h2>
-        <div style="overflow-x:auto">
+        <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;align-items:center">
+          <input type="search" id="pv-adm-search" placeholder="🔎 Buscar por email o nombre…" style="flex:1;min-width:200px;background:var(--card2,#202031);border:1px solid var(--line,#333447);color:var(--text,#f8fafc);border-radius:999px;padding:8px 14px;font:inherit;font-size:13px;outline:none">
+          <button class="pv-adm-btn-sm" id="pv-adm-export-users">📥 Exportar CSV</button>
+        </div>
+        <div style="overflow-x:auto" id="pv-adm-users-tbl-wrap">
         <table class="pv-adm-table">
           <thead><tr>
             <th>Email</th>
@@ -403,55 +434,38 @@
             <th>Registrado</th>
             <th>Acciones</th>
           </tr></thead>
-          <tbody>
-          ${users.map(u => `<tr data-uid="${u.id}">
-            <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${u.email || '—'}</td>
-            <td>
-              <span class="pv-adm-badge ${u.role}">${u.role === 'admin' ? '👑 Admin' : 'Usuario'}</span>
-              ${u.is_premium ? '<span class="pv-adm-badge premium" style="margin-left:4px">⭐ Premium</span>' : ''}
-              ${u.is_suspended ? '<span class="pv-adm-badge" style="background:#7f1d1d;color:#fff;margin-left:4px">🚫 Suspendido</span>' : ''}
-            </td>
-            <td style="font-size:12px;color:var(--muted,#c8c5d8)">${u.created_at ? new Date(u.created_at).toLocaleDateString('es-AR') : '—'}</td>
-            <td>
-              <div style="display:flex;gap:6px;flex-wrap:wrap">
-                ${!u.is_premium ? `<button class="pv-adm-btn-sm" data-prem="${u.id}">⭐ Premium</button>` : `<button class="pv-adm-btn-sm danger" data-unprem="${u.id}">Quitar premium</button>`}
-                ${u.role !== 'admin' ? `<button class="pv-adm-btn-sm" data-make-admin="${u.id}">👑 Admin</button>` : `<button class="pv-adm-btn-sm danger" data-remove-admin="${u.id}">Quitar admin</button>`}
-                ${!u.is_suspended ? `<button class="pv-adm-btn-sm danger" data-suspend="${u.id}">🚫 Suspender</button>` : `<button class="pv-adm-btn-sm" data-unsuspend="${u.id}">↺ Reactivar</button>`}
-              </div>
-            </td>
-          </tr>`).join('')}
-          </tbody>
+          ${renderUserRows('')}
         </table></div>`;
 
+      // Buscador
+      const searchInp = $('#pv-adm-search', usEl);
+      const tblWrap = $('#pv-adm-users-tbl-wrap', usEl);
+      searchInp.addEventListener('input', () => {
+        const tbody = tblWrap.querySelector('tbody');
+        if (tbody) tbody.outerHTML = renderUserRows(searchInp.value.trim());
+        attachUserHandlers();
+      });
+
+      // Exportar CSV
+      $('#pv-adm-export-users', usEl).addEventListener('click', () => {
+        const csvHeader = 'email,nombre,rol,premium,suspendido,creado\n';
+        const csvBody = users.map(u =>
+          [u.email||'', u.display_name||'', u.role||'', u.is_premium?'si':'no', u.is_suspended?'si':'no', u.created_at||'']
+            .map(v => '"' + String(v).replace(/"/g, '""') + '"').join(',')
+        ).join('\n');
+        const blob = new Blob([csvHeader + csvBody], { type: 'text/csv;charset=utf-8' });
+        const url  = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'palabraviva-usuarios-' + new Date().toISOString().slice(0,10) + '.csv';
+        document.body.appendChild(a); a.click();
+        setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
+      });
+
+      function attachUserHandlers() {
+
       // Botones acciones
-      usEl.querySelectorAll('[data-prem]').forEach(btn => {
-        btn.addEventListener('click', async () => {
-          const uid = btn.dataset.prem;
-          btn.disabled = true; btn.textContent = '⏳';
-          const { ok } = await supa(`/rest/v1/profiles?id=eq.${uid}`, {
-            method: 'PATCH',
-            body: JSON.stringify({ is_premium: true }),
-            headers: { 'Prefer': 'return=minimal' }
-          });
-          if (ok) { btn.textContent = '✅'; setTimeout(loadData, 800); }
-          else { btn.textContent = '❌ Error'; btn.disabled = false; }
-        });
-      });
-      usEl.querySelectorAll('[data-unprem]').forEach(btn => {
-        btn.addEventListener('click', async () => {
-          const uid = btn.dataset.unprem;
-          btn.disabled = true; btn.textContent = '⏳';
-          const { ok } = await supa(`/rest/v1/profiles?id=eq.${uid}`, {
-            method: 'PATCH',
-            body: JSON.stringify({ is_premium: false }),
-            headers: { 'Prefer': 'return=minimal' }
-          });
-          if (ok) { btn.textContent = '✅'; setTimeout(loadData, 800); }
-          else { btn.textContent = '❌ Error'; btn.disabled = false; }
-        });
-      });
-      // Hacer admin / quitar admin / suspender / reactivar — via RPC admin_set_user_status
-      async function userAction(uid, action, confirmMsg, label) {
+      async function userAction(uid, action, confirmMsg) {
         if (confirmMsg && !confirm(confirmMsg)) return false;
         const { ok, data } = await supa('/rest/v1/rpc/admin_set_user_status', {
           method: 'POST',
@@ -463,30 +477,73 @@
         }
         return true;
       }
-      usEl.querySelectorAll('[data-make-admin]').forEach(btn => btn.addEventListener('click', async () => {
-        const uid = btn.dataset.makeAdmin;
-        btn.disabled = true; btn.textContent = '⏳';
-        const ok = await userAction(uid, 'make_admin', '¿Hacer ADMIN a este usuario? Va a poder ver y modificar todo este panel.', 'admin');
-        if (ok) setTimeout(loadData, 600); else { btn.disabled = false; btn.textContent = '👑 Admin'; }
-      }));
-      usEl.querySelectorAll('[data-remove-admin]').forEach(btn => btn.addEventListener('click', async () => {
-        const uid = btn.dataset.removeAdmin;
-        btn.disabled = true; btn.textContent = '⏳';
-        const ok = await userAction(uid, 'remove_admin', '¿Quitar permisos de admin a este usuario? Va a quedar como usuario normal.');
-        if (ok) setTimeout(loadData, 600); else { btn.disabled = false; btn.textContent = 'Quitar admin'; }
-      }));
-      usEl.querySelectorAll('[data-suspend]').forEach(btn => btn.addEventListener('click', async () => {
-        const uid = btn.dataset.suspend;
-        btn.disabled = true; btn.textContent = '⏳';
-        const ok = await userAction(uid, 'suspend', '¿Suspender este usuario? No va a poder usar funciones que requieren login (oraciones, sync, etc.). Lo podés reactivar después.');
-        if (ok) setTimeout(loadData, 600); else { btn.disabled = false; btn.textContent = '🚫 Suspender'; }
-      }));
-      usEl.querySelectorAll('[data-unsuspend]').forEach(btn => btn.addEventListener('click', async () => {
-        const uid = btn.dataset.unsuspend;
-        btn.disabled = true; btn.textContent = '⏳';
-        const ok = await userAction(uid, 'unsuspend');
-        if (ok) setTimeout(loadData, 600); else { btn.disabled = false; btn.textContent = '↺ Reactivar'; }
-      }));
+
+      attachUserHandlers();
+      function _attachInner() {
+        usEl.querySelectorAll('[data-prem]').forEach(btn => btn.addEventListener('click', async () => {
+          const uid = btn.dataset.prem;
+          btn.disabled = true; btn.textContent = '⏳';
+          const { ok } = await supa(`/rest/v1/profiles?id=eq.${uid}`, {
+            method: 'PATCH', body: JSON.stringify({ is_premium: true }),
+            headers: { 'Prefer': 'return=minimal' }
+          });
+          if (ok) { btn.textContent = '✅'; setTimeout(loadData, 800); }
+          else { btn.textContent = '❌'; btn.disabled = false; }
+        }));
+        usEl.querySelectorAll('[data-unprem]').forEach(btn => btn.addEventListener('click', async () => {
+          const uid = btn.dataset.unprem;
+          btn.disabled = true; btn.textContent = '⏳';
+          const { ok } = await supa(`/rest/v1/profiles?id=eq.${uid}`, {
+            method: 'PATCH', body: JSON.stringify({ is_premium: false }),
+            headers: { 'Prefer': 'return=minimal' }
+          });
+          if (ok) { btn.textContent = '✅'; setTimeout(loadData, 800); }
+          else { btn.textContent = '❌'; btn.disabled = false; }
+        }));
+        usEl.querySelectorAll('[data-make-admin]').forEach(btn => btn.addEventListener('click', async () => {
+          btn.disabled = true; btn.textContent = '⏳';
+          const ok = await userAction(btn.dataset.makeAdmin, 'make_admin', '¿Hacer ADMIN a este usuario? Va a poder ver y modificar todo este panel.');
+          if (ok) setTimeout(loadData, 600); else { btn.disabled = false; btn.textContent = '👑'; }
+        }));
+        usEl.querySelectorAll('[data-remove-admin]').forEach(btn => btn.addEventListener('click', async () => {
+          btn.disabled = true; btn.textContent = '⏳';
+          const ok = await userAction(btn.dataset.removeAdmin, 'remove_admin', '¿Quitar permisos de admin a este usuario?');
+          if (ok) setTimeout(loadData, 600); else { btn.disabled = false; btn.textContent = 'Quitar 👑'; }
+        }));
+        usEl.querySelectorAll('[data-suspend]').forEach(btn => btn.addEventListener('click', async () => {
+          btn.disabled = true; btn.textContent = '⏳';
+          const ok = await userAction(btn.dataset.suspend, 'suspend', '¿Suspender este usuario? No va a poder usar funciones que requieren login.');
+          if (ok) setTimeout(loadData, 600); else { btn.disabled = false; btn.textContent = '🚫'; }
+        }));
+        usEl.querySelectorAll('[data-unsuspend]').forEach(btn => btn.addEventListener('click', async () => {
+          btn.disabled = true; btn.textContent = '⏳';
+          const ok = await userAction(btn.dataset.unsuspend, 'unsuspend');
+          if (ok) setTimeout(loadData, 600); else { btn.disabled = false; btn.textContent = '↺'; }
+        }));
+        // 🔑 Reset password
+        usEl.querySelectorAll('[data-reset-pwd]').forEach(btn => btn.addEventListener('click', async () => {
+          const uid = btn.dataset.resetPwd;
+          const newPwd = prompt('Nueva contraseña para este usuario (mínimo 8 caracteres). El usuario va a tener que iniciar sesión con esta password después:');
+          if (!newPwd) return;
+          if (newPwd.length < 8) { alert('La contraseña debe tener al menos 8 caracteres.'); return; }
+          btn.disabled = true; btn.textContent = '⏳';
+          const { ok, data } = await supa('/rest/v1/rpc/admin_reset_user_password', {
+            method: 'POST',
+            body: JSON.stringify({ p_user_id: uid, p_new_password: newPwd })
+          });
+          if (ok) {
+            alert('✓ Contraseña reseteada. Decile al usuario que entre con la nueva.');
+            btn.textContent = '🔑';
+            btn.disabled = false;
+          } else {
+            alert('Error: ' + (data?.message || 'no se pudo'));
+            btn.disabled = false; btn.textContent = '🔑';
+          }
+        }));
+      }
+      // attachUserHandlers se redefine en cada render para que el buscador
+      // pueda re-bindear los handlers después de filtrar.
+      function attachUserHandlers() { _attachInner(); }
     }
 
     // ── Donaciones ──
