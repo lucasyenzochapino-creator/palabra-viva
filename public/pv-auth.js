@@ -637,26 +637,35 @@
     });
   }
 
-  // ── Limpieza preventiva: matar overlays huérfanos que bloquean clicks ─────
-  // A veces tras un flujo OAuth/logout queda un .pv-goodbye / .pv-gate / modal
-  // de auth flotando invisible sobre la app y bloquea TODA la barra inferior
-  // (el usuario ve botones pero no responden). Esta función los limpia.
+  // ── Limpieza AGRESIVA: matar overlays huérfanos que bloquean clicks ──────
+  // Si la usuaria tiene sesión activa, NINGÚN overlay de auth/gate/goodbye
+  // debería estar visible. Si los hay, son huérfanos y bloquean los clicks.
+  // Antes la condición del modal estaba mal (mountedAt nunca se seteaba), así
+  // que el modal huérfano nunca se mataba — bug. Ahora se mata sí o sí.
   function killOrphanOverlays() {
-    if (!getUser()) return; // si no hay sesión, gate y modal pueden ser legítimos
-    // Si tenemos sesión activa, NO debería haber goodbye ni gate ni modal de auth
-    document.querySelectorAll('.pv-goodbye').forEach(el => el.remove());
-    document.querySelectorAll('.pv-gate').forEach(el => el.remove());
+    if (!getUser()) return;
+    let killed = 0;
+    document.querySelectorAll('.pv-goodbye').forEach(el => { el.remove(); killed++; });
+    document.querySelectorAll('.pv-gate').forEach(el => { el.remove(); killed++; });
     document.body.classList.remove('pv-gate-open');
-    // Modal de auth NO se mata acá porque puede estar abierto legítimamente
-    // (ej. usuario tocó "Editar perfil"). Solo si hay sesión Y ningún input
-    // activo (el usuario no está escribiendo), lo cerramos:
+    // Modal de auth: si NO hay un input enfocado dentro, es huérfano → matar.
     const modal = document.querySelector('.pv-auth-modal');
-    if (modal && document.activeElement && !modal.contains(document.activeElement)) {
-      // Si el foco está fuera del modal, asumimos huérfano y lo quitamos
-      // (solo si han pasado más de 2s desde que se montó, para no romper UX)
-      const mounted = parseInt(modal.dataset.mountedAt || '0', 10);
-      if (mounted && (Date.now() - mounted > 2000)) modal.remove();
+    if (modal) {
+      const focused = document.activeElement;
+      const focusInsideModal = focused && modal.contains(focused);
+      if (!focusInsideModal) {
+        modal.remove();
+        killed++;
+      }
     }
+    // Backdrop del menú de usuario huérfano (sin menú activo)
+    document.querySelectorAll('.pv-user-menu-backdrop').forEach(bd => {
+      // si NO hay un menú visible al mismo tiempo, es huérfano
+      if (!document.querySelector('.pv-user-menu')) {
+        bd.remove(); killed++;
+      }
+    });
+    if (killed > 0) console.log('[Auth] killOrphanOverlays: limpió', killed, 'overlays');
   }
 
   // ── Actualizar botón de usuario en quick bar ───────────────────────────────
@@ -791,9 +800,13 @@
   // permisos remotamente y el cliente sigue con la sesión vieja)
   setInterval(() => { refreshProfile().catch(() => {}); }, 5 * 60 * 1000);
 
-  // Limpieza agresiva de overlays huérfanos cada 2 segundos.
+  // Limpieza agresiva de overlays huérfanos cada 1 segundo.
   // Si el usuario tiene sesión, NO debería haber gate ni goodbye visibles.
-  setInterval(killOrphanOverlays, 2000);
+  setInterval(killOrphanOverlays, 1000);
+  // Cleanup adicional al cargar la página por primera vez
+  setTimeout(killOrphanOverlays, 300);
+  // Y al click en cualquier lugar del documento (red de seguridad)
+  document.addEventListener('click', () => setTimeout(killOrphanOverlays, 50), true);
 
   // ── API pública ───────────────────────────────────────────────────────────
   window.PVAuth = {
