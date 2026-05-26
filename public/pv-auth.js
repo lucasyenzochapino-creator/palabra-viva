@@ -236,6 +236,63 @@
     localStorage.removeItem(SESSION_KEY);
     document.dispatchEvent(new CustomEvent('pv-auth-change', { detail: null }));
     updateUI();
+
+    // ── SALIR de la app después de cerrar sesión ──────────────────────────
+    // La dueña pidió que al cerrar sesión la app se cierre del todo, no que
+    // quede en el gate de "Crear cuenta". Mostramos un splash de despedida
+    // y intentamos cerrar la PWA (window.close funciona en PWAs standalone).
+    showGoodbyeAndClose();
+  }
+
+  function showGoodbyeAndClose() {
+    // Quitar el gate si está mostrado, así no se ve detrás del splash
+    document.querySelector('.pv-gate')?.remove();
+    document.body.classList.remove('pv-gate-open');
+
+    const splash = document.createElement('div');
+    splash.style.cssText = `
+      position:fixed;inset:0;z-index:999999;
+      background:linear-gradient(180deg,#efe4cd,#e8d8b5);
+      display:flex;align-items:center;justify-content:center;flex-direction:column;
+      color:#6b1f1f;text-align:center;padding:24px;
+      font-family:Georgia,'Cormorant Garamond',serif;
+      animation:pv-goodbye-in .35s ease-out;
+    `;
+    splash.innerHTML = `
+      <style>
+        @keyframes pv-goodbye-in { from { opacity: 0 } to { opacity: 1 } }
+        body[data-theme="dark"] .pv-goodbye { background:linear-gradient(180deg,#1a1108,#2a1810)!important; color:#fbbf24!important }
+      </style>
+      <div style="font-size:80px;margin-bottom:8px">🙏</div>
+      <h1 style="font-size:34px;margin:0 0 8px;letter-spacing:-.02em">Sesión cerrada</h1>
+      <p style="font-size:16px;color:#7c6a4d;font-family:Inter,sans-serif;margin:0 0 8px;max-width:340px;line-height:1.5">
+        Que la Palabra te acompañe en tu día.
+      </p>
+      <p style="font-size:13px;color:#7c6a4d;font-family:Inter,sans-serif;margin:0 0 30px;max-width:340px;line-height:1.5">
+        Cerrando la app…
+      </p>
+      <button id="pv-goodbye-close" style="
+        background:#6b1f1f;color:#fbf3df;border:0;border-radius:999px;
+        padding:14px 32px;font-weight:700;font-size:15px;cursor:pointer;
+        font-family:Inter,sans-serif;
+      ">Cerrar app ahora</button>
+    `;
+    splash.classList.add('pv-goodbye');
+    document.body.appendChild(splash);
+
+    const tryClose = () => {
+      try { window.close(); } catch {}
+      // Si el window.close() no funciona (browser normal, no PWA), intentamos
+      // navegar a about:blank que cierra la pestaña en muchos casos o al
+      // menos deja la app efectivamente "cerrada".
+      setTimeout(() => {
+        try { location.replace('about:blank'); } catch {}
+      }, 300);
+    };
+
+    splash.querySelector('#pv-goodbye-close').onclick = tryClose;
+    // Intento automático a los 1.5s — da tiempo a leer el mensaje
+    setTimeout(tryClose, 1500);
   }
 
   // ── Recuperación de contraseña ─────────────────────────────────────────────
