@@ -760,4 +760,32 @@
 
   // ── API pública ────────────────────────────────────────────────────────────
   window.PVAdmin = { open: openPanel };
+
+  // Auto-abrir el panel admin si la URL trae #admin como hash.
+  // Esto le da al admin un link directo confiable cuando el botón ⚙️ Admin
+  // de la quick bar no responde por algún overlay huérfano o problema de UI.
+  // Uso: https://palabraviva-ar.vercel.app/#admin
+  function checkAdminHashRoute() {
+    if (location.hash === '#admin') {
+      // Esperar a que PVAuth esté listo y verificar admin
+      const tryOpen = (attempts = 0) => {
+        if (window.PVAuth?.isAdmin?.()) {
+          openPanel();
+        } else if (attempts < 30) {
+          // hasta 6s de espera para que cargue la sesión
+          setTimeout(() => tryOpen(attempts + 1), 200);
+        }
+      };
+      tryOpen();
+    }
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', checkAdminHashRoute);
+  } else {
+    checkAdminHashRoute();
+  }
+  // También al cambiar el hash manualmente
+  window.addEventListener('hashchange', () => {
+    if (location.hash === '#admin' && window.PVAuth?.isAdmin?.()) openPanel();
+  });
 })();
