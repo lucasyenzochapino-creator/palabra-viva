@@ -118,6 +118,9 @@
       .pv-orac-intro{background:linear-gradient(135deg,var(--card),var(--card2));border:1px solid var(--line);border-radius:18px;padding:16px;line-height:1.55}
       .pv-orac-intro h2{margin:0 0 6px;font-size:18px}
       .pv-orac-intro p{margin:0;font-size:14px;color:var(--muted)}
+      .pv-orac-how{display:flex;flex-direction:column;gap:12px}
+      .pv-orac-how-step{display:flex;gap:12px;align-items:flex-start;font-size:14px;line-height:1.55;color:var(--text)}
+      .pv-orac-how-num{flex-shrink:0;width:28px;height:28px;background:var(--brand);color:#fbf3df;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;font-family:var(--font-sans)}
       .pv-orac-cta{display:block;width:100%;background:var(--brand);color:#fbf3df;border:0;border-radius:999px;padding:13px;font-weight:700;font-size:15px;cursor:pointer;font-family:var(--font-sans);min-height:48px;margin-top:12px}
       .pv-orac-cats{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px}
       .pv-orac-cat{flex:0 0 auto;border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:999px;padding:8px 14px;font-weight:600;font-size:13px;cursor:pointer;font-family:var(--font-sans)}
@@ -194,9 +197,37 @@
         </div>
 
         <div class="pv-orac-intro">
-          <h2>Llevamos cargas unos por otros</h2>
-          <p>Compartí tu petición de oración (puede ser anónima) o orá por las que otros hermanos publicaron. Cada "Yo oro por esto" suma una persona orando.</p>
-          <button class="pv-orac-cta" id="pv-orac-new">✍️ Pedir oración</button>
+          <h2>Llevamos cargas unos por otros 🙏</h2>
+          <p style="margin-bottom:14px"><strong>¿Cómo funciona?</strong></p>
+
+          <div class="pv-orac-how">
+            <div class="pv-orac-how-step">
+              <div class="pv-orac-how-num">1</div>
+              <div>
+                <strong>Pedís oración</strong> por algo que cargás (salud, familia, trabajo, lo que sea). Podés firmar con tu nombre o quedar como "Anónimo/a".
+                <br><small style="color:var(--muted)">Antes de publicarse pasa por una moderación corta (filtramos spam).</small>
+              </div>
+            </div>
+            <div class="pv-orac-how-step">
+              <div class="pv-orac-how-num">2</div>
+              <div>
+                <strong>Otros hermanos cristianos</strong> que entran a la app leen tu petición y, si sienten orar por vos, tocan <strong>"❤️ Yo oro por esto"</strong>.
+              </div>
+            </div>
+            <div class="pv-orac-how-step">
+              <div class="pv-orac-how-num">3</div>
+              <div>
+                <strong>El contador "🙏 X orando" crece</strong> con cada persona. Vos ves cuántos están orando por vos pero <strong>no quiénes son</strong> — todos oran de forma anónima.
+              </div>
+            </div>
+          </div>
+
+          <p style="font-size:13px;color:var(--muted);background:var(--card2);padding:10px 12px;border-radius:10px;margin:14px 0 0">
+            🔒 <strong>Privacidad total:</strong> nadie sabe quién oró por quién. Solo se cuenta el número.
+            Si pedís oración, tu identidad real (cuenta, email) no se muestra — solo el nombre/seudónimo que pongas.
+          </p>
+
+          <button class="pv-orac-cta" id="pv-orac-new" style="margin-top:14px">✍️ Pedir oración por mí</button>
         </div>
 
         <div class="pv-orac-cats" id="pv-orac-cats">
@@ -255,7 +286,11 @@
       return;
     }
 
-    listEl.innerHTML = prayers.map(p => {
+    listEl.innerHTML = `
+      <p style="font-size:13px;color:var(--muted);background:var(--card2);padding:10px 12px;border-radius:10px;margin:0 0 10px">
+        💡 <strong>Tocá "❤️ Yo oro por esto"</strong> en las peticiones que sientas orar. Se suma 1 al contador, en silencio y de forma anónima. Si querés, pausá un momento para orar de verdad antes de tocar.
+      </p>
+    ` + prayers.map(p => {
       const cat = CATEGORIES.find(c => c.id === p.category) || CATEGORIES[0];
       const already = prayed.has(p.id);
       return `<article class="pv-orac-item" data-id="${p.id}">
@@ -264,9 +299,9 @@
           <span class="pv-orac-item-time">${timeAgo(p.approved_at || p.created_at)}</span>
         </div>
         <p class="pv-orac-item-text">${escape(p.request_text)}</p>
-        <div class="pv-orac-item-name">— ${escape(p.display_name || 'Anónimo/a')}</div>
+        <div class="pv-orac-item-name">— Pedido por ${escape(p.display_name || 'Anónimo/a')}</div>
         <div class="pv-orac-item-foot">
-          <span class="pv-orac-count">🙏 <strong data-count="${p.id}">${p.prayer_count || 0}</strong> persona${(p.prayer_count||0)===1?'':'s'} orando</span>
+          <span class="pv-orac-count">🙏 <strong data-count="${p.id}">${p.prayer_count || 0}</strong> hermano${(p.prayer_count||0)===1?'':'s'} ya or${(p.prayer_count||0)===1?'ó':'aron'} por esto</span>
           <button class="pv-orac-pray-btn ${already ? 'prayed' : ''}" data-pray="${p.id}" ${already ? 'disabled' : ''}>${already ? '✓ Ya oraste' : '❤️ Yo oro por esto'}</button>
         </div>
       </article>`;
