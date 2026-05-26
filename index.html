@@ -64,6 +64,21 @@
     <title>Palabra Viva — Biblia, audio y oración</title>
     <!-- Sepia por defecto: corre antes que React lea localStorage -->
     <script>try{var _pvt=localStorage.getItem('pv-theme');if(!_pvt||_pvt==='dark')localStorage.setItem('pv-theme','sepia');}catch(e){}</script>
+    <!-- AUTO-RELOAD cuando hay un Service Worker NUEVO activo.
+         Esto soluciona el problema crítico de "cambios no se ven en el cele
+         hasta cerrar y abrir la app 5 veces". Apenas el SW nuevo toma control,
+         el cliente recarga automáticamente y baja el código fresco. -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        let _pvReloading = false;
+        navigator.serviceWorker.addEventListener('controllerchange', function() {
+          if (_pvReloading) return;
+          _pvReloading = true;
+          console.log('[SW] Nuevo controller detectado — recargando para usar código nuevo');
+          window.location.reload();
+        });
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>

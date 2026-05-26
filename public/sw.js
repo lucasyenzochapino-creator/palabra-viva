@@ -1,5 +1,5 @@
-const VERSION    = 'palabra-viva-v12';
-const RUNTIME    = 'palabra-viva-runtime-v12';
+const VERSION    = 'palabra-viva-v13';
+const RUNTIME    = 'palabra-viva-runtime-v13';
 const APP_SHELL  = [
   '/',
   '/manifest.webmanifest',
