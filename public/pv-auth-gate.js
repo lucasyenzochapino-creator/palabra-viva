@@ -142,8 +142,27 @@
   // Re-evaluar cuando cambia el estado de auth
   document.addEventListener('pv-auth-change', evaluate);
 
-  // Evaluación inicial: esperar a que PVAuth esté listo
+  // Evaluación inicial: esperar a que PVAuth esté listo.
+  // CRÍTICO: si la URL trae #access_token=... (callback de Google OAuth),
+  // damos tiempo a que pv-auth.js procese ese hash y guarde la sesión.
+  // Sin esto, el gate aparece por 2-3 segundos antes que checkOAuthCallback
+  // termine, generando un "titileo" feo y la sensación de que algo va mal.
   function waitForAuth() {
+    const hasOAuthHash = (location.hash || '').includes('access_token=');
+    if (hasOAuthHash) {
+      // Esperar a que checkOAuthCallback procese el hash (max 4s)
+      let attempts = 0;
+      const waitForSession = () => {
+        attempts++;
+        if (hasSession() || attempts > 40) {
+          evaluate();
+        } else {
+          setTimeout(waitForSession, 100);
+        }
+      };
+      waitForSession();
+      return;
+    }
     if (window.PVAuth && typeof window.PVAuth.getUser === 'function') {
       evaluate();
     } else {
