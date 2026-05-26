@@ -637,9 +637,32 @@
     });
   }
 
+  // ── Limpieza preventiva: matar overlays huérfanos que bloquean clicks ─────
+  // A veces tras un flujo OAuth/logout queda un .pv-goodbye / .pv-gate / modal
+  // de auth flotando invisible sobre la app y bloquea TODA la barra inferior
+  // (el usuario ve botones pero no responden). Esta función los limpia.
+  function killOrphanOverlays() {
+    if (!getUser()) return; // si no hay sesión, gate y modal pueden ser legítimos
+    // Si tenemos sesión activa, NO debería haber goodbye ni gate ni modal de auth
+    document.querySelectorAll('.pv-goodbye').forEach(el => el.remove());
+    document.querySelectorAll('.pv-gate').forEach(el => el.remove());
+    document.body.classList.remove('pv-gate-open');
+    // Modal de auth NO se mata acá porque puede estar abierto legítimamente
+    // (ej. usuario tocó "Editar perfil"). Solo si hay sesión Y ningún input
+    // activo (el usuario no está escribiendo), lo cerramos:
+    const modal = document.querySelector('.pv-auth-modal');
+    if (modal && document.activeElement && !modal.contains(document.activeElement)) {
+      // Si el foco está fuera del modal, asumimos huérfano y lo quitamos
+      // (solo si han pasado más de 2s desde que se montó, para no romper UX)
+      const mounted = parseInt(modal.dataset.mountedAt || '0', 10);
+      if (mounted && (Date.now() - mounted > 2000)) modal.remove();
+    }
+  }
+
   // ── Actualizar botón de usuario en quick bar ───────────────────────────────
   function updateUI() {
     injectStyles();
+    killOrphanOverlays();
     const quick = document.querySelector('.quick');
     if (!quick) return;
 
@@ -767,6 +790,10 @@
   // Refresh periódico del profile cada 5 min (por si el admin agregó/quitó
   // permisos remotamente y el cliente sigue con la sesión vieja)
   setInterval(() => { refreshProfile().catch(() => {}); }, 5 * 60 * 1000);
+
+  // Limpieza agresiva de overlays huérfanos cada 2 segundos.
+  // Si el usuario tiene sesión, NO debería haber gate ni goodbye visibles.
+  setInterval(killOrphanOverlays, 2000);
 
   // ── API pública ───────────────────────────────────────────────────────────
   window.PVAuth = {
