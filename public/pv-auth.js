@@ -127,6 +127,50 @@
     return profile;
   }
 
+  // Login con Google (OAuth). Redirige al usuario a Google para autenticarse,
+  // después Google redirige a la app y Supabase maneja el callback en el hash.
+  // Requiere que el provider Google esté habilitado en Supabase Dashboard →
+  // Authentication → Providers → Google + Client ID y Secret de Google Cloud
+  // Console (instrucciones se dan al admin por separado).
+  function signInWithProvider(provider) {
+    const redirectTo = encodeURIComponent(location.origin + location.pathname);
+    location.href = `${SUPA_URL}/auth/v1/authorize?provider=${provider}&redirect_to=${redirectTo}`;
+  }
+
+  // Cuando volvemos de Google con hash #access_token=..., extraemos la sesión
+  // y la guardamos. Se llama al cargar la página si detecta ese hash.
+  async function checkOAuthCallback() {
+    const hash = location.hash || '';
+    if (!hash.includes('access_token=')) return false;
+    if (hash.includes('type=recovery')) return false; // eso lo maneja checkRecoveryCallback
+    const params = new URLSearchParams(hash.replace(/^#/, ''));
+    const access_token  = params.get('access_token');
+    const refresh_token = params.get('refresh_token');
+    const expires_at    = parseInt(params.get('expires_at') || '0', 10) || (Math.floor(Date.now()/1000) + 3600);
+    const expires_in    = parseInt(params.get('expires_in') || '3600', 10);
+    if (!access_token) return false;
+    try {
+      // Pedimos los datos del user con el access_token
+      const userRes = await fetch(`${SUPA_URL}/auth/v1/user`, {
+        headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + access_token }
+      });
+      if (!userRes.ok) return false;
+      const user = await userRes.json();
+      const profile = await fetchProfile(user.id, access_token);
+      const session = { access_token, refresh_token, expires_at, expires_in, token_type:'bearer', user: { ...user, profile } };
+      lsSet(SESSION_KEY, session);
+      // Limpiar el hash de la URL para que no quede el token visible
+      history.replaceState(null, '', location.pathname + location.search);
+      document.dispatchEvent(new CustomEvent('pv-auth-change', { detail: session }));
+      updateUI();
+      console.log('[Auth] OAuth callback OK, usuario:', user.email);
+      return true;
+    } catch (e) {
+      console.error('[Auth] OAuth callback failed:', e);
+      return false;
+    }
+  }
+
   async function signIn(email, password) {
     const { ok, data } = await authFetch('/auth/v1/token?grant_type=password', {
       method: 'POST',
@@ -246,6 +290,14 @@
       .pv-auth-label{font-size:13px;font-weight:900;color:var(--muted,#c8c5d8);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px;display:block}
       .pv-auth-btn{width:100%;border:0;border-radius:999px;padding:15px;font-weight:900;font-size:17px;cursor:pointer;background:linear-gradient(135deg,var(--brand,#f59e0b),var(--brand2,#ec4899));color:#fff;margin-top:4px}
       .pv-auth-btn:disabled{opacity:.6;cursor:not-allowed}
+      /* Botón "Continuar con Google" */
+      .pv-auth-google{width:100%;border:1px solid var(--line,#dadce0);border-radius:999px;padding:13px 15px;font-weight:700;font-size:15px;cursor:pointer;background:#fff;color:#3c4043;display:flex;align-items:center;justify-content:center;font-family:'Roboto','Inter',sans-serif;transition:box-shadow .15s ease}
+      .pv-auth-google:hover{box-shadow:0 1px 3px rgba(60,64,67,.3),0 4px 8px rgba(60,64,67,.15)}
+      .pv-auth-google:disabled{opacity:.6;cursor:wait}
+      body[data-theme="dark"] .pv-auth-google{background:#202124;color:#e8eaed;border-color:#5f6368}
+      .pv-auth-divider{display:flex;align-items:center;gap:10px;color:var(--muted,#c8c5d8);font-size:12px;text-transform:uppercase;letter-spacing:.08em;margin:4px 0}
+      .pv-auth-divider::before,.pv-auth-divider::after{content:'';flex:1;height:1px;background:var(--line,#333447)}
+      .pv-auth-divider span{font-family:var(--font-sans,Inter,sans-serif);font-weight:700}
       .pv-auth-err{color:#fb7185;font-size:14px;background:rgba(251,113,133,.1);border:1px solid rgba(251,113,133,.3);border-radius:12px;padding:10px 14px;display:none}
       .pv-auth-ok{color:#22c55e;font-size:14px;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);border-radius:12px;padding:10px 14px;display:none}
       .pv-auth-close{align-self:flex-end;border:1px solid var(--line,#333447);background:var(--card2,#202031);color:var(--text,#f8fafc);border-radius:999px;padding:7px 14px;font-weight:900;cursor:pointer}
@@ -299,6 +351,13 @@
           ` : ''}
           <div id="pv-auth-err" class="pv-auth-err"></div>
           <div id="pv-auth-ok" class="pv-auth-ok"></div>
+          ${(tab==='login'||tab==='register') ? `
+            <button class="pv-auth-google" id="pv-auth-google" type="button">
+              <svg width="20" height="20" viewBox="0 0 24 24" style="vertical-align:middle"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+              <span style="margin-left:8px">Continuar con Google</span>
+            </button>
+            <div class="pv-auth-divider"><span>o con email</span></div>
+          ` : ''}
           ${tab === 'register' ? `
             <div>
               <label class="pv-auth-label" for="pv-auth-name">Tu nombre</label>
@@ -351,6 +410,13 @@
         </div>`;
 
       $('#pv-auth-close-btn', modal).onclick = closeModal;
+      // Botón Google → redirige a OAuth
+      const gBtn = $('#pv-auth-google', modal);
+      if (gBtn) gBtn.addEventListener('click', () => {
+        gBtn.disabled = true;
+        gBtn.innerHTML = '⏳ Redirigiendo a Google…';
+        signInWithProvider('google');
+      });
       modal.querySelectorAll('.pv-auth-tab').forEach(b => b.addEventListener('click', () => { tab = b.dataset.t; render(); }));
       modal.querySelectorAll('[data-go]').forEach(b => b.addEventListener('click', () => { tab = b.dataset.go; render(); }));
       // 👁 Toggle de visibilidad de contraseña
@@ -625,11 +691,12 @@
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
   window.addEventListener('load', boot);
   // Al primer load: detectar recovery callback. Si NO hay callback, pedir login.
-  const initAuthFlow = () => {
+  const initAuthFlow = async () => {
+    // OAuth callback (volvimos de Google) — chequear primero, tiene prioridad
+    const hadOAuth = await checkOAuthCallback();
+    if (hadOAuth) return; // ya logueado via Google, no pedir login
     const hadRecovery = checkRecoveryCallback();
     if (!hadRecovery) maybePromptLogin();
-    // Refrescar el profile en background. Si role cambió en server (admin
-    // promovido recientemente), actualiza la UI sin pedir re-login.
     setTimeout(() => { refreshProfile().catch(() => {}); }, 800);
   };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initAuthFlow);
@@ -653,6 +720,7 @@
     refreshProfile,
     isAdmin,
     signOut,
+    signInWithProvider,
     openModal,
     shareInviteLink
   };
