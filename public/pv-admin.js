@@ -146,13 +146,35 @@
   async function loadData() {
     if (!panel) return;
 
-    // Cargar usuarios
-    const { ok: usOk, data: usData } = await supa('/rest/v1/profiles?select=id,email,display_name,role,is_premium,is_suspended,created_at&order=created_at.desc&limit=200');
-    const users = usOk && Array.isArray(usData) ? usData : [];
+    // 1) PRINCIPAL: cargar TODO el dashboard en una sola llamada via RPC
+    // SECURITY DEFINER. Bypassea problemas de RLS y permisos.
+    const { ok: dashOk, data: dashData, status: dashStatus } = await supa('/rest/v1/rpc/admin_get_dashboard', {
+      method: 'POST', body: '{}'
+    });
+    if (!dashOk || !dashData || typeof dashData !== 'object') {
+      console.error('[Admin] dashboard falló:', dashStatus, dashData);
+      // Mostrar error claro en cada sección en lugar de queda en "Cargando…" infinito
+      const errMsg = dashData?.message || dashData?.error || ('HTTP ' + dashStatus);
+      ['pv-adm-resumen','pv-adm-salud','pv-adm-errores','pv-adm-usuarios','pv-adm-donaciones','pv-adm-sugerencias','pv-adm-churches','pv-adm-prayers'].forEach(id => {
+        const el = $('#' + id, panel);
+        if (el) el.innerHTML = `<h2>${el.querySelector('h2')?.textContent || id}</h2>
+          <div class="pv-adm-empty" style="color:#fb7185">
+            ⚠️ No se pudo cargar.<br>
+            <small style="font-size:12px">Detalle: ${errMsg}</small><br>
+            <button onclick="location.reload()" style="margin-top:10px;background:var(--brand,#f59e0b);color:#fff;border:0;border-radius:999px;padding:8px 16px;cursor:pointer;font-weight:700">🔄 Recargar app</button>
+          </div>`;
+      });
+      return;
+    }
 
-    // Cargar donaciones
-    const { ok: donOk, data: donData } = await supa('/rest/v1/donations?select=*&order=created_at.desc&limit=100');
-    const donations = donOk && Array.isArray(donData) ? donData : [];
+    const users       = Array.isArray(dashData.users)       ? dashData.users       : [];
+    const donations   = Array.isArray(dashData.donations)   ? dashData.donations   : [];
+    const errors      = Array.isArray(dashData.errors)      ? dashData.errors      : [];
+    const prayers     = Array.isArray(dashData.prayers)     ? dashData.prayers     : [];
+    const suggestions = Array.isArray(dashData.suggestions) ? dashData.suggestions : [];
+    const churches    = Array.isArray(dashData.churches)    ? dashData.churches    : [];
+    const pushSubs    = Array.isArray(dashData.push_subs)   ? dashData.push_subs   : [];
+    const stats       = dashData.stats || {};
 
     if (!panel) return;
 
@@ -180,8 +202,8 @@
     // ── Salud del sistema (push notifications) ──
     const saludEl = $('#pv-adm-salud', panel);
     try {
-      const { ok: psOk, data: psData } = await supa('/rest/v1/push_subscriptions?select=id,active,last_sent_at,created_at&order=created_at.desc');
-      const subs = psOk && Array.isArray(psData) ? psData : null;
+      const subs = pushSubs; // del dashboard RPC
+      const psOk = true;
       if (!psOk || subs === null) {
         saludEl.innerHTML = `<h2>📡 Salud del sistema</h2>
           <div class="pv-adm-empty" style="color:#fb7185">
@@ -258,8 +280,7 @@
     // ── Errores recientes ──
     const errEl = $('#pv-adm-errores', panel);
     try {
-      const { ok: erOk, data: erData } = await supa('/rest/v1/app_errors?select=id,level,source,message,stack,url,user_agent,app_version,resolved,created_at&order=created_at.desc&limit=50');
-      const errors = erOk && Array.isArray(erData) ? erData : [];
+      // errors viene del dashboard RPC arriba — no necesita nueva query
       if (!errors.length) {
         errEl.innerHTML = `<h2>🚨 Errores recientes</h2>
           <div class="pv-adm-empty" style="color:#86efac">✓ Sin errores reportados — todo limpio.</div>
@@ -490,8 +511,7 @@
     }
 
     // ── Sugerencias ──
-    const { ok: sugOk, data: sugData } = await supa('/rest/v1/suggestions?select=*&order=created_at.desc&limit=200');
-    const suggestions = sugOk && Array.isArray(sugData) ? sugData : [];
+    // suggestions ya vino del dashboard RPC al inicio de loadData()
     if (!panel) return;
     const sugEl = $('#pv-adm-sugerencias', panel);
     if (!suggestions.length) {
@@ -550,8 +570,7 @@
     }
 
     // ── Iglesias propuestas por la comunidad ──
-    const { ok: chOk, data: chData } = await supa('/rest/v1/community_churches?select=*&order=created_at.desc&limit=200');
-    const churches = chOk && Array.isArray(chData) ? chData : [];
+    // churches ya vino del dashboard RPC
     if (!panel) return;
     const chEl = $('#pv-adm-churches', panel);
     if (!churches.length) {
@@ -616,8 +635,7 @@
     }
 
     // ── Peticiones de oración ──
-    const { ok: prOk, data: prData } = await supa('/rest/v1/prayer_requests?select=*&order=created_at.desc&limit=200');
-    const prayers = prOk && Array.isArray(prData) ? prData : [];
+    // prayers ya vino del dashboard RPC
     if (!panel) return;
     const prEl = $('#pv-adm-prayers', panel);
     if (!prayers.length) {
