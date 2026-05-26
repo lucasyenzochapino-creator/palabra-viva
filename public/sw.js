@@ -1,5 +1,5 @@
-const VERSION    = 'palabra-viva-v13';
-const RUNTIME    = 'palabra-viva-runtime-v13';
+const VERSION    = 'palabra-viva-v14-radical';
+const RUNTIME    = 'palabra-viva-runtime-v14-radical';
 const APP_SHELL  = [
   '/',
   '/manifest.webmanifest',
@@ -43,16 +43,13 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('activate', (event) => {
+  // BORRAR TODOS los caches (no filtrar). Esta versión es la única confiable
+  // — cualquier cache previo está potencialmente corrupto/desincronizado.
   event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(
-        keys
-          .filter((key) => key !== VERSION && key !== RUNTIME)
-          .map((key) => caches.delete(key))
-      )
-    )
+    caches.keys()
+      .then((keys) => Promise.all(keys.map((key) => caches.delete(key))))
+      .then(() => self.clients.claim())
   );
-  self.clients.claim();
 });
 
 self.addEventListener('fetch', (event) => {
@@ -65,6 +62,17 @@ self.addEventListener('fetch', (event) => {
 
   // Supabase: nunca cachear
   if (SUPABASE_PATTERN.test(url)) return;
+
+  // ⚡ ARREGLO CRÍTICO: archivos .js, .tsx, .css → SIEMPRE red, NUNCA cache.
+  // El SW viejo cacheaba JS y los cambios no llegaban al cliente. Ahora todo
+  // el código fuente se baja siempre fresco. Offline será peor, pero la
+  // confiabilidad de los updates es prioridad #1 mientras la app está activa.
+  if (/\.(js|tsx|ts|mjs|css)(\?|$)/i.test(url)) {
+    event.respondWith(
+      fetch(event.request).catch(() => caches.match(event.request))
+    );
+    return;
+  }
 
   const request = event.request;
   const isNavigation = request.mode === 'navigate';
