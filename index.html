@@ -64,17 +64,35 @@
     <title>Palabra Viva — Biblia, audio y oración</title>
     <!-- Sepia por defecto: corre antes que React lea localStorage -->
     <script>try{var _pvt=localStorage.getItem('pv-theme');if(!_pvt||_pvt==='dark')localStorage.setItem('pv-theme','sepia');}catch(e){}</script>
-    <!-- AUTO-RELOAD cuando hay un Service Worker NUEVO activo.
-         Esto soluciona el problema crítico de "cambios no se ven en el cele
-         hasta cerrar y abrir la app 5 veces". Apenas el SW nuevo toma control,
-         el cliente recarga automáticamente y baja el código fresco. -->
+    <!-- RESET de emergencia: si la URL tiene ?reset=1, borrar SW + caches.
+         Solución para usuarios con Service Worker viejo que se quedó cacheado.
+         Uso: abrir https://palabraviva-ar.vercel.app/?reset=1 una sola vez. -->
+    <script>
+      (function(){
+        var u = new URL(location.href);
+        if (u.searchParams.get('reset') !== '1') return;
+        document.documentElement.innerHTML = '<body style="font-family:Inter,sans-serif;background:#efe4cd;color:#6b1f1f;display:flex;align-items:center;justify-content:center;min-height:100vh;flex-direction:column;padding:20px;text-align:center"><div style="font-size:48px;margin-bottom:14px">♻️</div><h1 style="font-size:24px;margin:0 0 12px">Reseteando Palabra Viva</h1><p style="color:#7c6a4d;font-size:14px;margin:0">Limpiando datos viejos. La app se va a recargar en 3 segundos…</p></body>';
+        var promises = [];
+        if ('serviceWorker' in navigator) {
+          promises.push(navigator.serviceWorker.getRegistrations().then(function(rs){return Promise.all(rs.map(function(r){return r.unregister();}));}));
+        }
+        if ('caches' in window) {
+          promises.push(caches.keys().then(function(ks){return Promise.all(ks.map(function(k){return caches.delete(k);}));}));
+        }
+        Promise.all(promises).finally(function(){
+          // No tocamos localStorage (queremos preservar la sesión del usuario).
+          setTimeout(function(){ location.replace(location.origin + location.pathname); }, 1500);
+        });
+      })();
+    </script>
+    <!-- AUTO-RELOAD cuando hay un Service Worker NUEVO activo. -->
     <script>
       if ('serviceWorker' in navigator) {
         let _pvReloading = false;
         navigator.serviceWorker.addEventListener('controllerchange', function() {
           if (_pvReloading) return;
           _pvReloading = true;
-          console.log('[SW] Nuevo controller detectado — recargando para usar código nuevo');
+          console.log('[SW] Nuevo controller detectado — recargando');
           window.location.reload();
         });
       }
