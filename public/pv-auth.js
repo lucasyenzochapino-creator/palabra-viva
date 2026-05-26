@@ -273,7 +273,9 @@
     const st = document.createElement('style');
     st.id = 'pv-auth-style';
     st.textContent = `
-      .pv-auth-modal{position:fixed;inset:0;z-index:9500;background:rgba(0,0,0,.65);backdrop-filter:blur(6px);display:flex;align-items:flex-end;justify-content:center;padding:0 0 0 0}
+      /* z-index DEBE ser mayor que el del gate (99000) para que el modal de
+         auth aparezca por encima cuando se llama desde la pantalla bloqueante. */
+      .pv-auth-modal{position:fixed;inset:0;z-index:99500;background:rgba(0,0,0,.65);backdrop-filter:blur(6px);display:flex;align-items:flex-end;justify-content:center;padding:0 0 0 0}
       @media(min-width:520px){.pv-auth-modal{align-items:center}}
       .pv-auth-sheet{background:var(--card,#171722);border:1px solid var(--line,#333447);border-radius:28px 28px 0 0;padding:24px 20px 36px;width:100%;max-width:460px;display:flex;flex-direction:column;gap:16px;max-height:92vh;overflow-y:auto}
       @media(min-width:520px){.pv-auth-sheet{border-radius:28px;margin:16px}}
@@ -308,8 +310,8 @@
       /* Badge admin */
       .pv-admin-btn{pointer-events:auto;border:1px solid rgba(245,158,11,.5);background:linear-gradient(135deg,rgba(245,158,11,.2),rgba(236,72,153,.15));color:var(--brand,#f59e0b);border-radius:999px;padding:10px 14px;font-size:14px;font-weight:900;cursor:pointer}
       /* Menú desplegable del usuario */
-      .pv-user-menu-backdrop{position:fixed;inset:0;z-index:9400;background:transparent}
-      .pv-user-menu{position:fixed;z-index:9401;background:var(--card,#171722);border:1px solid var(--line,#333447);border-radius:16px;padding:6px;min-width:200px;box-shadow:0 18px 50px rgba(0,0,0,.5);display:flex;flex-direction:column;gap:2px}
+      .pv-user-menu-backdrop{position:fixed;inset:0;z-index:99600;background:transparent}
+      .pv-user-menu{position:fixed;z-index:99601;background:var(--card,#171722);border:1px solid var(--line,#333447);border-radius:16px;padding:6px;min-width:200px;box-shadow:0 18px 50px rgba(0,0,0,.5);display:flex;flex-direction:column;gap:2px}
       .pv-user-menu-header{padding:10px 12px;border-bottom:1px solid var(--line,#333447);margin-bottom:4px}
       .pv-user-menu-name{font-weight:900;font-size:14px;color:var(--text,#f8fafc);margin:0}
       .pv-user-menu-email{font-size:12px;color:var(--muted,#c8c5d8);margin:2px 0 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
