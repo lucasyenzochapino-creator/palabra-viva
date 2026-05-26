@@ -6,21 +6,38 @@
 
   const $ = (s, r = document) => r.querySelector(s);
 
-  // ── Fetch autenticado ─────────────────────────────────────────────────────
+  // ── Fetch autenticado con retry si JWT expiró ────────────────────────────
   function getToken() { return window.PVAuth?.getToken?.() || ''; }
 
   async function supa(path, opts = {}) {
-    const token = getToken();
-    const headers = {
-      'apikey': SUPA_KEY,
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-      ...(opts.headers || {})
+    // Si el token está expirado, intentar refrescar antes de la query.
+    if (window.PVAuth?.isTokenExpired?.()) {
+      try { await window.PVAuth?.refreshSession?.(); } catch {}
+    }
+    const doFetch = async () => {
+      const token = getToken();
+      const headers = {
+        'apikey': SUPA_KEY,
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        ...(opts.headers || {})
+      };
+      const res = await fetch(`${SUPA_URL}${path}`, { ...opts, headers });
+      const data = await res.json().catch(() => ({}));
+      return { ok: res.ok, status: res.status, data };
     };
-    const res = await fetch(`${SUPA_URL}${path}`, { ...opts, headers });
-    const data = await res.json().catch(() => ({}));
-    return { ok: res.ok, data };
+    let result = await doFetch();
+    // Si recibió 401 y el motivo es JWT expirado, refrescar y reintentar UNA vez
+    if (!result.ok && result.status === 401) {
+      const errMsg = (result.data?.message || result.data?.msg || '').toLowerCase();
+      if (errMsg.includes('jwt') || errMsg.includes('expired') || result.data?.code === 'PGRST303') {
+        console.warn('[Admin] JWT expirado, refrescando y reintentando…');
+        const refreshed = await window.PVAuth?.refreshSession?.();
+        if (refreshed) result = await doFetch();
+      }
+    }
+    return result;
   }
 
   // ── Estilos ────────────────────────────────────────────────────────────────

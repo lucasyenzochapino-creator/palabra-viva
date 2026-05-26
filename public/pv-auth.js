@@ -58,10 +58,59 @@
     } catch { return null; }
   }
 
+  // Devuelve true si el access_token está vencido o vence en menos de 1 min.
+  function isTokenExpired() {
+    const s = getSession();
+    if (!s?.expires_at) return !!s; // sin expires_at: lo tratamos como expirado si hay sesión
+    return (s.expires_at * 1000) < (Date.now() + 60000);
+  }
+
+  // Refresca el access_token usando el refresh_token. Devuelve la nueva sesión
+  // o null si falló (caso: refresh_token también expiró → re-login necesario).
+  async function refreshSession() {
+    const s = getSession();
+    if (!s?.refresh_token) return null;
+    try {
+      const res = await fetch(`${SUPA_URL}/auth/v1/token?grant_type=refresh_token`, {
+        method: 'POST',
+        headers: { 'apikey': SUPA_KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refresh_token: s.refresh_token })
+      });
+      if (!res.ok) {
+        console.warn('[Auth] refresh_token rechazado:', res.status);
+        return null;
+      }
+      const data = await res.json();
+      if (!data?.access_token) return null;
+      // Conservar profile cargado (sino se pierde y isAdmin retornaría false)
+      const profile = s.user?.profile;
+      const newSession = { ...data, user: { ...data.user, profile } };
+      lsSet(SESSION_KEY, newSession);
+      console.log('[Auth] token refrescado, nuevo expires_at:', data.expires_at);
+      return newSession;
+    } catch (e) {
+      console.warn('[Auth] error refrescando token:', e);
+      return null;
+    }
+  }
+
+  // Garantiza un token válido. Si está expirado, intenta refrescar primero.
+  async function getValidToken() {
+    if (isTokenExpired()) {
+      console.log('[Auth] token expirado, refrescando…');
+      await refreshSession();
+    }
+    return getToken();
+  }
+
   // Refresca el profile del usuario logueado actualmente. Útil tras un cambio
   // de role en server o si la sesión guardada quedó vieja. Si detecta que el
   // role cambió, dispara pv-auth-change para que la UI se redibuje.
   async function refreshProfile() {
+    // Primero asegurar token válido. Si expiró, refrescar.
+    if (isTokenExpired()) {
+      await refreshSession();
+    }
     const session = getSession();
     if (!session || !session.user?.id || !session.access_token) return null;
     const profile = await fetchProfile(session.user.id, session.access_token);
@@ -598,10 +647,13 @@
     getSession,
     getUser,
     getToken,
+    getValidToken,
+    isTokenExpired,
+    refreshSession,
+    refreshProfile,
     isAdmin,
     signOut,
     openModal,
-    shareInviteLink,
-    refreshProfile
+    shareInviteLink
   };
 })();
