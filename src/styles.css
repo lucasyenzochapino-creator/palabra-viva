@@ -440,6 +440,13 @@ code{
   background:linear-gradient(135deg, rgba(164,119,49,.06), var(--card));
 }
 
+/* Card de Panel Admin en Ajustes — solo visible para administradoras */
+.adminCard{
+  border:2px solid var(--brand);
+  background:linear-gradient(135deg, rgba(107,31,31,.10), var(--card));
+  box-shadow:0 4px 14px rgba(107,31,31,.10);
+}
+
 .moodInput{
   width:100%;
   border:1px solid var(--line);
