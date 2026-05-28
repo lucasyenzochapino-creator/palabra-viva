@@ -638,12 +638,13 @@
     }
 
     // Compartir
-    panel.querySelector('[data-share]').onclick = async () => {
-      const text = `📖 ${title} — ${story.ref}\n\n${story.intro}\n\n✝️ Leé la historia completa en Palabra Viva:\n${location.origin}/`;
-      try {
-        if (navigator.share) await navigator.share({ title: title, text, url: location.origin + '/' });
-        else if (navigator.clipboard) { await navigator.clipboard.writeText(text); alert('📋 Copiado.'); }
-      } catch {}
+    panel.querySelector('[data-share]').onclick = function() {
+      var shareText = title + "\n\n" + story.intro;
+      if (window.PVShareImage) {
+        window.PVShareImage.share({ text: shareText, ref: title + " — " + story.ref, btn: panel.querySelector('[data-share]') });
+      } else if (navigator.share) {
+        navigator.share({ title: title, text: shareText });
+      }
     };
 
     // Versión kids — cierra HC primero, después abre detail kids

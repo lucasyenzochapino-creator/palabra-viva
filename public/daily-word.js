@@ -59,14 +59,16 @@
     const shareBtn = Array.from(dailyCard.querySelectorAll('button')).find(b => b.textContent?.includes('Compartir'));
     if (shareBtn && !shareBtn.dataset.sixHourShare) {
       shareBtn.dataset.sixHourShare = 'true';
-      shareBtn.addEventListener('click', ev => {
+      shareBtn.addEventListener('click', function(ev) {
         ev.stopImmediatePropagation();
         ev.preventDefault();
-        const shareText = `${ref}\n\n${text}\n\nPalabra Viva`;
-        if (navigator.share) navigator.share({ title: ref, text: shareText });
-        else navigator.clipboard.writeText(shareText).then(() => alert('Palabra copiada'));
+        if (window.PVShareImage) {
+          window.PVShareImage.share({ text: text, ref: ref, btn: shareBtn });
+        } else {
+          var shareText = ref + "\n\n" + text;
+          navigator.share ? navigator.share({ title: ref, text: shareText }) : navigator.clipboard.writeText(shareText);
+        }
       }, true);
-    }
   }
 
   setInterval(updateDailyWord, 3000);

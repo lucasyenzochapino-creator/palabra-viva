@@ -272,12 +272,14 @@
     }
     d.querySelector('[data-back]').onclick = () => close(true);
     d.querySelector('[data-close]').onclick = () => { close(false); document.querySelector('.pv-pers-panel')?.remove(); window._pvPanelClosing = true; history.go(-2); };
-    d.querySelector('[data-share]').onclick = async () => {
-      const text = `${p.emoji} ${p.name} — ${p.life}\n\n${p.story}\n\n✨ Lección: ${p.lesson}\n\n📖 ${p.ref}\n\nVisto en Palabra Viva — ${location.origin}/`;
-      try {
-        if (navigator.share) await navigator.share({ title: p.name, text, url: location.origin + '/' });
-        else if (navigator.clipboard) { await navigator.clipboard.writeText(text); alert('📋 Copiado.'); }
-      } catch {}
+    d.querySelector('[data-share]').onclick = function() {
+      var shareText = p.emoji + " " + p.name + "\n\n" + p.story + "\n\nLeccion: " + p.lesson;
+      var ref = p.name + " — " + p.ref;
+      if (window.PVShareImage) {
+        window.PVShareImage.share({ text: shareText, ref: ref, btn: d.querySelector('[data-share]') });
+      } else if (navigator.share) {
+        navigator.share({ title: p.name, text: shareText });
+      }
     };
     // "Leer pasaje" — abre Bible Gateway en RVR1960
     const leeMasEl = d.querySelector(".pv-pers-lee-mas");
