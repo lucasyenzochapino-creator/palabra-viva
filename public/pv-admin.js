@@ -358,20 +358,15 @@
     }
 
     if (action === 'delete') {
-      const confirm1 = confirm('Eliminar al usuario "' + (email || uid) + '"?\nEsto borra su perfil. Los datos de auth se conservan en Supabase Auth.');
-      if (!confirm1) return restore();
-      // Primero borrar perfil
-      const { ok: okProf } = await supa('/rest/v1/profiles?id=eq.' + uid, {
-        method: 'DELETE', headers: { 'Prefer': 'return=minimal' }
-      });
-      // Luego intentar borrar vía RPC si existe
-      const { ok: okRpc } = await supa('/rest/v1/rpc/admin_delete_user', {
+      if (!confirm('Eliminar al usuario "' + (email || uid) + '"?\nEsta acción borra perfil + cuenta. No se puede deshacer.')) return restore();
+      const { ok, data } = await supa('/rest/v1/rpc/admin_delete_user', {
         method: 'POST', body: JSON.stringify({ p_user_id: uid })
       });
-      if (okProf || okRpc) {
-        toast('Usuario eliminado', 'ok'); return loadData();
+      if (ok && data && data.ok) {
+        toast('✅ Usuario eliminado', 'ok'); return loadData();
       }
-      toast('Perfil eliminado (auth puede quedar — revisá Supabase)', 'warn'); return loadData();
+      const errMsg = (data && (data.error || data.message)) || ('HTTP ' + (ok ? 'ok/sin data' : 'error'));
+      toast('Error eliminando: ' + errMsg, 'err'); return restore();
     }
 
     restore();

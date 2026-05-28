@@ -503,24 +503,10 @@
         <p class="sv3-result-action"><strong>Paso pequeño:</strong> ${m.action}</p>
       </div>`;
 
-      const PEACE_IMGS = [
-        'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?auto=format&fit=crop&w=600&q=70',
-        'https://images.unsplash.com/photo-1447752875215-b2761acb3c5d?auto=format&fit=crop&w=600&q=70',
-        'https://images.unsplash.com/photo-1465146344425-f00d5f5c8f07?auto=format&fit=crop&w=600&q=70',
-        'https://images.unsplash.com/photo-1504701954957-2010ec3bcec1?auto=format&fit=crop&w=600&q=70',
-        'https://images.unsplash.com/photo-1518156677180-95a2893f3e9f?auto=format&fit=crop&w=600&q=70',
-        'https://images.unsplash.com/photo-1519681393784-d120267933ba?auto=format&fit=crop&w=600&q=70',
-        'https://images.unsplash.com/photo-1501854140801-50d01698950b?auto=format&fit=crop&w=600&q=70',
-        'https://images.unsplash.com/photo-1425913397330-cf8af2ff40a1?auto=format&fit=crop&w=600&q=70',
-        'https://images.unsplash.com/photo-1548679847-1d4ff48016c0?auto=format&fit=crop&w=600&q=70',
-        'https://images.unsplash.com/photo-1470770903676-69b98201ea1c?auto=format&fit=crop&w=600&q=70',
-        'https://images.unsplash.com/photo-1462275646964-a0e3386b89fa?auto=format&fit=crop&w=600&q=70',
-        'https://images.unsplash.com/photo-1433086966358-54859d0ed716?auto=format&fit=crop&w=600&q=70',
-        'https://images.unsplash.com/photo-1476231682828-37e571bc172f?auto=format&fit=crop&w=600&q=70',
-        'https://images.unsplash.com/photo-1518791841217-8f162f1912da?auto=format&fit=crop&w=600&q=70',
-        'https://images.unsplash.com/photo-1509316785289-025f5b846b35?auto=format&fit=crop&w=600&q=70',
-        'https://images.unsplash.com/photo-1523712999610-f77fbcfc3843?auto=format&fit=crop&w=600&q=70'
-      ];
+      // picsum.photos: siempre disponible, siempre CORS, seed determinista
+      const PEACE_IMGS = Array.from({length: 40}, function(_, i) {
+        return 'https://picsum.photos/seed/pv' + (i + 1) + '/600/400';
+      });
       html += `<div class="sv3-verses">`;
       m.refs.forEach(([ref, txt], idx) => {
         const img = PEACE_IMGS[(idx + m.refs.length * 3) % PEACE_IMGS.length];
@@ -543,6 +529,16 @@
 
       resultEl.innerHTML = html;
       resultEl.classList.add('show');
+
+      // Fallback por si alguna imagen picsum falla
+      const _grads = ['linear-gradient(135deg,#1a1a3e,#3730a3)','linear-gradient(135deg,#052e16,#166534)','linear-gradient(135deg,#1e1b4b,#7c3aed)','linear-gradient(135deg,#431407,#9a3412)','linear-gradient(135deg,#082f49,#0369a1)'];
+      resultEl.querySelectorAll('.sv3-verse-bg').forEach(function(bgEl, i) {
+        var url = bgEl.style.backgroundImage.replace(/url\(["']?/, '').replace(/["']?\)$/, '');
+        if (!url) { bgEl.style.backgroundImage = _grads[i % _grads.length]; return; }
+        var probe = new Image();
+        probe.onerror = function() { bgEl.style.backgroundImage = _grads[i % _grads.length]; };
+        probe.src = url;
+      });
 
       resultEl.querySelectorAll('.sv3-verse-copy').forEach(btn => {
         btn.addEventListener('click', e => {
