@@ -43,7 +43,7 @@
       if (errMsg.includes('jwt') || errMsg.includes('expired') || result.data?.code === 'PGRST303') {
         console.warn('[Admin] JWT expirado, refrescando y reintentando…');
         const refreshed = await window.PVAuth?.refreshSession?.();
-        if (refreshed) result = await doFetch();
+        if (refreshed) { try { result = await doFetch(); } catch(e2) { result = { ok: false, status: 0, data: { message: e2.message } }; } }
       }
     }
     return result;
@@ -86,12 +86,8 @@
   // ── Panel ──────────────────────────────────────────────────────────────────
   let panel = null;
 
-  async function openPanel() {
-    // Refresh profile first to ensure fresh admin status
-    if (!window.PVAuth?.isAdmin?.()) {
-      try { await window.PVAuth?.refreshProfile?.(); } catch(e) {}
-    }
-    if (!window.PVAuth?.isAdmin?.()) {
+  async function openPanel(trusted = false) {
+    if (!trusted && !window.PVAuth?.isAdmin?.()) {
       console.warn('[Admin] acceso denegado. Rol:', window.PVAuth?.getUser?.()?.profile?.role);
       alert('Acceso restringido — solo administradoras.');
       return;
@@ -773,7 +769,7 @@
   }
 
   // ── API pública ────────────────────────────────────────────────────────────
-  window.PVAdmin = { open: openPanel };
+  window.PVAdmin = { open: () => openPanel(true) };
 
   // Auto-abrir el panel admin si la URL trae #admin como hash.
   // Esto le da al admin un link directo confiable cuando el botón ⚙️ Admin
