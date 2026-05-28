@@ -1,4 +1,4 @@
-(() => {
+﻿(() => {
   // ===========================================================================
   // PALABRA VIVA — Personajes Bíblicos
   // ===========================================================================
@@ -253,7 +253,7 @@
         <div class="pv-pers-section"><p class="label">Quién era</p><p>${p.who}</p></div>
         <div class="pv-pers-section"><p class="label">Su historia</p><p>${p.story}</p></div>
         <div class="pv-pers-section pv-pers-lesson"><p class="label">✨ Lección</p><p>${p.lesson}</p></div>
-        <div class="pv-pers-section"><p class="label">📖 Lee más</p><p>${p.ref}</p></div>
+        <div class="pv-pers-section pv-pers-lee-mas" style="cursor:pointer;transition:border-color .15s" data-ref-url="https://www.biblegateway.com/passage/?search=${encodeURIComponent(p.ref)}&version=RVR1960"><p class="label">📖 Leer pasaje en la Biblia →</p><p>${p.ref} <span style="color:var(--brand,#f59e0b);font-size:12px">Toca para abrir ↗</span></p></div>
         <button class="pv-pers-share" data-share>📤 Compartir este personaje</button>
       </div>`;
 
@@ -279,6 +279,13 @@
         else if (navigator.clipboard) { await navigator.clipboard.writeText(text); alert('📋 Copiado.'); }
       } catch {}
     };
+    // "Leer pasaje" — abre Bible Gateway en RVR1960
+    const leeMasEl = d.querySelector(".pv-pers-lee-mas");
+    if (leeMasEl) {
+      leeMasEl.addEventListener("click", () => window.open(leeMasEl.dataset.refUrl, "_blank", "noopener"));
+      leeMasEl.addEventListener("mouseenter", () => { leeMasEl.style.borderColor = "var(--brand,#f59e0b)"; });
+      leeMasEl.addEventListener("mouseleave", () => { leeMasEl.style.borderColor = ""; });
+    }
     document.body.appendChild(d);
     window.addEventListener('popstate', onPopDet);
   }

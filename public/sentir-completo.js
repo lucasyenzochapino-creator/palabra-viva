@@ -1,4 +1,4 @@
-(() => {
+﻿(() => {
   // ── Biblioteca emocional bíblica — v3 ─────────────────────────────────────
   // Versículos agrupados por tema emocional, más de 120 entradas
   const V = {
@@ -534,7 +534,7 @@
             <p class="sv3-verse-txt">&ldquo;${txt}&rdquo;</p>
             <div class="sv3-verse-btns">
               <button class="sv3-verse-copy" data-copy="${safeRef}: ${safeTxt}">📋 Copiar</button>
-              <button class="sv3-verse-share" data-ref="${safeRef}" data-txt="${safeTxt}">🔗 Compartir</button>
+              <button class="sv3-verse-share" data-ref="${safeRef}" data-txt="${safeTxt}" data-img="${img}">🖼️ Compartir imagen</button>
             </div>
           </div>
         </div>`;
@@ -556,18 +556,122 @@
         });
       });
       resultEl.querySelectorAll('.sv3-verse-share').forEach(btn => {
-        btn.addEventListener('click', e => {
+        btn.addEventListener('click', async e => {
           e.stopPropagation();
-          const ref = btn.dataset.ref;
-          const txt = btn.dataset.txt.replace(/&quot;/g, '"');
-          const shareText = ref + ': "' + txt + '" — Palabra Viva';
-          if (navigator.share) {
-            navigator.share({ title: ref, text: shareText, url: 'https://palabraviva-ar.vercel.app' }).catch(() => {});
-          } else if (navigator.clipboard?.writeText) {
-            navigator.clipboard.writeText(shareText).then(() => { btn.textContent = '✅ Copiado'; setTimeout(() => { btn.textContent = '🔗 Compartir'; }, 1500); });
+          const ref    = btn.dataset.ref;
+          const txt    = btn.dataset.txt.replace(/&quot;/g, '"');
+          const imgUrl = btn.dataset.img || '';
+          const orig   = btn.innerHTML;
+          btn.disabled = true;
+          btn.innerHTML = '⏳ Generando…';
+
+          // Intentar compartir como IMAGEN (WhatsApp status, Instagram, etc.)
+          let ok = false;
+          if (imgUrl && navigator.canShare) {
+            try {
+              const blob = await _buildVerseImg(imgUrl, ref, txt);
+              const file = new File([blob], 'versiculo-palabraviva.jpg', { type: 'image/jpeg' });
+              if (navigator.canShare({ files: [file] })) {
+                await navigator.share({ files: [file], title: ref });
+                ok = true;
+              }
+            } catch(err) {
+              console.warn('[Sentir] share imagen falló, usando texto:', err);
+            }
           }
+
+          // Fallback: texto + link
+          if (!ok) {
+            const shareText = ref + ': "' + txt + '" — Palabra Viva';
+            if (navigator.share) {
+              try { await navigator.share({ title: ref, text: shareText, url: 'https://palabraviva-ar.vercel.app' }); } catch {}
+            } else if (navigator.clipboard?.writeText) {
+              await navigator.clipboard.writeText(shareText);
+              btn.innerHTML = '✅ Copiado';
+              setTimeout(() => { btn.innerHTML = orig; btn.disabled = false; }, 1800);
+              return;
+            }
+          }
+          btn.innerHTML = orig;
+          btn.disabled = false;
         });
       });
+
+      // ── Canvas: genera JPEG 1080x1920 con fondo bíblico + versículo ──────
+      async function _buildVerseImg(imgUrl, ref, txt) {
+        const W = 1080, H = 1920;
+        const cv = document.createElement('canvas');
+        cv.width = W; cv.height = H;
+        const ctx = cv.getContext('2d');
+
+        // Cargar imagen de fondo (alta resolución, CORS habilitado en Unsplash)
+        const bg = new Image();
+        bg.crossOrigin = 'anonymous';
+        const hiRes = imgUrl.replace(/w=\d+/, 'w=1080').replace(/q=\d+/, 'q=85');
+        await new Promise((res, rej) => {
+          bg.onload = res;
+          bg.onerror = () => {
+            // 2do intento sin CORS (canvas quedará tainted pero podemos intentar)
+            const bg2 = new Image();
+            bg2.onload = () => { ctx.drawImage(bg2, 0, 0, W, H); res(); };
+            bg2.onerror = rej;
+            bg2.src = imgUrl;
+          };
+          bg.src = hiRes;
+        });
+
+        // Dibujar imagen (cover)
+        const sc = Math.max(W / bg.width, H / bg.height);
+        const sw = bg.width * sc, sh = bg.height * sc;
+        ctx.drawImage(bg, (W - sw) / 2, (H - sh) / 2, sw, sh);
+
+        // Degradado oscuro
+        const gr = ctx.createLinearGradient(0, 0, 0, H);
+        gr.addColorStop(0,    'rgba(0,0,0,0.20)');
+        gr.addColorStop(0.35, 'rgba(0,0,0,0.35)');
+        gr.addColorStop(0.65, 'rgba(0,0,0,0.68)');
+        gr.addColorStop(1,    'rgba(0,0,0,0.90)');
+        ctx.fillStyle = gr;
+        ctx.fillRect(0, 0, W, H);
+
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+
+        // Cruz decorativa
+        ctx.font = '100px serif';
+        ctx.fillStyle = 'rgba(255,255,255,0.18)';
+        ctx.fillText('✝', W / 2, H * 0.22);
+
+        // Referencia (dorada)
+        ctx.font = 'bold 54px sans-serif';
+        ctx.fillStyle = 'rgba(245,158,11,0.95)';
+        ctx.fillText(ref, W / 2, H * 0.43);
+
+        // Versículo con word-wrap
+        ctx.font = 'italic 60px Georgia, serif';
+        ctx.fillStyle = '#ffffff';
+        _wrapText(ctx, '“' + txt + '”', W / 2, H * 0.50, W - 140, 82);
+
+        // Branding
+        ctx.font = 'bold 38px sans-serif';
+        ctx.fillStyle = 'rgba(255,255,255,0.50)';
+        ctx.textBaseline = 'bottom';
+        ctx.fillText('— Palabra Viva —', W / 2, H - 100);
+
+        return new Promise(resolve => cv.toBlob(resolve, 'image/jpeg', 0.91));
+      }
+
+      function _wrapText(ctx, text, x, y, maxW, lineH) {
+        const words = text.split(' ');
+        let line = '';
+        for (let i = 0; i < words.length; i++) {
+          const test = line + words[i] + ' ';
+          if (i > 0 && ctx.measureText(test).width > maxW) {
+            ctx.fillText(line.trim(), x, y); y += lineH; line = words[i] + ' ';
+          } else { line = test; }
+        }
+        if (line.trim()) ctx.fillText(line.trim(), x, y);
+      }
     }
 
 

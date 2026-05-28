@@ -945,8 +945,111 @@
       if (!result.ok) console.warn('[Recordatorio] sync post-login falló:', result.stage, result.error);
     } catch (e) { console.warn('[Recordatorio] auto-sync fail:', e); }
   });
+  // ── Panel flotante: abre desde cualquier parte de la app ──────────────────
+  function openReminderModal() {
+    if (document.querySelector(".pv-rem-modal-overlay")) return;
+    injectStyles();
+    const settings = loadSettings();
+    const time = settings.time || "08:00";
+    const enabled = !!settings.enabled;
+    const perm = ("Notification" in window) ? Notification.permission : "default";
+
+    const overlay = document.createElement("div");
+    overlay.className = "pv-rem-modal-overlay";
+    overlay.style.cssText = "position:fixed;inset:0;z-index:1000010;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);display:flex;align-items:flex-end;justify-content:center";
+
+    const panel = document.createElement("div");
+    panel.style.cssText = "width:min(520px,100%);background:var(--bg,#1a0e05);border-radius:24px 24px 0 0;padding:24px 20px calc(40px + env(safe-area-inset-bottom));max-height:90vh;overflow-y:auto;position:relative";
+
+    panel.innerHTML = [
+      "<h2 style='margin:0 0 6px;font-size:20px'>🔔 Versículo diario</h2>",
+      "<p style='margin:0 0 18px;font-size:13px;color:var(--muted,#c8c5d8)'>Recibí un versículo bíblico todos los días a la hora que elijas.</p>",
+      "<div id='pv-rem-modal-body'></div>",
+      "<button id='pv-rem-modal-close' style='position:absolute;top:16px;right:16px;border:1px solid var(--line,#333);background:var(--card2,#202031);color:var(--text,#f8fafc);border-radius:999px;padding:8px 14px;font-weight:900;cursor:pointer'>✕ Cerrar</button>"
+    ].join("");
+
+    overlay.appendChild(panel);
+    document.body.appendChild(overlay);
+    document.body.style.overflow = "hidden";
+
+    const body = panel.querySelector("#pv-rem-modal-body");
+
+    function renderModalBody() {
+      const s = loadSettings();
+      const t = s.time || "08:00";
+      const isPaused = (() => { try { return localStorage.getItem(PAUSED_KEY) === "1"; } catch { return false; } })();
+      const permNow  = ("Notification" in window) ? Notification.permission : "default";
+      const subSaved = !!localStorage.getItem(SUB_SAVED_KEY);
+
+      let html = "";
+      if (permNow === "granted" && s.enabled) {
+        html += "<div style='background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);border-radius:14px;padding:14px;margin-bottom:14px'>";
+        html += "<p style='margin:0;font-size:14px'>✅ <strong>Activado</strong> — llega todos los días a las <strong>" + t + "</strong>" + (subSaved ? " (servidor OK)" : " (conectando…)") + "</p>";
+        html += "</div>";
+      } else if (isPaused) {
+        html += "<div style='background:rgba(120,113,108,.12);border:1px solid rgba(120,113,108,.3);border-radius:14px;padding:14px;margin-bottom:14px'>";
+        html += "<p style='margin:0;font-size:14px'>🔕 Apagado por vos. Elegí una hora y activalo de nuevo.</p>";
+        html += "</div>";
+      } else if (permNow === "denied") {
+        html += "<div style='background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.3);border-radius:14px;padding:14px;margin-bottom:14px'>";
+        html += "<p style='margin:0;font-size:14px'>⛔ Permiso de notificaciones bloqueado en tu navegador.<br>Habilitalo desde la configuración del sitio y volvé acá.</p>";
+        html += "</div>";
+      }
+
+      html += "<div style='display:flex;align-items:center;justify-content:space-between;background:var(--card2,#202031);border:1px solid var(--line,#333);border-radius:14px;padding:14px 16px;margin-bottom:14px'>";
+      html += "<label style='font-weight:700;font-size:15px'>⏰ Hora de envío</label>";
+      html += "<input id='pv-rem-modal-time' type='time' value='" + t + "' style='border:1px solid var(--line,#333);background:var(--card,#171722);color:var(--text,#f5deb3);border-radius:10px;padding:9px 12px;font-size:17px;font-weight:700'>";
+      html += "</div>";
+
+      if (permNow !== "denied") {
+        if (s.enabled && !isPaused) {
+          html += "<button id='pv-rem-modal-toggle' class='pv-rem-cta secondary' style='display:block;width:100%;border:1px solid var(--line,#333);background:var(--card,#171722);color:var(--text,#f5deb3);border-radius:999px;padding:14px;font-weight:700;font-size:16px;cursor:pointer;margin-bottom:10px'>🔕 Desactivar versículo diario</button>";
+          html += "<button id='pv-rem-modal-save' class='pv-rem-cta' style='display:block;width:100%;background:linear-gradient(135deg,var(--brand,#f59e0b),#b45309);color:#fff;border:0;border-radius:999px;padding:14px;font-weight:700;font-size:16px;cursor:pointer'>✓ Cambiar hora</button>";
+        } else {
+          html += "<button id='pv-rem-modal-save' class='pv-rem-cta' style='display:block;width:100%;background:linear-gradient(135deg,var(--brand,#f59e0b),#b45309);color:#fff;border:0;border-radius:999px;padding:14px;font-weight:700;font-size:16px;cursor:pointer'>🔔 Activar versículo diario</button>";
+        }
+      }
+      body.innerHTML = html;
+
+      const timeInp = panel.querySelector("#pv-rem-modal-time");
+      const saveBtn = panel.querySelector("#pv-rem-modal-save");
+      const toggleBtn = panel.querySelector("#pv-rem-modal-toggle");
+
+      if (saveBtn) saveBtn.onclick = async () => {
+        const newTime = timeInp ? timeInp.value : "08:00";
+        const [h, m] = newTime.split(":").map(Number);
+        saveBtn.textContent = "⏳ Activando…"; saveBtn.disabled = true;
+        saveSettings({ enabled: true, time: newTime });
+        try { localStorage.removeItem(PAUSED_KEY); } catch {}
+        if (permNow !== "granted") {
+          const perm2 = await Notification.requestPermission();
+          if (perm2 !== "granted") { saveBtn.textContent = "⚠️ Permiso denegado"; saveBtn.disabled = false; return; }
+        }
+        const res = await subscribeToPush(h, m).catch(e => ({ ok: false, error: e.message }));
+        if (res.ok) { saveBtn.textContent = "✅ Activado"; } else { saveBtn.textContent = "⚠️ " + (res.error || "Error"); }
+        setTimeout(renderModalBody, 1200);
+      };
+
+      if (toggleBtn) toggleBtn.onclick = () => {
+        saveSettings({ enabled: false, time: timeInp ? timeInp.value : "08:00" });
+        try { localStorage.setItem(PAUSED_KEY, "1"); } catch {}
+        renderModalBody();
+      };
+    }
+
+    renderModalBody();
+
+    function closeModal() {
+      document.body.style.overflow = "";
+      overlay.remove();
+    }
+    panel.querySelector("#pv-rem-modal-close").onclick = closeModal;
+    overlay.addEventListener("click", e => { if (e.target === overlay) closeModal(); });
+  }
+
 
   window.PVReminders = {
+    open: openReminderModal,
     check: checkAndNotify,
     scheduleNext: scheduleNextNotification,
     // Función para sincronizar manualmente la suscripción al server
