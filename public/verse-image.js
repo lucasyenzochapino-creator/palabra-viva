@@ -119,7 +119,7 @@
     ctx.fillStyle = pal.soft;
     ctx.font = '700 26px Inter, system-ui, sans-serif';
     ctx.textAlign = 'left';
-    ctx.fillText('palabraviva-ar.vercel.app', PADDING, SIZE - PADDING + 10);
+    ctx.fillText('Palabra Viva', PADDING, SIZE - PADDING + 10);
 
     // Marca de cita decorativa (comilla grande)
     ctx.globalAlpha = 0.14;
