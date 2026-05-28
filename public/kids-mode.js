@@ -339,21 +339,20 @@
 
     // Compartir
     detail.querySelector('[data-share]')?.addEventListener('click', async () => {
-      const text = `📖 ${story.title}\n\n${story.ref}: “${story.verse}”\n\n${story.text}\n\n🙏 ${story.pray}\n\n✝️ Palabra Viva — ${location.origin}/`;
-      const audioUrl = aud[0] || '';
-      const shareData = {
-        title: 'Palabra Viva — ' + story.title,
-        text: text + (audioUrl ? `\n\n🎧 Audio: ${audioUrl}` : ''),
-        url: location.origin + '/'
-      };
+      const shareRef = `📖 ${story.title}${story.ref ? ' — ' + story.ref : ''}`;
+      const shareVerse = story.verse || story.text || story.title;
+      const shareBtn2 = detail.querySelector('[data-share]');
       try {
-        if (navigator.share && navigator.canShare?.(shareData)) {
-          await navigator.share(shareData);
-        } else if (navigator.clipboard) {
-          await navigator.clipboard.writeText(shareData.text);
-          alert('📋 Copiado al portapapeles. Pegalo donde quieras compartirlo.');
+        if (window.PVShareImage) {
+          window.PVShareImage.share({ text: shareVerse, ref: shareRef, btn: shareBtn2 });
         } else {
-          prompt('Copiá este texto para compartir:', shareData.text);
+          const text = `📖 ${story.title}\n\n${story.ref}: “${story.verse}”\n\n${story.text}\n\n🙏 ${story.pray}\n\n✝️ Palabra Viva`;
+          const shareData = { title: 'Palabra Viva — ' + story.title, text, url: location.origin + '/' };
+          if (navigator.share && navigator.canShare?.(shareData)) {
+            await navigator.share(shareData);
+          } else if (navigator.clipboard) {
+            await navigator.clipboard.writeText(text);
+          }
         }
       } catch (e) { /* user canceled */ }
     });

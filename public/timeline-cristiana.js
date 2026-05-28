@@ -257,10 +257,16 @@
           const i = parseInt(btn.dataset.shareEv, 10);
           const ev = EVENTS[i];
           if (!ev) return;
-          const text = `${ev.emoji} ${ev.title} (${ev.year})\n\n${ev.kid}\n\n📖 ${ev.ref}\n\n✝️ Palabra Viva — Línea del tiempo bíblica\n${location.origin}/`;
+          const shareRef = `${ev.emoji} ${ev.title} (${ev.year}) — 📖 ${ev.ref}`;
+          const shareText2 = ev.kid || ev.title;
           try {
-            if (navigator.share) await navigator.share({ title: ev.title, text, url: location.origin + '/' });
-            else if (navigator.clipboard) { await navigator.clipboard.writeText(text); alert('📋 Copiado.'); }
+            if (window.PVShareImage) {
+              window.PVShareImage.share({ text: shareText2, ref: shareRef, btn: btn });
+            } else {
+              const text = shareRef + '\n\n' + shareText2 + '\n\n' + location.origin + '/';
+              if (navigator.share) await navigator.share({ title: ev.title, text, url: location.origin + '/' });
+              else if (navigator.clipboard) { await navigator.clipboard.writeText(text); }
+            }
           } catch {}
         });
       });

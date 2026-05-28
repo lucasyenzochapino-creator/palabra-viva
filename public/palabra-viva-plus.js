@@ -197,16 +197,19 @@
   }
 
   function wrap(ctx,text,x,y,w,lh){let line='',lines=[];text.split(' ').forEach(word=>{const t=line?line+' '+word:word;if(ctx.measureText(t).width>w&&line){lines.push(line);line=word}else line=t}); if(line) lines.push(line); lines.forEach((l,i)=>ctx.fillText(l,x,y+i*lh)); return y+lines.length*lh;}
-  async function shareImage(ref, verse){
+  async function shareImage(ref, verse, btn){
+    // Preferir PVShareImage (paisaje hermoso) si está disponible
+    if (window.PVShareImage) { return window.PVShareImage.share({ text: verse, ref: ref, btn: btn||null }); }
+    // Fallback: canvas gradiente con URL correcta
     const c=document.createElement('canvas'); c.width=1080; c.height=1920; const ctx=c.getContext('2d');
     const g=ctx.createLinearGradient(0,0,1080,1920); g.addColorStop(0,'#1f1307'); g.addColorStop(.55,'#7c4a1e'); g.addColorStop(1,'#be185d'); ctx.fillStyle=g; ctx.fillRect(0,0,1080,1920);
     ctx.fillStyle='rgba(255,255,255,.10)'; ctx.beginPath(); ctx.arc(880,240,280,0,Math.PI*2); ctx.fill();
-    ctx.fillStyle='#fff7ed'; ctx.font='700 54px system-ui'; ctx.fillText('Palabra Viva',90,150); ctx.font='900 64px system-ui'; ctx.fillText(ref,90,350); ctx.font='700 58px Georgia'; const y=wrap(ctx,'“'+verse+'”',90,480,900,78);
-    ctx.font='500 34px system-ui'; ctx.fillStyle='rgba(255,247,237,.86)'; wrap(ctx,'Una palabra para este momento',90,y+90,900,46); ctx.font='700 30px system-ui'; ctx.fillStyle='rgba(255,247,237,.72)'; ctx.fillText('palabra-viva-amber.vercel.app',90,1790);
+    ctx.fillStyle='#fff7ed'; ctx.font='700 54px system-ui'; ctx.fillText('Palabra Viva',90,150); ctx.font='900 64px system-ui'; ctx.fillText(ref,90,350); ctx.font='700 58px Georgia'; const y=wrap(ctx,'”'+verse+'”',90,480,900,78);
+    ctx.font='500 34px system-ui'; ctx.fillStyle='rgba(255,247,237,.86)'; wrap(ctx,'Una palabra para este momento',90,y+90,900,46); ctx.font='700 30px system-ui'; ctx.fillStyle='rgba(255,247,237,.72)'; ctx.fillText('palabraviva-ar.vercel.app',90,1790);
     const blob=await new Promise(res=>c.toBlob(res,'image/png',.95)); const file=new File([blob],'palabra-viva.png',{type:'image/png'});
     if(navigator.canShare&&navigator.canShare({files:[file]})) await navigator.share({files:[file],title:ref,text:'Palabra Viva'}); else {const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='palabra-viva.png'; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
   }
-  function addImageButtons(){ $$('.card').forEach(card=>{ if(card.querySelector('.pv-share-image'))return; const ref=card.querySelector('.ref')?.textContent?.replace(/·.*/,'').trim(); const verse=card.querySelector('.verse')?.textContent?.replace(/[“”]/g,'').trim(); const row=card.querySelector('.row.wrap'); if(!ref||!verse||!row)return; const b=document.createElement('button'); b.className='pv-share-image'; b.type='button'; b.textContent='Imagen'; b.onclick=e=>{e.preventDefault();e.stopPropagation();shareImage(ref,verse)}; row.appendChild(b); }); }
+  function addImageButtons(){ $$('.card').forEach(card=>{ if(card.querySelector('.pv-share-image'))return; const ref=card.querySelector('.ref')?.textContent?.replace(/·.*/,'').trim(); const verse=card.querySelector('.verse')?.textContent?.replace(/[“”]/g,'').trim(); const row=card.querySelector('.row.wrap'); if(!ref||!verse||!row)return; const b=document.createElement('button'); b.className='pv-share-image'; b.type='button'; b.textContent='Imagen'; b.onclick=e=>{e.preventDefault();e.stopPropagation();shareImage(ref,verse,b)}; row.appendChild(b); }); }
 
   function getJ(){try{return JSON.parse(localStorage.getItem('pv-journal')||'[]')}catch{return[]}} function setJ(v){localStorage.setItem('pv-journal',JSON.stringify(v))}
   function openJournal(focus){

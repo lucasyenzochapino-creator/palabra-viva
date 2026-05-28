@@ -119,7 +119,7 @@
     ctx.fillStyle = pal.soft;
     ctx.font = '700 26px Inter, system-ui, sans-serif';
     ctx.textAlign = 'left';
-    ctx.fillText('palabra-viva-oficepro.vercel.app', PADDING, SIZE - PADDING + 10);
+    ctx.fillText('palabraviva-ar.vercel.app', PADDING, SIZE - PADDING + 10);
 
     // Marca de cita decorativa (comilla grande)
     ctx.globalAlpha = 0.14;
@@ -140,15 +140,19 @@
   // API pública — invocable desde React o desde otros módulos
   async function shareVerseImage({ book, chapter, verse, text }) {
     if (!book || !chapter || !text) return false;
+    const ref = `${book} ${chapter}${verse ? ':' + verse : ''}`;
+    // Preferir PVShareImage (paisaje + branding Palabra Viva) si está disponible
+    if (window.PVShareImage) {
+      return window.PVShareImage.share({ text: text, ref: ref });
+    }
+    // Fallback: canvas con gradiente
     const canvas = generateCanvas({ book, chapter, verse, text });
     const blob   = await canvasToBlob(canvas);
     if (!blob) return false;
 
-    const ref = `${book} ${chapter}${verse ? ':' + verse : ''}`;
     const file = new File([blob], `palabra-viva-${ref.replace(/\s+/g, '-')}.png`, { type: 'image/png' });
     const shareText = `${ref}\n\n"${text}"\n\nCompartido desde Palabra Viva`;
 
-    // Web Share API con archivo (Android, iOS 15+)
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
       try {
         await navigator.share({ files: [file], title: ref, text: shareText });
@@ -157,31 +161,31 @@
         if (e.name === 'AbortError') return false;
       }
     }
-
-    // Fallback: descargar
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url;
-    a.download = file.name;
-    document.body.appendChild(a);
-    a.click();
+    a.href = url; a.download = file.name;
+    document.body.appendChild(a); a.click();
     setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 1000);
     return true;
   }
 
-  // Preview en pantalla (para que el usuario vea antes de compartir)
+  // Preview — ahora delega directo a share (PVShareImage genera la imagen)
   function previewVerseImage(verseData) {
+    const ref = `${verseData.book} ${verseData.chapter}${verseData.verse ? ':' + verseData.verse : ''}`;
+    if (window.PVShareImage) {
+      window.PVShareImage.share({ text: verseData.text, ref: ref });
+      return;
+    }
+    // Fallback: canvas preview
     const canvas = generateCanvas(verseData);
     const dataUrl = canvas.toDataURL('image/png');
     const overlay = document.createElement('div');
     overlay.style.cssText = 'position:fixed;inset:0;z-index:9700;background:rgba(0,0,0,.85);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;gap:14px';
-    overlay.innerHTML = `
-      <img src="${dataUrl}" alt="Vista previa del versículo" style="max-width:min(420px,90vw);max-height:60vh;border-radius:18px;box-shadow:0 24px 60px rgba(0,0,0,.5)" />
-      <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center">
-        <button data-act="share" style="border:0;border-radius:999px;padding:14px 22px;font-weight:900;font-size:15px;background:linear-gradient(135deg,#f59e0b,#ec4899);color:white;cursor:pointer">📤 Compartir</button>
-        <button data-act="close" style="border:1px solid #555;border-radius:999px;padding:14px 22px;font-weight:900;font-size:15px;background:rgba(255,255,255,.08);color:white;cursor:pointer">Cerrar</button>
-      </div>
-    `;
+    overlay.innerHTML = '<img src="' + dataUrl + '" alt="Vista previa" style="max-width:min(420px,90vw);max-height:60vh;border-radius:18px;box-shadow:0 24px 60px rgba(0,0,0,.5)"/>'
+      + '<div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center">'
+      + '<button data-act="share" style="border:0;border-radius:999px;padding:14px 22px;font-weight:900;font-size:15px;background:linear-gradient(135deg,#f59e0b,#ec4899);color:white;cursor:pointer">📤 Compartir</button>'
+      + '<button data-act="close" style="border:1px solid #555;border-radius:999px;padding:14px 22px;font-weight:900;font-size:15px;background:rgba(255,255,255,.08);color:white;cursor:pointer">Cerrar</button>'
+      + '</div>';
     overlay.querySelector('[data-act="share"]').onclick = () => { overlay.remove(); shareVerseImage(verseData); };
     overlay.querySelector('[data-act="close"]').onclick = () => overlay.remove();
     overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
