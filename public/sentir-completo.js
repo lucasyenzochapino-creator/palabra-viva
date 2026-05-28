@@ -569,7 +569,7 @@
           let ok = false;
           if (imgUrl && navigator.canShare) {
             try {
-              const blob = await _buildVerseImg(imgUrl, ref, txt);
+              const blob = await _buildVerseImg(imgUrl, ref, txt, themeIdx);
               const file = new File([blob], 'versiculo-palabraviva.jpg', { type: 'image/jpeg' });
               if (navigator.canShare({ files: [file] })) {
                 await navigator.share({ files: [file], title: ref });
@@ -596,78 +596,124 @@
           btn.disabled = false;
         });
       });
-
-      // ── Canvas: genera JPEG 1080x1920 con fondo bíblico + versículo ──────
-      async function _buildVerseImg(imgUrl, ref, txt) {
+      // ── Canvas: genera JPEG 1080x1920 — SIEMPRE produce imagen ───────────
+      // Intenta cargar la foto Unsplash con CORS + cache-bust. Si falla por
+      // CUALQUIER razón (CORS, red, caché tainted), genera un gradiente bello.
+      // GARANTIZA que todos los versículos se comparten como imagen.
+      async function _buildVerseImg(imgUrl, ref, txt, themeIdx) {
         const W = 1080, H = 1920;
-        const cv = document.createElement('canvas');
+        const cv = document.createElement("canvas");
         cv.width = W; cv.height = H;
-        const ctx = cv.getContext('2d');
+        const ctx = cv.getContext("2d");
 
-        // Cargar imagen de fondo (alta resolución, CORS habilitado en Unsplash)
-        const bg = new Image();
-        bg.crossOrigin = 'anonymous';
-        const hiRes = imgUrl.replace(/w=\d+/, 'w=1080').replace(/q=\d+/, 'q=85');
-        await new Promise((res, rej) => {
-          bg.onload = res;
-          bg.onerror = () => {
-            // 2do intento sin CORS (canvas quedará tainted pero podemos intentar)
-            const bg2 = new Image();
-            bg2.onload = () => { ctx.drawImage(bg2, 0, 0, W, H); res(); };
-            bg2.onerror = rej;
-            bg2.src = imgUrl;
-          };
-          bg.src = hiRes;
-        });
+        // Intentar foto de fondo con CORS + cache-bust horario
+        let photoOk = false;
+        if (imgUrl) {
+          try {
+            const bg = new Image();
+            bg.crossOrigin = "anonymous";
+            const hiRes = imgUrl.replace(/w=\d+/, "w=1080").replace(/q=\d+/, "q=85")
+                          + "&_t=" + Math.floor(Date.now() / 3600000);
+            await new Promise(function(res, rej) {
+              const timer = setTimeout(rej, 9000);
+              bg.onload  = function() { clearTimeout(timer); res(); };
+              bg.onerror = function() { clearTimeout(timer); rej(); };
+              bg.src = hiRes;
+            });
+            const sc = Math.max(W / bg.width, H / bg.height);
+            const sw = bg.width * sc, sh = bg.height * sc;
+            ctx.drawImage(bg, (W - sw) / 2, (H - sh) / 2, sw, sh);
+            photoOk = true;
+          } catch(e) { /* foto no cargó → usamos gradiente */ }
+        }
 
-        // Dibujar imagen (cover)
-        const sc = Math.max(W / bg.width, H / bg.height);
-        const sw = bg.width * sc, sh = bg.height * sc;
-        ctx.drawImage(bg, (W - sw) / 2, (H - sh) / 2, sw, sh);
+        // Gradiente como fondo si la foto no se pudo cargar (CORS o red)
+        if (!photoOk) {
+          var THEMES = [
+            ["#0d1b2a","#1b4f72","#2e86c1"],
+            ["#1b2631","#154360","#1a5276"],
+            ["#1a5276","#117a65","#148f77"],
+            ["#512e5f","#6c3483","#7d3c98"],
+            ["#1b4332","#196f3d","#1e8449"],
+            ["#641e16","#922b21","#c0392b"],
+            ["#1f3a5c","#1a4a8c","#2e6db4"],
+            ["#3d2314","#6e2f1a","#a04000"],
+            ["#1c2833","#2c3e50","#34495e"],
+            ["#0b3d0b","#145a32","#196f3d"],
+            ["#2c1b58","#4a235a","#6c3483"],
+            ["#0e2742","#1a5276","#117864"]
+          ];
+          var theme = THEMES[(themeIdx || 0) % THEMES.length];
+          var gr = ctx.createLinearGradient(0, 0, 0, H);
+          gr.addColorStop(0, theme[0]);
+          gr.addColorStop(0.5, theme[1]);
+          gr.addColorStop(1, theme[2]);
+          ctx.fillStyle = gr;
+          ctx.fillRect(0, 0, W, H);
+          ctx.fillStyle = "rgba(255,255,255,0.025)";
+          for (var y2 = 0; y2 < H; y2 += 6) ctx.fillRect(0, y2, W, 1);
+        }
 
-        // Degradado oscuro
-        const gr = ctx.createLinearGradient(0, 0, 0, H);
-        gr.addColorStop(0,    'rgba(0,0,0,0.20)');
-        gr.addColorStop(0.35, 'rgba(0,0,0,0.35)');
-        gr.addColorStop(0.65, 'rgba(0,0,0,0.68)');
-        gr.addColorStop(1,    'rgba(0,0,0,0.90)');
-        ctx.fillStyle = gr;
+        // Overlay oscuro
+        var ov = ctx.createLinearGradient(0, 0, 0, H);
+        ov.addColorStop(0,    photoOk ? "rgba(0,0,0,0.18)" : "rgba(0,0,0,0.08)");
+        ov.addColorStop(0.38, photoOk ? "rgba(0,0,0,0.42)" : "rgba(0,0,0,0.22)");
+        ov.addColorStop(0.70, photoOk ? "rgba(0,0,0,0.70)" : "rgba(0,0,0,0.48)");
+        ov.addColorStop(1,    "rgba(0,0,0,0.88)");
+        ctx.fillStyle = ov;
         ctx.fillRect(0, 0, W, H);
 
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'top';
+        ctx.textAlign    = "center";
+        ctx.textBaseline = "top";
 
         // Cruz decorativa
-        ctx.font = '100px serif';
-        ctx.fillStyle = 'rgba(255,255,255,0.18)';
-        ctx.fillText('✝', W / 2, H * 0.22);
+        ctx.font      = "110px serif";
+        ctx.fillStyle = "rgba(255,255,255,0.15)";
+        ctx.fillText("✝", W / 2, H * 0.20);
 
-        // Referencia (dorada)
-        ctx.font = 'bold 54px sans-serif';
-        ctx.fillStyle = 'rgba(245,158,11,0.95)';
-        ctx.fillText(ref, W / 2, H * 0.43);
+        // Línea dorada superior
+        ctx.strokeStyle = "rgba(245,158,11,0.65)";
+        ctx.lineWidth   = 2;
+        ctx.beginPath();
+        ctx.moveTo(W * 0.18, H * 0.41);
+        ctx.lineTo(W * 0.82, H * 0.41);
+        ctx.stroke();
 
-        // Versículo con word-wrap
-        ctx.font = 'italic 60px Georgia, serif';
-        ctx.fillStyle = '#ffffff';
-        _wrapText(ctx, '“' + txt + '”', W / 2, H * 0.50, W - 140, 82);
+        // Referencia bíblica (dorada)
+        ctx.font      = "bold 52px sans-serif";
+        ctx.fillStyle = "rgba(245,158,11,0.97)";
+        ctx.fillText(ref, W / 2, H * 0.42);
+
+        // Línea dorada inferior
+        ctx.beginPath();
+        ctx.moveTo(W * 0.22, H * 0.467);
+        ctx.lineTo(W * 0.78, H * 0.467);
+        ctx.stroke();
+
+        // Versículo (word-wrap, itálica)
+        ctx.font      = "italic 58px Georgia, serif";
+        ctx.fillStyle = "#ffffff";
+        _wrapText(ctx, "“" + txt + "”", W / 2, H * 0.49, W - 160, 80);
 
         // Branding
-        ctx.font = 'bold 38px sans-serif';
-        ctx.fillStyle = 'rgba(255,255,255,0.50)';
-        ctx.textBaseline = 'bottom';
-        ctx.fillText('— Palabra Viva —', W / 2, H - 100);
+        ctx.font         = "bold 36px sans-serif";
+        ctx.fillStyle    = "rgba(255,255,255,0.55)";
+        ctx.textBaseline = "bottom";
+        ctx.fillText("Palabra Viva", W / 2, H - 80);
 
-        return new Promise(resolve => cv.toBlob(resolve, 'image/jpeg', 0.91));
+        return new Promise(function(resolve, reject) {
+          try { cv.toBlob(function(b) { b ? resolve(b) : reject(new Error("blob nulo")); }, "image/jpeg", 0.92); }
+          catch (e) { reject(e); }
+        });
       }
 
       function _wrapText(ctx, text, x, y, maxW, lineH) {
-        const words = text.split(' ');
-        let line = '';
-        for (let i = 0; i < words.length; i++) {
-          const test = line + words[i] + ' ';
+        var words = text.split(" ");
+        var line  = "";
+        for (var i = 0; i < words.length; i++) {
+          var test = line + words[i] + " ";
           if (i > 0 && ctx.measureText(test).width > maxW) {
-            ctx.fillText(line.trim(), x, y); y += lineH; line = words[i] + ' ';
+            ctx.fillText(line.trim(), x, y); y += lineH; line = words[i] + " ";
           } else { line = test; }
         }
         if (line.trim()) ctx.fillText(line.trim(), x, y);
