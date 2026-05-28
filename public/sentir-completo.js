@@ -401,12 +401,17 @@
 
       /* Lista de versículos */
       .sv3-verses{display:flex;flex-direction:column;gap:8px}
-      .sv3-verse-card{border:1px solid var(--line);background:var(--card);border-radius:16px;padding:13px 14px}
-      .sv3-verse-ref{font-size:12px;font-weight:900;color:var(--brand);text-transform:uppercase;letter-spacing:.06em;margin:0 0 5px}
-      .sv3-verse-txt{font-size:15px;line-height:1.5;margin:0;color:var(--text);font-style:italic}
-      .sv3-verse-copy{margin-top:8px;border:1px solid var(--line);background:none;color:var(--muted);border-radius:999px;padding:4px 10px;font-size:11px;font-weight:900;cursor:pointer}
-      .sv3-verse-copy:active{background:var(--card2)}
+      .sv3-verse-card{border-radius:16px;padding:0;overflow:hidden;position:relative;min-height:130px;background:#1a1a2e}
+      .sv3-verse-bg{position:absolute;inset:0;background-size:cover;background-position:center;z-index:0}
+      .sv3-verse-overlay{position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,.42),rgba(0,0,0,.70));z-index:1}
+      .sv3-verse-content{position:relative;z-index:2;padding:14px}
+      .sv3-verse-ref{font-size:12px;font-weight:900;color:rgba(255,255,255,.8);text-transform:uppercase;letter-spacing:.06em;margin:0 0 5px}
+      .sv3-verse-txt{font-size:15px;line-height:1.5;margin:0;color:#fff;font-style:italic;text-shadow:0 1px 4px rgba(0,0,0,.6)}
+      .sv3-verse-btns{display:flex;gap:6px;margin-top:10px}
+      .sv3-verse-copy,.sv3-verse-share{border:1px solid rgba(255,255,255,.4);background:rgba(0,0,0,.35);color:rgba(255,255,255,.9);border-radius:999px;padding:4px 10px;font-size:11px;font-weight:900;cursor:pointer;backdrop-filter:blur(4px)}
+      .sv3-verse-copy:active,.sv3-verse-share:active{background:rgba(255,255,255,.2)}
 
+      /* Urgente */
       /* Urgente */
       .sv3-urgent-box{border:1px solid rgba(251,113,133,.4);background:rgba(251,113,133,.08);border-radius:16px;padding:14px;margin-bottom:10px}
       .sv3-urgent-box p{color:#fb7185;font-size:14px;margin:4px 0}
@@ -498,12 +503,40 @@
         <p class="sv3-result-action"><strong>Paso pequeño:</strong> ${m.action}</p>
       </div>`;
 
+      const PEACE_IMGS = [
+        'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?auto=format&fit=crop&w=600&q=70',
+        'https://images.unsplash.com/photo-1447752875215-b2761acb3c5d?auto=format&fit=crop&w=600&q=70',
+        'https://images.unsplash.com/photo-1465146344425-f00d5f5c8f07?auto=format&fit=crop&w=600&q=70',
+        'https://images.unsplash.com/photo-1504701954957-2010ec3bcec1?auto=format&fit=crop&w=600&q=70',
+        'https://images.unsplash.com/photo-1518156677180-95a2893f3e9f?auto=format&fit=crop&w=600&q=70',
+        'https://images.unsplash.com/photo-1519681393784-d120267933ba?auto=format&fit=crop&w=600&q=70',
+        'https://images.unsplash.com/photo-1501854140801-50d01698950b?auto=format&fit=crop&w=600&q=70',
+        'https://images.unsplash.com/photo-1425913397330-cf8af2ff40a1?auto=format&fit=crop&w=600&q=70',
+        'https://images.unsplash.com/photo-1548679847-1d4ff48016c0?auto=format&fit=crop&w=600&q=70',
+        'https://images.unsplash.com/photo-1470770903676-69b98201ea1c?auto=format&fit=crop&w=600&q=70',
+        'https://images.unsplash.com/photo-1462275646964-a0e3386b89fa?auto=format&fit=crop&w=600&q=70',
+        'https://images.unsplash.com/photo-1433086966358-54859d0ed716?auto=format&fit=crop&w=600&q=70',
+        'https://images.unsplash.com/photo-1476231682828-37e571bc172f?auto=format&fit=crop&w=600&q=70',
+        'https://images.unsplash.com/photo-1518791841217-8f162f1912da?auto=format&fit=crop&w=600&q=70',
+        'https://images.unsplash.com/photo-1509316785289-025f5b846b35?auto=format&fit=crop&w=600&q=70',
+        'https://images.unsplash.com/photo-1523712999610-f77fbcfc3843?auto=format&fit=crop&w=600&q=70'
+      ];
       html += `<div class="sv3-verses">`;
-      m.refs.forEach(([ref, txt]) => {
+      m.refs.forEach(([ref, txt], idx) => {
+        const img = PEACE_IMGS[(idx + m.refs.length * 3) % PEACE_IMGS.length];
+        const safeRef = ref;
+        const safeTxt = txt.replace(/"/g, '&quot;');
         html += `<div class="sv3-verse-card">
-          <p class="sv3-verse-ref">${ref}</p>
-          <p class="sv3-verse-txt">"${txt}"</p>
-          <button class="sv3-verse-copy" data-copy="${ref}: ${txt.replace(/"/g,'&quot;')}">📋 Copiar</button>
+          <div class="sv3-verse-bg" style="background-image:url('${img}')"></div>
+          <div class="sv3-verse-overlay"></div>
+          <div class="sv3-verse-content">
+            <p class="sv3-verse-ref">${ref}</p>
+            <p class="sv3-verse-txt">&ldquo;${txt}&rdquo;</p>
+            <div class="sv3-verse-btns">
+              <button class="sv3-verse-copy" data-copy="${safeRef}: ${safeTxt}">📋 Copiar</button>
+              <button class="sv3-verse-share" data-ref="${safeRef}" data-txt="${safeTxt}">🔗 Compartir</button>
+            </div>
+          </div>
         </div>`;
       });
       html += `</div>`;
@@ -522,7 +555,21 @@
           }
         });
       });
+      resultEl.querySelectorAll('.sv3-verse-share').forEach(btn => {
+        btn.addEventListener('click', e => {
+          e.stopPropagation();
+          const ref = btn.dataset.ref;
+          const txt = btn.dataset.txt.replace(/&quot;/g, '"');
+          const shareText = ref + ': "' + txt + '" — Palabra Viva';
+          if (navigator.share) {
+            navigator.share({ title: ref, text: shareText, url: 'https://palabraviva-ar.vercel.app' }).catch(() => {});
+          } else if (navigator.clipboard?.writeText) {
+            navigator.clipboard.writeText(shareText).then(() => { btn.textContent = '✅ Copiado'; setTimeout(() => { btn.textContent = '🔗 Compartir'; }, 1500); });
+          }
+        });
+      });
     }
+
 
     // ── Búsqueda por texto ──────────────────────────────────────────────
     searchEl.addEventListener('input', () => {

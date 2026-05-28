@@ -31,6 +31,7 @@
           alert('💻 En PC/Mac: el navegador suele mostrar un ícono para instalar a la derecha de la URL.\n\n📱 En móvil: andá a "Compartir" → "Añadir a pantalla de inicio".');
         }
       } },
+    { emoji: '🔔', label: 'Versículo diario',           cb: () => window.PVReminders?.open?.() },
     { emoji: '📋', label: 'Privacidad y términos',    cb: () => window.PVLegal?.open?.() }
   ];
 

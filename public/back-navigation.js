@@ -115,16 +115,9 @@
       return;
     }
 
-    const now = Date.now();
-    if (now - lastExitTap < 1800) {
-      window.removeEventListener('popstate', onPopState);
-      history.back();
-      return;
-    }
-
-    lastExitTap = now;
-    toast('Tocá atrás otra vez para salir');
-    pushGuard();
+    window.removeEventListener('popstate', onPopState);
+    history.back();
+    return;
   }
 
   function onPopState() {

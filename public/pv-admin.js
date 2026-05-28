@@ -15,6 +15,8 @@
       try { await window.PVAuth?.refreshSession?.(); } catch {}
     }
     const doFetch = async () => {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 12000);
       const token = getToken();
       const headers = {
         'apikey': SUPA_KEY,
@@ -23,11 +25,18 @@
         'Accept': 'application/json',
         ...(opts.headers || {})
       };
-      const res = await fetch(`${SUPA_URL}${path}`, { ...opts, headers });
+      const res = await fetch(`${SUPA_URL}${path}`, { ...opts, headers, signal: ctrl.signal });
+      clearTimeout(timer);
       const data = await res.json().catch(() => ({}));
       return { ok: res.ok, status: res.status, data };
     };
-    let result = await doFetch();
+    let result;
+    try {
+      result = await doFetch();
+    } catch(e) {
+      const isTimeout = e?.name === 'AbortError';
+      return { ok: false, status: 0, data: { message: isTimeout ? 'Tiempo de espera agotado (12s)' : e.message } };
+    }
     // Si recibió 401 y el motivo es JWT expirado, refrescar y reintentar UNA vez
     if (!result.ok && result.status === 401) {
       const errMsg = (result.data?.message || result.data?.msg || '').toLowerCase();
@@ -46,7 +55,7 @@
     const st = document.createElement('style');
     st.id = 'pv-admin-style';
     st.textContent = `
-      .pv-adm-panel{position:fixed;inset:0;z-index:9200;background:var(--bg,#09090f);overflow-y:auto;padding:14px 14px calc(80px + env(safe-area-inset-bottom))}
+      .pv-adm-panel{position:fixed;inset:0;z-index:999999;background:var(--bg,#09090f);overflow-y:auto;padding:14px 14px calc(80px + env(safe-area-inset-bottom))}
       .pv-adm-inner{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
       .pv-adm-head{display:flex;justify-content:space-between;align-items:center;gap:12px;position:sticky;top:0;background:var(--bg,#09090f);z-index:2;padding:10px 0 14px;border-bottom:1px solid var(--line,#333447)}
       .pv-adm-head h1{margin:0;font-size:24px;letter-spacing:-.03em}
@@ -78,7 +87,12 @@
   let panel = null;
 
   async function openPanel() {
+    // Refresh profile first to ensure fresh admin status
     if (!window.PVAuth?.isAdmin?.()) {
+      try { await window.PVAuth?.refreshProfile?.(); } catch(e) {}
+    }
+    if (!window.PVAuth?.isAdmin?.()) {
+      console.warn('[Admin] acceso denegado. Rol:', window.PVAuth?.getUser?.()?.profile?.role);
       alert('Acceso restringido — solo administradoras.');
       return;
     }
