@@ -139,7 +139,7 @@
       </div>`;
 
     document.body.appendChild(panel);
-    history.pushState({ pvAdmin: true }, '', location.href.split('#')[0] + '#admin');
+    try { history.pushState({ pvAdmin: true }, "", location.href.split("#")[0] + "#admin"); } catch(e) { console.warn("[Admin] pushState failed:", e); }
 
     function closePanel(withHistory = true) {
       window.removeEventListener('popstate', onPop);
@@ -769,7 +769,7 @@
   }
 
   // ── API pública ────────────────────────────────────────────────────────────
-  window.PVAdmin = { open: () => openPanel(true) };
+  window.PVAdmin = { open: () => { const p = openPanel(true); if (p && typeof p.catch === 'function') p.catch(e => console.error('[Admin] openPanel error:', e)); } };
 
   // Auto-abrir el panel admin si la URL trae #admin como hash.
   // Esto le da al admin un link directo confiable cuando el botón ⚙️ Admin

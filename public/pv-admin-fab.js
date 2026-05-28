@@ -1,11 +1,4 @@
 (() => {
-  // ===========================================================================
-  // PALABRA VIVA — Botón flotante DE EMERGENCIA para abrir el Panel Admin
-  // ===========================================================================
-  // Independiente de la quick bar, de overlays, de hash en URL, del SW.
-  // Si el usuario es admin → SIEMPRE aparece un botón flotante en la esquina
-  // inferior derecha que abre el panel. Inmune a cualquier bug de overlays.
-
   function injectStyles() {
     if (document.getElementById('pv-admin-fab-style')) return;
     const st = document.createElement('style');
@@ -15,7 +8,7 @@
         position:fixed !important;
         bottom:calc(140px + env(safe-area-inset-bottom)) !important;
         right:14px !important;
-        z-index:2147483647 !important; /* el MÁXIMO posible */
+        z-index:2147483647 !important;
         width:56px;height:56px;
         background:linear-gradient(135deg,#6b1f1f,#a47731);
         color:#fbf3df;
@@ -30,12 +23,14 @@
         pointer-events:auto !important;
         animation:pv-admin-fab-pulse 2.5s ease-in-out infinite;
         font-family:Inter,sans-serif;
+        transition:background .2s;
       }
       @keyframes pv-admin-fab-pulse{
-        0%,100%{transform:scale(1);box-shadow:0 8px 24px rgba(107,31,31,.5),0 4px 12px rgba(0,0,0,.3)}
-        50%{transform:scale(1.05);box-shadow:0 10px 32px rgba(107,31,31,.7),0 6px 16px rgba(0,0,0,.4)}
+        0%,100%{transform:scale(1);box-shadow:0 8px 24px rgba(107,31,31,.5)}
+        50%{transform:scale(1.06);box-shadow:0 10px 32px rgba(107,31,31,.7)}
       }
-      .pv-admin-fab:active{transform:scale(.95)!important;animation:none}
+      .pv-admin-fab:active{transform:scale(.9)!important;animation:none}
+      .pv-admin-fab.loading{background:linear-gradient(135deg,#333,#555)!important;animation:none}
       .pv-admin-fab-label{
         position:fixed !important;
         bottom:calc(202px + env(safe-area-inset-bottom)) !important;
@@ -49,8 +44,34 @@
         pointer-events:none;
         opacity:.9;
       }
+      .pv-fab-toast{
+        position:fixed !important;
+        bottom:calc(210px + env(safe-area-inset-bottom)) !important;
+        right:14px !important;
+        z-index:2147483647 !important;
+        background:rgba(15,23,42,.95);
+        color:#fff;
+        border-radius:10px;
+        padding:8px 12px;
+        font-size:12px;
+        font-weight:700;
+        font-family:Inter,sans-serif;
+        pointer-events:none;
+        max-width:200px;
+        text-align:right;
+        transition:opacity .2s;
+      }
     `;
     document.head.appendChild(st);
+  }
+
+  function showFabToast(msg, duration = 2500) {
+    let t = document.querySelector('.pv-fab-toast');
+    if (!t) { t = document.createElement('div'); t.className = 'pv-fab-toast'; document.body.appendChild(t); }
+    t.textContent = msg;
+    t.style.opacity = '1';
+    clearTimeout(t._timer);
+    t._timer = setTimeout(() => { t.style.opacity = '0'; }, duration);
   }
 
   function isAdmin() {
@@ -58,32 +79,49 @@
     catch { return false; }
   }
 
-  function abrirPanelAdmin() {
-    // Intentamos por todas las vías posibles
-    try {
-      if (window.PVAdmin?.open) {
+  function abrirPanelAdmin(btn) {
+    // Feedback visual inmediato
+    if (btn) { btn.textContent = '⏳'; btn.classList.add('loading'); }
+    showFabToast('Abriendo panel…');
+
+    // Intentar via window.PVAdmin (trusted=true, sin re-check de auth)
+    if (typeof window.PVAdmin?.open === 'function') {
+      try {
         window.PVAdmin.open();
+        // Verificar que el panel apareció después de 800ms
+        setTimeout(() => {
+          if (btn) { btn.textContent = '⚙️'; btn.classList.remove('loading'); }
+          if (!document.querySelector('.pv-adm-panel')) {
+            showFabToast('⚠️ Panel no cargó — tocá atrás e intentá de nuevo', 4000);
+          }
+        }, 800);
+        return;
+      } catch(e) {
+        console.error('[AdminFAB] error:', e);
+        showFabToast('Error: ' + e.message, 4000);
+        if (btn) { btn.textContent = '⚙️'; btn.classList.remove('loading'); }
         return;
       }
-    } catch (e) { console.warn('[AdminFAB] PVAdmin.open() falló:', e); }
-    // Fallback: setear hash
-    try {
-      location.hash = '#admin';
-      // Forzar trigger del hashchange por si la app no lo escucha
-      setTimeout(() => {
-        if (window.PVAdmin?.open) window.PVAdmin.open();
-      }, 300);
-    } catch (e) { console.warn('[AdminFAB] hash fallback falló:', e); }
+    }
+
+    // Fallback: hash
+    showFabToast('⚠️ Panel no cargado aún, reintentando…', 3000);
+    location.hash = '#admin';
+    setTimeout(() => {
+      if (btn) { btn.textContent = '⚙️'; btn.classList.remove('loading'); }
+      if (typeof window.PVAdmin?.open === 'function') {
+        try { window.PVAdmin.open(); } catch {}
+      }
+    }, 500);
   }
 
   function montarBoton() {
     if (!isAdmin()) {
-      // Si NO es admin (o cerró sesión), remover el FAB
       document.querySelector('.pv-admin-fab')?.remove();
       document.querySelector('.pv-admin-fab-label')?.remove();
       return;
     }
-    if (document.querySelector('.pv-admin-fab')) return; // ya montado
+    if (document.querySelector('.pv-admin-fab')) return;
     injectStyles();
 
     const label = document.createElement('div');
@@ -98,16 +136,13 @@
     btn.onclick = (e) => {
       e.stopPropagation();
       e.preventDefault();
-      console.log('[AdminFAB] Click → abriendo panel admin');
-      abrirPanelAdmin();
+      abrirPanelAdmin(btn);
     };
 
     document.body.appendChild(label);
     document.body.appendChild(btn);
-    console.log('[AdminFAB] Botón flotante montado');
   }
 
-  // Chequear estado cada 1.5s + en eventos de auth
   setInterval(montarBoton, 1500);
   document.addEventListener('pv-auth-change', montarBoton);
   if (document.readyState === 'loading') {
