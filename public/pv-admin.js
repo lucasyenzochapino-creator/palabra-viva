@@ -501,15 +501,52 @@
       return;
     }
     const rows = prayers.map(p => {
-      const ts  = fmtDate(p.created_at);
-      const usr = esc(p.user_email || p.user_id || 'anon').slice(0, 26);
-      const txt = esc(p.text || p.content || p.prayer || '').slice(0, 120);
-      return '<tr><td>' + ts + '</td><td style="font-size:11px">' + usr + '</td><td>' + txt + '</td></tr>';
+      const ts     = fmtDate(p.created_at);
+      const name   = esc(p.display_name || 'Anónimo/a').slice(0, 30);
+      const cat    = esc(p.category || 'general');
+      const txt    = esc(p.request_text || '').slice(0, 150);
+      const status = p.status || 'pending';
+      const id     = p.id;
+      const statusBadge = status === 'approved'
+        ? '<span style="color:#22c55e;font-weight:900">✓ Aprobada</span>'
+        : status === 'rejected'
+          ? '<span style="color:#fb7185;font-weight:900">✗ Rechazada</span>'
+          : '<span style="color:#fbbf24;font-weight:900">⏳ Pendiente</span>';
+      const btns = status !== 'approved'
+        ? '<button class="pv-adm-btn ok"     data-pray-id="' + id + '" data-pray-action="approve">✓ Aprobar</button> '
+          + '<button class="pv-adm-btn danger" data-pray-id="' + id + '" data-pray-action="reject">✗ Rechazar</button>'
+        : '<button class="pv-adm-btn danger" data-pray-id="' + id + '" data-pray-action="reject">✗ Rechazar</button>';
+      return '<tr>'
+        + '<td style="font-size:11px">' + ts + '</td>'
+        + '<td>' + name + '</td>'
+        + '<td style="font-size:11px">' + cat + '</td>'
+        + '<td>' + txt + '</td>'
+        + '<td>' + statusBadge + '</td>'
+        + '<td><div class="pv-adm-btns-wrap">' + btns + '</div></td>'
+        + '</tr>';
     }).join('');
     el.innerHTML = '<h2>🙏 Peticiones de oración (' + prayers.length + ')</h2>'
       + '<div style="overflow-x:auto"><table class="pv-adm-table">'
-      + '<thead><tr><th>Fecha</th><th>Usuario</th><th>Petición</th></tr></thead>'
+      + '<thead><tr><th>Fecha</th><th>Nombre</th><th>Categoría</th><th>Petición</th><th>Estado</th><th>Acciones</th></tr></thead>'
       + '<tbody>' + rows + '</tbody></table></div>';
+
+    el.querySelectorAll('[data-pray-action]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id     = btn.dataset.prayId;
+        const action = btn.dataset.prayAction;
+        const orig   = btn.innerHTML;
+        btn.disabled = true; btn.innerHTML = '⏳';
+        const body = action === 'approve'
+          ? JSON.stringify({ status: 'approved', approved_at: new Date().toISOString() })
+          : JSON.stringify({ status: 'rejected' });
+        const { ok, data } = await supa('/rest/v1/prayer_requests?id=eq.' + id, {
+          method: 'PATCH', body, headers: { 'Prefer': 'return=minimal' }
+        });
+        if (ok) { toast(action === 'approve' ? '🙏 Petición aprobada' : 'Petición rechazada', 'ok'); return loadData(); }
+        toast('Error: ' + (data?.message || 'desconocido'), 'err');
+        btn.innerHTML = orig; btn.disabled = false;
+      });
+    });
   }
 
   // ── Hash auto-open ─────────────────────────────────────────────────────────
